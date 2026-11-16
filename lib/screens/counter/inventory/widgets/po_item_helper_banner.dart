@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/inventory_models.dart';
 import '../models/po_line_item_input.dart';
+import '../utils/unit_conversion_helper.dart';
 
 class PoItemHelperBanner extends StatelessWidget {
   final Ingredient ing;
@@ -33,35 +34,23 @@ class PoItemHelperBanner extends StatelessWidget {
     final isExceeded = hasIdealPar && (orderQty > availSpace);
 
     final currentPrice = double.tryParse(item.priceController.text.trim()) ?? 0.0;
-    final isGram = item.unit.toUpperCase() == 'G';
-    final isKg = item.unit.toUpperCase() == 'KG';
-    final isMl = item.unit.toUpperCase() == 'ML';
-    final isLiter = item.unit.toUpperCase() == 'L';
 
-    String? hisabSummary;
-    bool isLikelyMistake = false;
-    double? suggestedGramRate;
+    // Use UnitConversionHelper for universal hisab and mistake detection across all units
+    final hisabSummary = UnitConversionHelper.getHisabSummary(
+      price: currentPrice,
+      currentUnit: item.unit,
+      purchaseUom: ing.purchaseUom,
+      recipeUom: ing.recipeUom,
+      conversionFactor: factor,
+    );
 
-    if (isGram && currentPrice > 0) {
-      final per100g = currentPrice * 100;
-      final perKg = currentPrice * 1000;
-      if (currentPrice >= 5.0) {
-        isLikelyMistake = true;
-        suggestedGramRate = currentPrice >= 100 ? (currentPrice / 1000) : (currentPrice / 100);
-      }
-      hisabSummary = '⚖️ Gm Hisab: ₹${per100g.toStringAsFixed(1)} / 100g  •  ₹${perKg.toStringAsFixed(0)} / KG  (₹${currentPrice.toStringAsFixed(2)} / g)';
-    } else if (isKg && currentPrice > 0) {
-      final per100g = currentPrice / 10;
-      final perG = currentPrice / 1000;
-      hisabSummary = '⚖️ Gm Hisab: ₹${currentPrice.toStringAsFixed(0)} / KG  •  ₹${per100g.toStringAsFixed(1)} / 100g  (₹${perG.toStringAsFixed(2)} / g)';
-    } else if (isMl && currentPrice > 0) {
-      final per100ml = currentPrice * 100;
-      final perL = currentPrice * 1000;
-      hisabSummary = '⚖️ ML Hisab: ₹${per100ml.toStringAsFixed(1)} / 100ml  •  ₹${perL.toStringAsFixed(0)} / L';
-    } else if (isLiter && currentPrice > 0) {
-      final per100ml = currentPrice / 10;
-      hisabSummary = '⚖️ ML Hisab: ₹${currentPrice.toStringAsFixed(0)} / L  •  ₹${per100ml.toStringAsFixed(1)} / 100ml';
-    }
+    final mistakeAlert = UnitConversionHelper.detectMistake(
+      price: currentPrice,
+      currentUnit: item.unit,
+      purchaseUom: ing.purchaseUom,
+      recipeUom: ing.recipeUom,
+      conversionFactor: factor,
+    );
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -130,18 +119,18 @@ class PoItemHelperBanner extends StatelessWidget {
           ),
         ),
 
-        // 2. Dual-UOM Gm Hisab rate banner
-        if (hisabSummary != null)
+        // 2. Dual-UOM Rate & Mistake Banner across ALL units
+        if (mistakeAlert != null || hisabSummary != null)
           Container(
             margin: const EdgeInsets.only(top: 4),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: isLikelyMistake
+              color: mistakeAlert != null
                   ? const Color(0xFFF59E0B).withValues(alpha: 0.12)
                   : const Color(0xFF10B981).withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(6),
               border: Border.all(
-                color: isLikelyMistake
+                color: mistakeAlert != null
                     ? const Color(0xFFF59E0B).withValues(alpha: 0.4)
                     : const Color(0xFF10B981).withValues(alpha: 0.2),
               ),
@@ -150,21 +139,22 @@ class PoItemHelperBanner extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    isLikelyMistake
-                        ? '⚠️ Alert: ₹${currentPrice.toStringAsFixed(0)}/g equals ₹${(currentPrice * 1000).toStringAsFixed(0)}/KG! Did you mean ₹${suggestedGramRate?.toStringAsFixed(2)}/g (₹${((suggestedGramRate ?? 0) * 100).toStringAsFixed(1)} per 100g)?'
-                        : hisabSummary,
+                    mistakeAlert != null ? mistakeAlert.message : hisabSummary!,
                     style: TextStyle(
                       fontSize: 11,
-                      fontWeight: isLikelyMistake ? FontWeight.bold : FontWeight.w600,
-                      color: isLikelyMistake ? const Color(0xFFD97706) : const Color(0xFF10B981),
+                      fontWeight: mistakeAlert != null ? FontWeight.bold : FontWeight.w600,
+                      color: mistakeAlert != null ? const Color(0xFFD97706) : const Color(0xFF10B981),
                     ),
                   ),
                 ),
-                if (isLikelyMistake && suggestedGramRate != null) ...[
+                if (mistakeAlert != null) ...[
                   const SizedBox(width: 8),
                   InkWell(
                     onTap: () {
-                      item.priceController.text = suggestedGramRate!.toStringAsFixed(2);
+                      final suggested = mistakeAlert.suggestedRate;
+                      item.priceController.text = suggested == suggested.roundToDouble()
+                          ? suggested.toInt().toString()
+                          : (suggested < 0.01 ? suggested.toStringAsFixed(4) : suggested.toStringAsFixed(2));
                       onItemChanged();
                     },
                     child: Container(
@@ -174,7 +164,7 @@ class PoItemHelperBanner extends StatelessWidget {
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
-                        'Fix to ₹${suggestedGramRate.toStringAsFixed(2)}/g',
+                        'Fix to ₹${mistakeAlert.suggestedRate < 0.01 ? mistakeAlert.suggestedRate.toStringAsFixed(4) : (mistakeAlert.suggestedRate == mistakeAlert.suggestedRate.roundToDouble() ? mistakeAlert.suggestedRate.toInt().toString() : mistakeAlert.suggestedRate.toStringAsFixed(2))}${mistakeAlert.unitLabel}',
                         style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
                       ),
                     ),
