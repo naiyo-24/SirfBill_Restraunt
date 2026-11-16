@@ -173,15 +173,20 @@ class PoLineItemsTable extends StatelessWidget {
                     final ing = matchingIng.isNotEmpty ? matchingIng.first : null;
 
                     Widget? capacityWidget;
-                    if (ing != null && ing.idealParLevel > 0) {
+                    if (ing != null) {
                       final factor = ing.uomConversionFactor > 0 ? ing.uomConversionFactor : 1.0;
                       final isPurchase = item.unit.toUpperCase() == ing.purchaseUom.toUpperCase();
                       final stockInUnit = isPurchase ? (ing.currentStock / factor) : ing.currentStock;
-                      final idealParInUnit = isPurchase ? (ing.idealParLevel / factor) : ing.idealParLevel;
                       final minParInUnit = isPurchase ? (ing.minParLevel / factor) : ing.minParLevel;
-                      final availSpace = (idealParInUnit - stockInUnit).clamp(0.0, double.infinity);
+                      final hasIdealPar = ing.idealParLevel > 0;
+                      final idealParInUnit = hasIdealPar
+                          ? (isPurchase ? (ing.idealParLevel / factor) : ing.idealParLevel)
+                          : 0.0;
+                      final availSpace = hasIdealPar
+                          ? (idealParInUnit - stockInUnit).clamp(0.0, double.infinity)
+                          : double.infinity;
                       final orderQty = double.tryParse(item.qtyController.text.trim()) ?? 0.0;
-                      final isExceeded = orderQty > availSpace;
+                      final isExceeded = hasIdealPar && (orderQty > availSpace);
 
                       capacityWidget = Container(
                         margin: const EdgeInsets.only(top: 6),
@@ -208,8 +213,12 @@ class PoLineItemsTable extends StatelessWidget {
                             Expanded(
                               child: Text(
                                 isExceeded
-                                    ? '⚠️ Exceeds Max Capacity! Current: ${stockInUnit.toStringAsFixed(1)} ${item.unit} • Max Cap: ${idealParInUnit.toStringAsFixed(1)} ${item.unit} • Space: ${availSpace.toStringAsFixed(1)} ${item.unit}'
-                                    : 'Storage: Current ${stockInUnit.toStringAsFixed(1)} ${item.unit} • Min: ${minParInUnit.toStringAsFixed(1)} • Max Cap (Ideal Par): ${idealParInUnit.toStringAsFixed(1)} ${item.unit} • Available Space: ${availSpace.toStringAsFixed(1)} ${item.unit}',
+                                    ? (availSpace <= 0
+                                        ? '🚫 Storage Full! Current: ${stockInUnit.toStringAsFixed(1)} ${item.unit} is already at Max Cap (${idealParInUnit.toStringAsFixed(1)} ${item.unit}). You cannot order more!'
+                                        : '⚠️ Exceeds Max Capacity! Current: ${stockInUnit.toStringAsFixed(1)} ${item.unit} • Max Cap: ${idealParInUnit.toStringAsFixed(1)} ${item.unit} • Remaining Space: ${availSpace.toStringAsFixed(1)} ${item.unit}')
+                                    : (hasIdealPar
+                                        ? 'Storage: Current ${stockInUnit.toStringAsFixed(1)} ${item.unit} • Min: ${minParInUnit.toStringAsFixed(1)} • Max Cap (Ideal Par): ${idealParInUnit.toStringAsFixed(1)} ${item.unit} • Space: ${availSpace.toStringAsFixed(1)} ${item.unit}'
+                                        : 'Storage: Current ${stockInUnit.toStringAsFixed(1)} ${item.unit} • Min Par: ${minParInUnit.toStringAsFixed(1)} ${item.unit} • Max Cap: Not set'),
                                 style: TextStyle(
                                   fontSize: 11,
                                   fontWeight: isExceeded ? FontWeight.bold : FontWeight.w500,
@@ -219,7 +228,7 @@ class PoLineItemsTable extends StatelessWidget {
                                 ),
                               ),
                             ),
-                            if (availSpace > 0 && orderQty != availSpace) ...[
+                            if (hasIdealPar && availSpace > 0 && orderQty != availSpace) ...[
                               InkWell(
                                 onTap: () {
                                   item.qtyController.text = availSpace.toStringAsFixed(1);

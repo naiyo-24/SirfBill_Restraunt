@@ -255,25 +255,25 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
                                       if (width >= 1050) {
                                         crossAxisCount = 6;
-                                        childAspectRatio = isCompactHeight ? 0.90 : 0.78;
+                                        final colWidth = (width - 60) / 6;
+                                        // Compact target height (~185-195px) so cards look sleek and well-proportioned
+                                        final targetHeight = isCompactHeight ? 175.0 : 190.0;
+                                        childAspectRatio = colWidth / targetHeight;
                                       } else if (width >= 580) {
                                         crossAxisCount = 3;
-                                        final availableGridHeight = screenHeight - (isCompactHeight ? 200 : 250);
-                                        final rowHeight = (availableGridHeight - 14) / 2;
                                         final colWidth = (width - 24) / 3;
-                                        final calculatedRatio = (colWidth / rowHeight.clamp(160.0, 240.0));
-                                        childAspectRatio = calculatedRatio.clamp(1.0, 1.25);
+                                        final targetHeight = isCompactHeight ? 165.0 : 180.0;
+                                        childAspectRatio = colWidth / targetHeight;
                                       } else {
                                         crossAxisCount = 2;
-                                        final availableGridHeight = screenHeight - (isMobile ? 165 : 200);
-                                        final rowHeight = (availableGridHeight - 16) / 3;
                                         final colWidth = (width - 8) / 2;
-                                        final calculatedRatio = (colWidth / rowHeight.clamp(120.0, 180.0));
-                                        childAspectRatio = calculatedRatio.clamp(1.08, 1.30);
+                                        final targetHeight = isCompactHeight ? 145.0 : 155.0;
+                                        childAspectRatio = colWidth / targetHeight;
                                       }
 
                                       return GridView.builder(
                                         shrinkWrap: true,
+                                        clipBehavior: Clip.none,
                                         physics: const NeverScrollableScrollPhysics(),
                                         itemCount: _modules.length,
                                         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
