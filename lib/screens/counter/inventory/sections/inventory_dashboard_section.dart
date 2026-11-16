@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../models/inventory_models.dart';
 // ignore: unnecessary_import
 import '../models/inventory_ops_models.dart';
@@ -64,6 +65,8 @@ class _InventoryDashboardSectionState extends State<InventoryDashboardSection> {
         InventoryHeader(
           title: 'Stock Overview & Alerts',
           subtitle: 'Live kitchen commodities balance, procurement pipeline & food costs',
+          onRefresh: _loadDashboardData,
+          isRefreshing: _isLoading,
           trailing: ElevatedButton.icon(
             onPressed: () => widget.onNavigateSection?.call(InventorySection.purchaseOrders),
             icon: const Icon(Icons.add_shopping_cart, size: 16),
@@ -116,7 +119,7 @@ class _InventoryDashboardSectionState extends State<InventoryDashboardSection> {
   Widget _buildKpiGrid(BuildContext context, int lowStockCount) {
     double totalValue = 0.0;
     for (final ing in _ingredients) {
-      totalValue += (ing.currentStock * ing.costPerPurchaseUnit);
+      totalValue += ing.totalStockValue;
     }
 
     return LayoutBuilder(
@@ -132,7 +135,7 @@ class _InventoryDashboardSectionState extends State<InventoryDashboardSection> {
           children: [
             InventoryKpiCard(
               title: 'Total Stock Value',
-              value: '₹${totalValue.toStringAsFixed(0)}',
+              value: '₹${NumberFormat('#,##,##0.00', 'en_IN').format(totalValue)}',
               subtitle: '${_ingredients.length} raw ingredients',
               icon: Icons.account_balance_wallet_outlined,
               accentColor: const Color(0xFF10B981),

@@ -64,6 +64,8 @@ class _GrnSectionState extends State<GrnSection> {
           searchController: _searchController,
           onSearchChanged: (v) => setState(() => _searchQuery = v),
           searchHint: 'Search GRN #, Invoice #, PO #, Supplier...',
+          onRefresh: _loadGrns,
+          isRefreshing: _isLoading,
           trailing: ElevatedButton.icon(
             onPressed: () => _openRecordGRNDialog(context),
             icon: const Icon(Icons.receipt_long, size: 16),

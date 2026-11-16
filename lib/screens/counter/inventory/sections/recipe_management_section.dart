@@ -39,6 +39,7 @@ class _RecipeManagementSectionState extends State<RecipeManagementSection> {
           searchController: _searchController,
           onSearchChanged: (v) => setState(() => _searchQuery = v),
           searchHint: 'Search recipe or dish name...',
+          onRefresh: () => setState(() {}),
           trailing: ElevatedButton.icon(
             onPressed: () => _openAddRecipeDialog(context),
             icon: const Icon(Icons.add, size: 16),

@@ -54,14 +54,14 @@ class _RestaurantModuleCardState extends State<RestaurantModuleCard> {
         final isMobile = cardWidth < 210 || (cardHeight.isFinite && cardHeight < 170);
         final isCompact = isMobile || cardWidth < 280 || (cardHeight.isFinite && cardHeight < 245);
 
-        final double horizontalPadding = isMobile ? 12.0 : (isCompact ? 14.0 : 18.0);
-        final double topPadding = isMobile ? 10.0 : (isCompact ? 12.0 : 16.0);
-        final double bottomPadding = isMobile ? 8.0 : (isCompact ? 10.0 : 14.0);
-        final double iconBoxSize = isMobile ? 32.0 : (isCompact ? 38.0 : 44.0);
-        final double iconSize = isMobile ? 18.0 : (isCompact ? 20.0 : 24.0);
-        final double titleFontSize = isMobile ? 13.0 : (isCompact ? 14.5 : 17.0);
-        final double descFontSize = isMobile ? 10.5 : (isCompact ? 11.0 : 12.0);
-        final double cardRadius = isMobile ? 16.0 : (isCompact ? 18.0 : 22.0);
+        final double horizontalPadding = isMobile ? 12.0 : (isCompact ? 14.0 : 16.0);
+        final double topPadding = isMobile ? 10.0 : (isCompact ? 12.0 : 14.0);
+        final double bottomPadding = isMobile ? 8.0 : (isCompact ? 10.0 : 12.0);
+        final double iconBoxSize = isMobile ? 32.0 : (isCompact ? 36.0 : 40.0);
+        final double iconSize = isMobile ? 18.0 : (isCompact ? 20.0 : 22.0);
+        final double titleFontSize = isMobile ? 13.0 : (isCompact ? 14.0 : 15.5);
+        final double descFontSize = isMobile ? 10.5 : (isCompact ? 11.0 : 11.5);
+        final double cardRadius = isMobile ? 14.0 : (isCompact ? 16.0 : 18.0);
 
         return MouseRegion(
           cursor: SystemMouseCursors.click,
@@ -144,7 +144,7 @@ class _RestaurantModuleCardState extends State<RestaurantModuleCard> {
                           // Title
                           Text(
                             widget.data.title,
-                            maxLines: isCompact ? 1 : 2,
+                            maxLines: isMobile ? 1 : 2,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               fontSize: titleFontSize,
@@ -154,7 +154,7 @@ class _RestaurantModuleCardState extends State<RestaurantModuleCard> {
                               letterSpacing: -0.2,
                             ),
                           ),
-                          SizedBox(height: isMobile ? 2 : (isCompact ? 3 : 5)),
+                          SizedBox(height: isMobile ? 2 : (isCompact ? 2 : 4)),
 
                           // Description (Flexible so it never overflows)
                           Expanded(

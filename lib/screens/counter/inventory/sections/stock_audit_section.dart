@@ -42,6 +42,7 @@ class _StockAuditSectionState extends State<StockAuditSection> {
           searchController: _searchController,
           onSearchChanged: (v) => setState(() => _searchQuery = v),
           searchHint: 'Search audit # or auditor...',
+          onRefresh: () => setState(() {}),
           trailing: ElevatedButton.icon(
             onPressed: () => _openStartAuditDialog(context),
             icon: const Icon(Icons.playlist_add_check, size: 16),

@@ -68,6 +68,8 @@ class _PurchaseOrdersSectionState extends State<PurchaseOrdersSection> {
           searchController: _searchController,
           onSearchChanged: (v) => setState(() => _searchQuery = v),
           searchHint: 'Search PO number or supplier...',
+          onRefresh: _loadOrders,
+          isRefreshing: _isLoading,
           trailing: ElevatedButton.icon(
             onPressed: () => _openCreatePODialog(context),
             icon: const Icon(Icons.add, size: 16),

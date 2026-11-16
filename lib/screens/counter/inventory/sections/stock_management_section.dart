@@ -64,6 +64,8 @@ class _StockManagementSectionState extends State<StockManagementSection> {
             _loadIngredients();
           },
           searchHint: 'Search stock by name, code or storage...',
+          onRefresh: _loadIngredients,
+          isRefreshing: _isLoading,
           trailing: ElevatedButton.icon(
             onPressed: () => _openAdjustStockDialog(context),
             icon: const Icon(Icons.tune_rounded, size: 16),

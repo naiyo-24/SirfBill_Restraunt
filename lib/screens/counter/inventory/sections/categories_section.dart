@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/inventory_models.dart';
 import '../services/inventory_api_service.dart';
+import '../widgets/category_details_dialog.dart';
 import '../widgets/category_form_dialog.dart';
 import '../widgets/inventory_header.dart';
 
@@ -117,6 +118,8 @@ class _CategoriesSectionState extends State<CategoriesSection> {
           searchController: _searchController,
           onSearchChanged: _onSearchChanged,
           searchHint: 'Search categories or zones...',
+          onRefresh: _loadCategories,
+          isRefreshing: _isLoading,
           trailing: ElevatedButton.icon(
             onPressed: () => _openCategoryModal(),
             icon: const Icon(Icons.add, size: 16),
@@ -125,20 +128,23 @@ class _CategoriesSectionState extends State<CategoriesSection> {
               backgroundColor: const Color(0xFF10B981),
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
             ),
           ),
         ),
         Expanded(
           child: _isLoading
-              ? const Center(child: CircularProgressIndicator(color: Color(0xFF10B981)))
+              ? const Center(
+                  child: CircularProgressIndicator(color: Color(0xFF10B981)))
               : _categories.isEmpty
                   ? _buildEmptyState(isDark)
                   : RefreshIndicator(
                       onRefresh: _loadCategories,
                       child: GridView.builder(
                         padding: const EdgeInsets.all(24),
-                        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                        gridDelegate:
+                            const SliverGridDelegateWithMaxCrossAxisExtent(
                           maxCrossAxisExtent: 380,
                           mainAxisExtent: 180,
                           crossAxisSpacing: 16,
@@ -181,7 +187,8 @@ class _CategoriesSectionState extends State<CategoriesSection> {
               backgroundColor: const Color(0xFF10B981),
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
             ),
           ),
         ],
@@ -189,35 +196,49 @@ class _CategoriesSectionState extends State<CategoriesSection> {
     );
   }
 
-  Widget _buildCategoryCard(BuildContext context, IngredientCategory cat, bool isDark) {
-    return Container(
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+  void _openCategoryDetails(IngredientCategory cat) {
+    showDialog(
+      context: context,
+      builder: (ctx) => CategoryDetailsDialog(
+        category: cat,
+        onEdit: () {
+          Navigator.pop(ctx);
+          _openCategoryModal(category: cat);
+        },
+      ),
+    );
+  }
+
+  Widget _buildCategoryCard(
+      BuildContext context, IngredientCategory cat, bool isDark) {
+    return Material(
+      color: isDark ? const Color(0xFF1E293B) : Colors.white,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
+        side: BorderSide(
           color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
         ),
       ),
-      child: Stack(
-        children: [
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            height: 4,
-            child: Container(
-              decoration: BoxDecoration(
+      child: InkWell(
+        onTap: () => _openCategoryDetails(cat),
+        child: Stack(
+          children: [
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              height: 4,
+              child: Container(
                 color: cat.accentColor,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
               ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -227,15 +248,19 @@ class _CategoriesSectionState extends State<CategoriesSection> {
                         color: cat.accentColor.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Icon(Icons.category_rounded, size: 20, color: cat.accentColor),
+                      child: Icon(Icons.category_rounded,
+                          size: 20, color: cat.accentColor),
                     ),
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+                            color: isDark
+                                ? const Color(0xFF0F172A)
+                                : const Color(0xFFF1F5F9),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
@@ -243,7 +268,9 @@ class _CategoriesSectionState extends State<CategoriesSection> {
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
-                              color: isDark ? Colors.white : const Color(0xFF1E293B),
+                              color: isDark
+                                  ? Colors.white
+                                  : const Color(0xFF1E293B),
                             ),
                           ),
                         ),
@@ -271,9 +298,12 @@ class _CategoriesSectionState extends State<CategoriesSection> {
                               value: 'delete',
                               child: Row(
                                 children: [
-                                  Icon(Icons.delete_outline, size: 16, color: Colors.red),
+                                  Icon(Icons.delete_outline,
+                                      size: 16, color: Colors.red),
                                   SizedBox(width: 8),
-                                  Text('Delete', style: TextStyle(fontSize: 13, color: Colors.red)),
+                                  Text('Delete',
+                                      style: TextStyle(
+                                          fontSize: 13, color: Colors.red)),
                                 ],
                               ),
                             ),
@@ -302,7 +332,9 @@ class _CategoriesSectionState extends State<CategoriesSection> {
                         Icon(
                           Icons.thermostat_outlined,
                           size: 13,
-                          color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                          color: isDark
+                              ? const Color(0xFF94A3B8)
+                              : const Color(0xFF64748B),
                         ),
                         const SizedBox(width: 4),
                         Expanded(
@@ -310,7 +342,9 @@ class _CategoriesSectionState extends State<CategoriesSection> {
                             cat.storageZone,
                             style: TextStyle(
                               fontSize: 12,
-                              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                              color: isDark
+                                  ? const Color(0xFF94A3B8)
+                                  : const Color(0xFF64748B),
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -324,7 +358,8 @@ class _CategoriesSectionState extends State<CategoriesSection> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
                         color: cat.accentColor.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(4),
@@ -345,6 +380,7 @@ class _CategoriesSectionState extends State<CategoriesSection> {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 }

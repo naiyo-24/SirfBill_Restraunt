@@ -69,6 +69,8 @@ class _SuppliersSectionState extends State<SuppliersSection> {
             _loadSuppliers();
           },
           searchHint: 'Search supplier, contact, or GSTIN...',
+          onRefresh: _loadSuppliers,
+          isRefreshing: _isLoading,
           trailing: ElevatedButton.icon(
             onPressed: () => _openAddSupplierDialog(context),
             icon: const Icon(Icons.person_add_outlined, size: 16),

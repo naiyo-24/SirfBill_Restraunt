@@ -85,6 +85,8 @@ class _IngredientsSectionState extends State<IngredientsSection> {
             setState(() => _searchQuery = v);
           },
           searchHint: 'Search ingredients or SKU...',
+          onRefresh: _loadData,
+          isRefreshing: _isLoading,
           trailing: ElevatedButton.icon(
             onPressed: () => _openAddIngredientDialog(context),
             icon: const Icon(Icons.add, size: 16),

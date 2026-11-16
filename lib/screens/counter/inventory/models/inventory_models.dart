@@ -185,6 +185,13 @@ class Ingredient {
   double get costPerRecipeUnit =>
       uomConversionFactor > 0 ? (costPerPurchaseUnit / uomConversionFactor) : costPerPurchaseUnit;
 
+  /// Monetary value of current on-hand stock:
+  /// (currentStock in recipe UOM / uomConversionFactor) * costPerPurchaseUnit
+  double get totalStockValue =>
+      uomConversionFactor > 0
+          ? ((currentStock / uomConversionFactor) * costPerPurchaseUnit)
+          : (currentStock * costPerPurchaseUnit);
+
   bool get isLowStock => currentStock <= minParLevel && currentStock > 0;
   bool get isOutOfStock => currentStock <= 0;
   double get stockHealthPercent =>

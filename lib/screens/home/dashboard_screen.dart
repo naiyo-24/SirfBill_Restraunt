@@ -256,18 +256,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                       if (width >= 1050) {
                                         crossAxisCount = 6;
                                         final colWidth = (width - 60) / 6;
-                                        // Compact target height (~185-195px) so cards look sleek and well-proportioned
-                                        final targetHeight = isCompactHeight ? 175.0 : 190.0;
+                                        // Balanced target height (~220-230px) slightly taller for comfortable breathing room
+                                        final targetHeight = isCompactHeight ? 200.0 : 225.0;
                                         childAspectRatio = colWidth / targetHeight;
                                       } else if (width >= 580) {
                                         crossAxisCount = 3;
                                         final colWidth = (width - 24) / 3;
-                                        final targetHeight = isCompactHeight ? 165.0 : 180.0;
+                                        final targetHeight = isCompactHeight ? 185.0 : 205.0;
                                         childAspectRatio = colWidth / targetHeight;
                                       } else {
                                         crossAxisCount = 2;
                                         final colWidth = (width - 8) / 2;
-                                        final targetHeight = isCompactHeight ? 145.0 : 155.0;
+                                        final targetHeight = isCompactHeight ? 155.0 : 170.0;
                                         childAspectRatio = colWidth / targetHeight;
                                       }
 

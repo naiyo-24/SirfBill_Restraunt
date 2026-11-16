@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/inventory_models.dart';
 import '../services/inventory_api_service.dart';
+import 'ingredient_form_dropdowns.dart';
+import 'ingredient_form_guide_dialog.dart';
 import 'ingredient_image_picker.dart';
 
 class AddIngredientDialog extends StatefulWidget {

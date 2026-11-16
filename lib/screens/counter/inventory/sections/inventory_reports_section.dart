@@ -46,7 +46,7 @@ class _InventoryReportsSectionState extends State<InventoryReportsSection> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final totalValuation = _ingredients.fold<double>(
       0.0,
-      (sum, item) => sum + (item.currentStock * item.costPerPurchaseUnit),
+      (sum, item) => sum + item.totalStockValue,
     );
 
     return Column(
@@ -54,6 +54,8 @@ class _InventoryReportsSectionState extends State<InventoryReportsSection> {
         InventoryHeader(
           title: 'Inventory Reports & Food Cost Analysis',
           subtitle: 'Stock valuation, Cost of Goods Sold (COGS), actual vs theoretical food cost & ABC analysis',
+          onRefresh: _loadData,
+          isRefreshing: _isLoading,
           actions: [
             OutlinedButton.icon(
               onPressed: () {
@@ -186,7 +188,7 @@ class _InventoryReportsSectionState extends State<InventoryReportsSection> {
               final catIngredients = _ingredients.where((i) => i.categoryId == cat.id).toList();
               final valuation = catIngredients.fold<double>(
                 0.0,
-                (sum, i) => sum + (i.currentStock * i.costPerPurchaseUnit),
+                (sum, i) => sum + i.totalStockValue,
               );
 
               return Padding(
@@ -227,13 +229,13 @@ class _InventoryReportsSectionState extends State<InventoryReportsSection> {
   }
 
   Widget _buildAbcClassificationCard(BuildContext context, bool isDark, double totalValuation) {
-    final classAItems = _ingredients.where((i) => (i.currentStock * i.costPerPurchaseUnit) >= 1000).toList();
-    final classBItems = _ingredients.where((i) => (i.currentStock * i.costPerPurchaseUnit) < 1000 && (i.currentStock * i.costPerPurchaseUnit) >= 200).toList();
-    final classCItems = _ingredients.where((i) => (i.currentStock * i.costPerPurchaseUnit) < 200).toList();
+    final classAItems = _ingredients.where((i) => i.totalStockValue >= 1000).toList();
+    final classBItems = _ingredients.where((i) => i.totalStockValue < 1000 && i.totalStockValue >= 200).toList();
+    final classCItems = _ingredients.where((i) => i.totalStockValue < 200).toList();
 
-    final classAVal = classAItems.fold<double>(0.0, (s, i) => s + (i.currentStock * i.costPerPurchaseUnit));
-    final classBVal = classBItems.fold<double>(0.0, (s, i) => s + (i.currentStock * i.costPerPurchaseUnit));
-    final classCVal = classCItems.fold<double>(0.0, (s, i) => s + (i.currentStock * i.costPerPurchaseUnit));
+    final classAVal = classAItems.fold<double>(0.0, (s, i) => s + i.totalStockValue);
+    final classBVal = classBItems.fold<double>(0.0, (s, i) => s + i.totalStockValue);
+    final classCVal = classCItems.fold<double>(0.0, (s, i) => s + i.totalStockValue);
 
     return Container(
       padding: const EdgeInsets.all(18),

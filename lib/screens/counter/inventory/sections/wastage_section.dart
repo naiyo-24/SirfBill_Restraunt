@@ -43,6 +43,7 @@ class _WastageSectionState extends State<WastageSection> {
           searchController: _searchController,
           onSearchChanged: (v) => setState(() => _searchQuery = v),
           searchHint: 'Search wastage records...',
+          onRefresh: () => setState(() {}),
           trailing: ElevatedButton.icon(
             onPressed: () => _openRecordWastageDialog(context),
             icon: const Icon(Icons.delete_outline, size: 16),

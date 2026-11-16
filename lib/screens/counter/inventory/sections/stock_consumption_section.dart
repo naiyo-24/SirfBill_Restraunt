@@ -40,6 +40,7 @@ class _StockConsumptionSectionState extends State<StockConsumptionSection> {
           searchController: _searchController,
           onSearchChanged: (v) => setState(() => _searchQuery = v),
           searchHint: 'Search order ID or dish...',
+          onRefresh: () => setState(() {}),
           trailing: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(

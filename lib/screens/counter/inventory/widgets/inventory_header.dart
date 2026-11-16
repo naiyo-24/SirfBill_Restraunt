@@ -4,6 +4,8 @@ class InventoryHeader extends StatelessWidget {
   final String title;
   final String subtitle;
   final Widget? trailing;
+  final VoidCallback? onRefresh;
+  final bool isRefreshing;
   final TextEditingController? searchController;
   final ValueChanged<String>? onSearchChanged;
   final String searchHint;
@@ -14,6 +16,8 @@ class InventoryHeader extends StatelessWidget {
     required this.title,
     required this.subtitle,
     this.trailing,
+    this.onRefresh,
+    this.isRefreshing = false,
     this.searchController,
     this.onSearchChanged,
     this.searchHint = 'Search...',
@@ -65,7 +69,40 @@ class InventoryHeader extends StatelessWidget {
                   ],
                 ),
               ),
-              if (trailing != null) trailing!,
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (onRefresh != null) ...[
+                    Tooltip(
+                      message: 'Refresh $title data',
+                      child: OutlinedButton.icon(
+                        onPressed: isRefreshing ? null : onRefresh,
+                        icon: isRefreshing
+                            ? const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Color(0xFF10B981),
+                                ),
+                              )
+                            : const Icon(Icons.refresh_rounded, size: 16),
+                        label: Text(isRefreshing ? 'Refreshing...' : 'Refresh'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: isDark ? Colors.white70 : const Color(0xFF334155),
+                          side: BorderSide(
+                            color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                  ],
+                  if (trailing != null) trailing!,
+                ],
+              ),
             ],
           ),
           if (searchController != null || (actions != null && actions!.isNotEmpty)) ...[

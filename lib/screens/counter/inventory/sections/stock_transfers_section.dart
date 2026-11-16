@@ -42,6 +42,7 @@ class _StockTransfersSectionState extends State<StockTransfersSection> {
           searchController: _searchController,
           onSearchChanged: (v) => setState(() => _searchQuery = v),
           searchHint: 'Search transfer # or station...',
+          onRefresh: () => setState(() {}),
           trailing: ElevatedButton.icon(
             onPressed: () => _openCreateTransferDialog(context),
             icon: const Icon(Icons.swap_horiz_rounded, size: 16),

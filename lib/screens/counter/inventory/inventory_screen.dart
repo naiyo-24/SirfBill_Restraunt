@@ -48,6 +48,7 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
   List<Shop> _shops = [];
   String? _currentShopId;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  int _refreshKeyCounter = 0;
 
   final Map<InventorySection, int> _badgeCounts = {};
 
@@ -224,7 +225,12 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
                 onSelectSection: _onSectionSelected,
                 onMenuPressed: _toggleSidebar,
                 onLogout: _handleLogout,
-                onRefresh: () => setState(() {}),
+                onRefresh: () {
+                  setState(() {
+                    _refreshKeyCounter++;
+                  });
+                  _loadUserInfo();
+                },
                 onBackToDashboard: () => context.go('/dashboard'),
               ),
 
@@ -239,7 +245,7 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
                         child: AnimatedSwitcher(
                           duration: const Duration(milliseconds: 180),
                           child: KeyedSubtree(
-                            key: ValueKey(_currentSection),
+                            key: ValueKey('${_currentSection.name}_$_refreshKeyCounter'),
                             child: _buildActiveSection(),
                           ),
                         ),
