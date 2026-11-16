@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/inventory_models.dart';
 import '../models/po_line_item_input.dart';
+import 'po_item_helper_banner.dart';
 
 class PoLineItemsTable extends StatelessWidget {
   final List<PoLineItemInput> items;
@@ -172,86 +173,6 @@ class PoLineItemsTable extends StatelessWidget {
                     final matchingIng = ingredients.where((i) => i.id == item.ingredientId).toList();
                     final ing = matchingIng.isNotEmpty ? matchingIng.first : null;
 
-                    Widget? capacityWidget;
-                    if (ing != null) {
-                      final factor = ing.uomConversionFactor > 0 ? ing.uomConversionFactor : 1.0;
-                      final isPurchase = item.unit.toUpperCase() == ing.purchaseUom.toUpperCase();
-                      final stockInUnit = isPurchase ? (ing.currentStock / factor) : ing.currentStock;
-                      final minParInUnit = isPurchase ? (ing.minParLevel / factor) : ing.minParLevel;
-                      final hasIdealPar = ing.idealParLevel > 0;
-                      final idealParInUnit = hasIdealPar
-                          ? (isPurchase ? (ing.idealParLevel / factor) : ing.idealParLevel)
-                          : 0.0;
-                      final availSpace = hasIdealPar
-                          ? (idealParInUnit - stockInUnit).clamp(0.0, double.infinity)
-                          : double.infinity;
-                      final orderQty = double.tryParse(item.qtyController.text.trim()) ?? 0.0;
-                      final isExceeded = hasIdealPar && (orderQty > availSpace);
-
-                      capacityWidget = Container(
-                        margin: const EdgeInsets.only(top: 6),
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: isExceeded
-                              ? const Color(0xFFEF4444).withValues(alpha: 0.1)
-                              : (isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9)),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(
-                            color: isExceeded
-                                ? const Color(0xFFEF4444).withValues(alpha: 0.3)
-                                : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              isExceeded ? Icons.warning_amber_rounded : Icons.warehouse_outlined,
-                              size: 14,
-                              color: isExceeded ? const Color(0xFFEF4444) : const Color(0xFF10B981),
-                            ),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                isExceeded
-                                    ? (availSpace <= 0
-                                        ? '🚫 Storage Full! Current: ${stockInUnit.toStringAsFixed(1)} ${item.unit} is already at Max Cap (${idealParInUnit.toStringAsFixed(1)} ${item.unit}). You cannot order more!'
-                                        : '⚠️ Exceeds Max Capacity! Current: ${stockInUnit.toStringAsFixed(1)} ${item.unit} • Max Cap: ${idealParInUnit.toStringAsFixed(1)} ${item.unit} • Remaining Space: ${availSpace.toStringAsFixed(1)} ${item.unit}')
-                                    : (hasIdealPar
-                                        ? 'Storage: Current ${stockInUnit.toStringAsFixed(1)} ${item.unit} • Min: ${minParInUnit.toStringAsFixed(1)} • Max Cap (Ideal Par): ${idealParInUnit.toStringAsFixed(1)} ${item.unit} • Space: ${availSpace.toStringAsFixed(1)} ${item.unit}'
-                                        : 'Storage: Current ${stockInUnit.toStringAsFixed(1)} ${item.unit} • Min Par: ${minParInUnit.toStringAsFixed(1)} ${item.unit} • Max Cap: Not set'),
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: isExceeded ? FontWeight.bold : FontWeight.w500,
-                                  color: isExceeded
-                                      ? const Color(0xFFEF4444)
-                                      : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
-                                ),
-                              ),
-                            ),
-                            if (hasIdealPar && availSpace > 0 && orderQty != availSpace) ...[
-                              InkWell(
-                                onTap: () {
-                                  item.qtyController.text = availSpace.toStringAsFixed(1);
-                                  onItemChanged();
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF10B981).withValues(alpha: 0.15),
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Text(
-                                    'Fill to Max (${availSpace.toStringAsFixed(1)})',
-                                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF10B981)),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      );
-                    }
-
                     return Container(
                       margin: const EdgeInsets.only(bottom: 8),
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
@@ -322,7 +243,43 @@ class PoLineItemsTable extends StatelessWidget {
                                     child: Text(u, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                                   )).toList(),
                                   onChanged: (v) {
-                                    item.unit = v ?? 'KG';
+                                    final newUnit = v ?? 'KG';
+                                    final oldUnit = item.unit;
+                                    if (newUnit != oldUnit && ing != null) {
+                                      final factor = ing.uomConversionFactor > 0 ? ing.uomConversionFactor : 1000.0;
+                                      final currentPrice = double.tryParse(item.priceController.text.trim()) ?? 0.0;
+
+                                      final isNewRecipe = newUnit.toUpperCase() == ing.recipeUom.toUpperCase() ||
+                                          (newUnit.toUpperCase() == 'G' && ing.purchaseUom.toUpperCase() == 'KG') ||
+                                          (newUnit.toUpperCase() == 'ML' && ing.purchaseUom.toUpperCase() == 'L');
+
+                                      final isOldPurchase = oldUnit.toUpperCase() == ing.purchaseUom.toUpperCase() ||
+                                          (oldUnit.toUpperCase() == 'KG' && newUnit.toUpperCase() == 'G') ||
+                                          (oldUnit.toUpperCase() == 'L' && newUnit.toUpperCase() == 'ML');
+
+                                      final isNewPurchase = newUnit.toUpperCase() == ing.purchaseUom.toUpperCase() ||
+                                          (newUnit.toUpperCase() == 'KG' && oldUnit.toUpperCase() == 'G') ||
+                                          (newUnit.toUpperCase() == 'L' && oldUnit.toUpperCase() == 'ML');
+
+                                      final isOldRecipe = oldUnit.toUpperCase() == ing.recipeUom.toUpperCase() ||
+                                          (oldUnit.toUpperCase() == 'G' && newUnit.toUpperCase() == 'KG') ||
+                                          (oldUnit.toUpperCase() == 'ML' && newUnit.toUpperCase() == 'L');
+
+                                      if (isOldPurchase && isNewRecipe) {
+                                        // Switching from Purchase Unit (KG) to Recipe Unit (G)
+                                        final ratePerRecipe = currentPrice > 0 ? (currentPrice / factor) : ing.costPerRecipeUnit;
+                                        item.priceController.text = ratePerRecipe < 0.01
+                                            ? ratePerRecipe.toStringAsFixed(4)
+                                            : ratePerRecipe.toStringAsFixed(2);
+                                      } else if (isOldRecipe && isNewPurchase) {
+                                        // Switching from Recipe Unit (G) to Purchase Unit (KG)
+                                        final ratePerPurchase = currentPrice > 0 ? (currentPrice * factor) : ing.costPerPurchaseUnit;
+                                        item.priceController.text = ratePerPurchase == ratePerPurchase.roundToDouble()
+                                            ? ratePerPurchase.toInt().toString()
+                                            : ratePerPurchase.toStringAsFixed(2);
+                                      }
+                                    }
+                                    item.unit = newUnit;
                                     onItemChanged();
                                   },
                                 ),
@@ -338,6 +295,12 @@ class PoLineItemsTable extends StatelessWidget {
                                   decoration: InputDecoration(
                                     isDense: true,
                                     prefixText: '₹ ',
+                                    suffixText: '/ ${item.unit}',
+                                    suffixStyle: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                                    ),
                                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                                     contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
                                   ),
@@ -347,7 +310,7 @@ class PoLineItemsTable extends StatelessWidget {
                               Expanded(
                                 flex: 3,
                                 child: Text(
-                                  '₹${item.subtotal.toStringAsFixed(0)}',
+                                  '₹${item.subtotal == item.subtotal.roundToDouble() ? item.subtotal.toInt().toString() : item.subtotal.toStringAsFixed(2)}',
                                   textAlign: TextAlign.right,
                                   style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF10B981)),
                                 ),
@@ -364,7 +327,13 @@ class PoLineItemsTable extends StatelessWidget {
                               ),
                             ],
                           ),
-                          if (capacityWidget != null) capacityWidget,
+                          if (ing != null)
+                            PoItemHelperBanner(
+                              ing: ing,
+                              item: item,
+                              isDark: isDark,
+                              onItemChanged: onItemChanged,
+                            ),
                         ],
                       ),
                     );
