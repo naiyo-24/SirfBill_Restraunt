@@ -150,8 +150,8 @@ class IngredientDetailsDialog extends StatelessWidget {
                 Expanded(
                   child: _buildMetricTile(
                     label: 'CURRENT STOCK',
-                    value: '${stockInPurchase.toStringAsFixed(1)} ${item.purchaseUom}',
-                    subtext: isDual ? '(${item.currentStock.toStringAsFixed(0)} ${item.recipeUom})' : null,
+                    value: item.formattedStock,
+                    subtext: isDual ? '(${item.currentStock.toStringAsFixed(0)} ${item.recipeUom} total)' : null,
                     color: item.isOutOfStock ? Colors.red : const Color(0xFF10B981),
                     isDark: isDark,
                   ),

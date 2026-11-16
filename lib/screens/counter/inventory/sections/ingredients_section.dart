@@ -277,7 +277,7 @@ class _IngredientsSectionState extends State<IngredientsSection> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            'Stock: ${(item.currentStock / (item.recipeUom == 'G' || item.recipeUom == 'ML' ? 1000 : 1)).toStringAsFixed(1)} ${item.purchaseUom}',
+                            'Stock: ${item.formattedStock}',
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,

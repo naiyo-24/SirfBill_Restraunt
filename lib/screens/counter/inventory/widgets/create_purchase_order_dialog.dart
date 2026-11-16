@@ -54,7 +54,14 @@ class _CreatePurchaseOrderDialogState extends State<CreatePurchaseOrderDialog> {
         setState(() {
           _suppliers = results[0] as List<Supplier>;
           _ingredients = results[1] as List<Ingredient>;
-          if (_suppliers.isNotEmpty) _selectedSupplierId = _suppliers.first.id;
+          String? prefSup;
+          if (_ingredients.isNotEmpty) {
+            final first = _ingredients.first;
+            if (first.primarySupplierId.isNotEmpty && _suppliers.any((s) => s.id == first.primarySupplierId)) {
+              prefSup = first.primarySupplierId;
+            }
+          }
+          _selectedSupplierId = prefSup ?? (_suppliers.isNotEmpty ? _suppliers.first.id : null);
           _addItem();
           _isLoading = false;
         });
@@ -72,8 +79,14 @@ class _CreatePurchaseOrderDialogState extends State<CreatePurchaseOrderDialog> {
       item.ingredientName = first.name;
       item.unit = first.purchaseUom.isNotEmpty ? first.purchaseUom : 'KG';
       item.priceController.text = first.costPerPurchaseUnit > 0
-          ? first.costPerPurchaseUnit.toStringAsFixed(0)
+          ? (first.costPerPurchaseUnit == first.costPerPurchaseUnit.roundToDouble()
+              ? first.costPerPurchaseUnit.toInt().toString()
+              : first.costPerPurchaseUnit.toStringAsFixed(2))
           : '100';
+
+      if (_items.isEmpty && first.primarySupplierId.isNotEmpty && _suppliers.any((s) => s.id == first.primarySupplierId)) {
+        _selectedSupplierId = first.primarySupplierId;
+      }
     }
     setState(() => _items.add(item));
   }
@@ -95,8 +108,15 @@ class _CreatePurchaseOrderDialogState extends State<CreatePurchaseOrderDialog> {
         lineItem.ingredientName = ing.name;
         lineItem.unit = ing.purchaseUom.isNotEmpty ? ing.purchaseUom : 'KG';
         lineItem.priceController.text = ing.costPerPurchaseUnit > 0
-            ? ing.costPerPurchaseUnit.toStringAsFixed(0)
+            ? (ing.costPerPurchaseUnit == ing.costPerPurchaseUnit.roundToDouble()
+                ? ing.costPerPurchaseUnit.toInt().toString()
+                : ing.costPerPurchaseUnit.toStringAsFixed(2))
             : '100';
+
+        // Suggest primary supplier only if no supplier has been chosen yet
+        if (_selectedSupplierId == null && ing.primarySupplierId.isNotEmpty && _suppliers.any((s) => s.id == ing.primarySupplierId)) {
+          _selectedSupplierId = ing.primarySupplierId;
+        }
       });
     }
   }
@@ -350,10 +370,11 @@ class _CreatePurchaseOrderDialogState extends State<CreatePurchaseOrderDialog> {
                 style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.5, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569)),
               ),
               const SizedBox(height: 6),
-              // ignore:
-              // recated_member_use
+              // ignore: deprecated_member_use
               DropdownButtonFormField<String>(
-                initialValue: _selectedSupplierId,
+                initialValue: _suppliers.any((s) => s.id == _selectedSupplierId)
+                    ? _selectedSupplierId
+                    : (_suppliers.isNotEmpty ? _suppliers.first.id : null),
                 isExpanded: true,
                 style: TextStyle(fontSize: 13, color: isDark ? Colors.white : const Color(0xFF0F172A), fontWeight: FontWeight.w600),
                 decoration: InputDecoration(

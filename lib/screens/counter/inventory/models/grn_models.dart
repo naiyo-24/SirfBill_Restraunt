@@ -25,10 +25,20 @@ class GrnItemInput {
     double initialUnitPrice = 0.0,
     this.expiryDate,
   })  : receivedQtyController = TextEditingController(
-          text: orderedQty > 0 ? orderedQty.toStringAsFixed(1) : '1.0',
+          text: orderedQty > 0
+              ? (orderedQty == orderedQty.roundToDouble()
+                  ? orderedQty.toInt().toString()
+                  : orderedQty.toStringAsFixed(1))
+              : '1.0',
         ),
         unitPriceController = TextEditingController(
-          text: initialUnitPrice > 0 ? initialUnitPrice.toStringAsFixed(0) : '0',
+          text: initialUnitPrice > 0
+              ? (initialUnitPrice == initialUnitPrice.roundToDouble()
+                  ? initialUnitPrice.toInt().toString()
+                  : (initialUnitPrice < 0.01
+                      ? initialUnitPrice.toStringAsFixed(4)
+                      : initialUnitPrice.toStringAsFixed(2)))
+              : '0',
         );
 
   double get quantityReceived => double.tryParse(receivedQtyController.text) ?? 0.0;

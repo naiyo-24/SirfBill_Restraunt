@@ -148,6 +148,12 @@ class _GrnReceivingTableState extends State<GrnReceivingTable> {
                                 decoration: InputDecoration(
                                   isDense: true,
                                   prefixText: '₹ ',
+                                  suffixText: '/ ${item.unit}',
+                                  suffixStyle: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                                  ),
                                   contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
                                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
                                 ),
@@ -182,7 +188,7 @@ class _GrnReceivingTableState extends State<GrnReceivingTable> {
                             Expanded(
                               flex: 3,
                               child: Text(
-                                '₹${item.totalPrice.toStringAsFixed(0)}',
+                                '₹${item.totalPrice == item.totalPrice.roundToDouble() ? item.totalPrice.toInt().toString() : item.totalPrice.toStringAsFixed(2)}',
                                 textAlign: TextAlign.right,
                                 style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF10B981)),
                               ),

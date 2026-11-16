@@ -76,6 +76,28 @@ class ProcurementApiService {
         return PurchaseOrder.fromPurchaseBill(Map<String, dynamic>.from(response.data));
       }
     } on DioException catch (e) {
+      final detail = e.response?.data?['detail']?.toString() ?? e.message ?? '';
+
+      // Auto-heal: If supplier was created under another branch, link distributor to this outlet and retry
+      if (detail.contains('another branch') || detail.contains('Supplier not found')) {
+        final supplierId = payload['supplier_id']?.toString();
+        if (supplierId != null && supplierId.isNotEmpty && targetOutlet.isNotEmpty) {
+          try {
+            await ApiClient().dio.patch(
+              '/api/admin/distributors/$supplierId',
+              data: {'shop_id': targetOutlet, 'tenant_id': targetOutlet},
+            );
+            final retry = await ApiClient().dio.post(
+              '/api/restaurant/procurement/purchase-orders',
+              data: payload,
+            );
+            if (retry.statusCode == 200 || retry.statusCode == 201) {
+              return PurchaseOrder.fromPurchaseBill(Map<String, dynamic>.from(retry.data));
+            }
+          } catch (_) {}
+        }
+      }
+
       final msg = e.response?.data?['detail'] ?? e.message;
       throw msg ?? 'Failed to create purchase order';
     } catch (e) {

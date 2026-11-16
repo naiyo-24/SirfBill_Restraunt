@@ -380,10 +380,16 @@ class InventoryApiService {
   }
 
   static Future<Supplier?> updateSupplier(String id, Map<String, dynamic> data) async {
+    final targetOutlet = await getResolvedOutletId();
+    final payload = Map<String, dynamic>.from(data);
+    if (targetOutlet.isNotEmpty && (!payload.containsKey('shop_id') || payload['shop_id'] == null)) {
+      payload['shop_id'] = targetOutlet;
+      payload['tenant_id'] = targetOutlet;
+    }
     try {
       final response = await ApiClient().dio.patch(
         '/api/admin/distributors/$id',
-        data: data,
+        data: payload,
       );
       if (response.statusCode == 200) {
         return Supplier.fromJson(response.data);

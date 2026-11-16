@@ -4,6 +4,7 @@ import '../services/inventory_api_service.dart';
 import 'ingredient_form_dropdowns.dart';
 import 'ingredient_form_guide_dialog.dart';
 import 'ingredient_image_picker.dart';
+import 'ingredient_live_hisab_banner.dart';
 
 class AddIngredientDialog extends StatefulWidget {
   final Ingredient? initialIngredient;
@@ -339,8 +340,14 @@ class _AddIngredientDialogState extends State<AddIngredientDialog> {
                           const SizedBox(width: 12),
                           Expanded(child: _buildTextField(controller: _idealParController, label: 'Ideal Par / Max Cap', hint: '20000', keyboardType: TextInputType.number)),
                           const SizedBox(width: 12),
-                          Expanded(child: _buildTextField(controller: _costController, label: 'Cost / $_purchaseUom (₹)', hint: '280', keyboardType: TextInputType.number)),
+                          Expanded(child: _buildTextField(controller: _costController, label: 'Cost / $_purchaseUom (₹)', hint: '280', keyboardType: TextInputType.number, onChanged: (_) => setState(() {}))),
                         ],
+                      ),
+                      IngredientLiveHisabBanner(
+                        purchaseUom: _purchaseUom,
+                        recipeUom: _recipeUom,
+                        conversionText: _conversionController.text,
+                        costText: _costController.text,
                       ),
                       const SizedBox(height: 12),
                       Row(
@@ -406,16 +413,7 @@ class _AddIngredientDialogState extends State<AddIngredientDialog> {
     String? Function(String?)? validator,
     Widget? suffixIcon,
     ValueChanged<String>? onChanged,
-  }) =>
-      IngredientFormTextField(
-        controller: controller,
-        label: label,
-        hint: hint,
-        keyboardType: keyboardType,
-        validator: validator,
-        suffixIcon: suffixIcon,
-        onChanged: onChanged,
-      );
+  }) => IngredientFormTextField(controller: controller, label: label, hint: hint, keyboardType: keyboardType, validator: validator, suffixIcon: suffixIcon, onChanged: onChanged);
 
 
 

@@ -197,6 +197,54 @@ class Ingredient {
   double get stockHealthPercent =>
       idealParLevel > 0 ? ((currentStock / idealParLevel) * 100).clamp(0, 100) : 100;
 
+  /// Formats current stock into a natural dual-unit display:
+  /// e.g. 8100g -> "8 KG 100 g", 3250ml -> "3 L 250 ML", 25 pcs -> "2 DOZ 1 PCS"
+  String get formattedStock {
+    final p = purchaseUom.toUpperCase();
+    final r = recipeUom.toUpperCase();
+    if (currentStock <= 0) return '0 $r';
+
+    if ((p == 'KG' && r == 'G') || (p == 'G' && r == 'KG')) {
+      final totalGrams = currentStock.round();
+      final kg = totalGrams ~/ 1000;
+      final remG = totalGrams % 1000;
+      if (kg > 0 && remG > 0) return '$kg KG $remG g';
+      if (kg > 0) return '$kg KG';
+      return '$remG g';
+    }
+
+    if ((p == 'L' && r == 'ML') || (p == 'ML' && r == 'L')) {
+      final totalMl = currentStock.round();
+      final liters = totalMl ~/ 1000;
+      final remMl = totalMl % 1000;
+      if (liters > 0 && remMl > 0) return '$liters L $remMl ML';
+      if (liters > 0) return '$liters L';
+      return '$remMl ML';
+    }
+
+    if (p == 'DOZ' && r == 'PCS') {
+      final totalPcs = currentStock.round();
+      final doz = totalPcs ~/ 12;
+      final remPcs = totalPcs % 12;
+      if (doz > 0 && remPcs > 0) return '$doz DOZ $remPcs PCS';
+      if (doz > 0) return '$doz DOZ';
+      return '$remPcs PCS';
+    }
+
+    if (uomConversionFactor > 1 && p != r) {
+      final inPurchase = currentStock / uomConversionFactor;
+      final purStr = inPurchase == inPurchase.roundToDouble()
+          ? inPurchase.toInt().toString()
+          : inPurchase.toStringAsFixed(1);
+      final recStr = currentStock == currentStock.roundToDouble()
+          ? currentStock.toInt().toString()
+          : currentStock.toStringAsFixed(1);
+      return '$purStr $purchaseUom ($recStr $recipeUom)';
+    }
+
+    return '${currentStock == currentStock.roundToDouble() ? currentStock.toInt() : currentStock.toStringAsFixed(1)} $recipeUom';
+  }
+
   factory Ingredient.fromJson(Map<String, dynamic> json) {
     double parseDouble(dynamic v, [double fallback = 0.0]) {
       if (v == null) return fallback;

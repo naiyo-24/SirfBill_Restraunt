@@ -1,4 +1,25 @@
+class UnitRateItem {
+  final String label;
+  final String formattedPrice;
+
+  const UnitRateItem(this.label, this.formattedPrice);
+}
+
 class UnitConversionHelper {
+  static String _fmt(double val) {
+    if (val == val.roundToDouble()) {
+      return val.toInt().toString();
+    }
+    return val.toStringAsFixed(2);
+  }
+
+  static String _fmtDec(double val) {
+    if (val < 0.01) {
+      return val.toStringAsFixed(4);
+    }
+    return val.toStringAsFixed(2);
+  }
+
   /// Converts unit price when switching from [oldUnit] to [newUnit].
   static double convertUnitPrice({
     required double currentPrice,
@@ -68,96 +89,110 @@ class UnitConversionHelper {
     return currentPrice;
   }
 
-  /// Returns a user-friendly live hisab summary breakdown for any unit.
-  static String? getHisabSummary({
+  /// Returns structured list of rate equivalent pills for clean enterprise UI.
+  static List<UnitRateItem> getBreakdown({
     required double price,
     required String currentUnit,
     required String purchaseUom,
     required String recipeUom,
     required double conversionFactor,
   }) {
-    if (price <= 0) return null;
+    if (price <= 0) return const [];
     final u = currentUnit.trim().toUpperCase();
     final p = purchaseUom.trim().toUpperCase();
     final r = recipeUom.trim().toUpperCase();
     final factor = conversionFactor > 0 ? conversionFactor : 1.0;
 
-    // 1. Grams
-    if (u == 'G') {
-      final per100g = price * 100.0;
-      final perKg = price * 1000.0;
-      return '⚖️ Gm Hisab: ₹${per100g.toStringAsFixed(1)} / 100g  •  ₹${perKg.toStringAsFixed(0)} / KG  (₹${price.toStringAsFixed(2)} / g)';
-    }
+    final items = <UnitRateItem>[];
 
-    // 2. Kilograms
-    if (u == 'KG') {
-      final per100g = price / 10.0;
-      final perG = price / 1000.0;
-      return '⚖️ Gm Hisab: ₹${price.toStringAsFixed(0)} / KG  •  ₹${per100g.toStringAsFixed(1)} / 100g  (₹${perG.toStringAsFixed(2)} / g)';
-    }
-
-    // 3. Milliliters
-    if (u == 'ML') {
-      final per100ml = price * 100.0;
-      final perL = price * 1000.0;
-      return '⚖️ ML Hisab: ₹${per100ml.toStringAsFixed(1)} / 100ml  •  ₹${perL.toStringAsFixed(0)} / L  (₹${price.toStringAsFixed(2)} / ml)';
-    }
-
-    // 4. Liters
-    if (u == 'L') {
-      final per100ml = price / 10.0;
-      final perMl = price / 1000.0;
-      return '⚖️ ML Hisab: ₹${price.toStringAsFixed(0)} / L  •  ₹${per100ml.toStringAsFixed(1)} / 100ml  (₹${perMl.toStringAsFixed(2)} / ml)';
-    }
-
-    // 5. Dozen
-    if (u == 'DOZ') {
-      final perPiece = price / 12.0;
-      return '🥚 Dozen Hisab: ₹${price.toStringAsFixed(0)} / DOZ  •  ₹${perPiece.toStringAsFixed(2)} / Piece (PCS)';
-    }
-
-    // 6. Pieces (when bought in Dozen or Box)
-    if (u == 'PCS') {
-      if (p == 'DOZ') {
-        final perDoz = price * 12.0;
-        return '🥚 Piece Hisab: ₹${price.toStringAsFixed(2)} / Piece  •  ₹${perDoz.toStringAsFixed(0)} / DOZ';
+    // Weight commodities (KG / G)
+    if (u == 'KG' || u == 'G' || (p == 'KG' && r == 'G') || (p == 'G' && r == 'KG')) {
+      double pricePerKg = 0.0;
+      if (u == 'KG') {
+        pricePerKg = price;
+      } else if (u == 'G') {
+        pricePerKg = price * 1000.0;
+      } else {
+        pricePerKg = price;
       }
-      if (p == 'BOX') {
-        final perBox = price * factor;
-        return '📦 Piece Hisab: ₹${price.toStringAsFixed(2)} / Piece  •  ₹${perBox.toStringAsFixed(0)} / BOX (${factor.toInt()} pcs/box)';
-      }
+
+      final per100g = pricePerKg / 10.0;
+      final perG = pricePerKg / 1000.0;
+
+      items.add(UnitRateItem('1 KG', '₹${_fmt(pricePerKg)}'));
+      items.add(UnitRateItem('100g', '₹${_fmt(per100g)}'));
+      items.add(UnitRateItem('1g (BOM)', '₹${_fmtDec(perG)}'));
+      return items;
     }
 
-    // 7. Bag (Rice, Flour, Sugar)
-    if (u == 'BAG') {
+    // Liquid commodities (L / ML)
+    if (u == 'L' || u == 'ML' || (p == 'L' && r == 'ML')) {
+      double pricePerL = 0.0;
+      if (u == 'L') {
+        pricePerL = price;
+      } else if (u == 'ML') {
+        pricePerL = price * 1000.0;
+      } else {
+        pricePerL = price;
+      }
+
+      final per100ml = pricePerL / 10.0;
+      final perMl = pricePerL / 1000.0;
+
+      items.add(UnitRateItem('1 L', '₹${_fmt(pricePerL)}'));
+      items.add(UnitRateItem('100ml', '₹${_fmt(per100ml)}'));
+      items.add(UnitRateItem('1ml (BOM)', '₹${_fmtDec(perMl)}'));
+      return items;
+    }
+
+    // Dozen commodities (DOZ / PCS)
+    if (u == 'DOZ' || p == 'DOZ') {
+      double pricePerDoz = u == 'DOZ' ? price : (price * 12.0);
+      final perPcs = pricePerDoz / 12.0;
+
+      items.add(UnitRateItem('1 DOZ', '₹${_fmt(pricePerDoz)}'));
+      items.add(UnitRateItem('1 Piece (BOM)', '₹${_fmt(perPcs)}'));
+      return items;
+    }
+
+    // Bags (Rice, Flour, Sugar)
+    if (u == 'BAG' || p == 'BAG') {
       final bagKg = (p == 'BAG' && r == 'KG') ? factor : (p == 'BAG' && r == 'G' ? factor / 1000.0 : 25.0);
-      final perKg = price / bagKg;
+      double pricePerBag = u == 'BAG' ? price : (price * bagKg);
+      final perKg = pricePerBag / bagKg;
       final per100g = perKg / 10.0;
-      return '📦 Bag Hisab: ₹${price.toStringAsFixed(0)} / BAG  •  ₹${perKg.toStringAsFixed(1)} / KG  •  ₹${per100g.toStringAsFixed(1)} / 100g (${bagKg.toStringAsFixed(0)} KG bag)';
+
+      items.add(UnitRateItem('1 BAG (${bagKg.toInt()} KG)', '₹${_fmt(pricePerBag)}'));
+      items.add(UnitRateItem('1 KG', '₹${_fmt(perKg)}'));
+      items.add(UnitRateItem('100g', '₹${_fmt(per100g)}'));
+      return items;
     }
 
-    // 8. Box
-    if (u == 'BOX') {
-      final perRecipe = price / factor;
-      return '📦 Box Hisab: ₹${price.toStringAsFixed(0)} / BOX  •  ₹${perRecipe.toStringAsFixed(2)} / $recipeUom (1 BOX = ${factor.toInt()} $recipeUom)';
+    // Boxes
+    if (u == 'BOX' || p == 'BOX') {
+      final boxPcs = factor > 0 ? factor : 24.0;
+      double pricePerBox = u == 'BOX' ? price : (price * boxPcs);
+      final perPcs = pricePerBox / boxPcs;
+
+      items.add(UnitRateItem('1 BOX (${boxPcs.toInt()} $recipeUom)', '₹${_fmt(pricePerBox)}'));
+      items.add(UnitRateItem('1 $recipeUom (BOM)', '₹${_fmt(perPcs)}'));
+      return items;
     }
 
-    // 9. Generic Dual-UOM item
+    // Generic Dual-UOM item
     if (p != r && factor > 1) {
-      if (u == p) {
-        final perRecipe = price / factor;
-        return '⚖️ Unit Hisab: ₹${price.toStringAsFixed(2)} / $purchaseUom  •  ₹${perRecipe.toStringAsFixed(2)} / $recipeUom (1 $purchaseUom = ${factor == factor.roundToDouble() ? factor.toInt() : factor} $recipeUom)';
-      } else if (u == r) {
-        final perPurchase = price * factor;
-        return '⚖️ Unit Hisab: ₹${price.toStringAsFixed(2)} / $recipeUom  •  ₹${perPurchase.toStringAsFixed(2)} / $purchaseUom (1 $purchaseUom = ${factor == factor.roundToDouble() ? factor.toInt() : factor} $recipeUom)';
-      }
+      double pricePerPur = u == p ? price : (price * factor);
+      double pricePerRec = u == r ? price : (price / factor);
+
+      items.add(UnitRateItem('1 $purchaseUom', '₹${_fmt(pricePerPur)}'));
+      items.add(UnitRateItem('1 $recipeUom (BOM)', '₹${_fmt(pricePerRec)}'));
+      return items;
     }
 
-    return null;
+    return items;
   }
 
   /// Detects whether user entered a bulk rate for a small unit by mistake.
-  /// Returns a suggested corrected rate if a mistake is detected, or null.
   static MistakeAlert? detectMistake({
     required double price,
     required String currentUnit,
@@ -175,7 +210,7 @@ class UnitConversionHelper {
       final suggested = price >= 100.0 ? (price / 1000.0) : (price / 100.0);
       final equivKg = price * 1000.0;
       return MistakeAlert(
-        message: '⚠️ Alert: ₹${price.toStringAsFixed(0)}/g equals ₹${equivKg.toStringAsFixed(0)}/KG! Did you mean ₹${suggested.toStringAsFixed(2)}/g (₹${(suggested * 100).toStringAsFixed(1)} per 100g)?',
+        message: 'Entered rate is ₹${price.toStringAsFixed(0)}/g (₹${equivKg.toStringAsFixed(0)}/KG). Did you mean ₹${suggested.toStringAsFixed(2)}/g (₹${(suggested * 100).toStringAsFixed(1)} per 100g)?',
         suggestedRate: suggested,
         unitLabel: '/g',
       );
@@ -186,7 +221,7 @@ class UnitConversionHelper {
       final suggested = price >= 100.0 ? (price / 1000.0) : (price / 100.0);
       final equivL = price * 1000.0;
       return MistakeAlert(
-        message: '⚠️ Alert: ₹${price.toStringAsFixed(0)}/ml equals ₹${equivL.toStringAsFixed(0)}/L! Did you mean ₹${suggested.toStringAsFixed(2)}/ml (₹${(suggested * 100).toStringAsFixed(1)} per 100ml)?',
+        message: 'Entered rate is ₹${price.toStringAsFixed(0)}/ml (₹${equivL.toStringAsFixed(0)}/L). Did you mean ₹${suggested.toStringAsFixed(2)}/ml (₹${(suggested * 100).toStringAsFixed(1)} per 100ml)?',
         suggestedRate: suggested,
         unitLabel: '/ml',
       );
@@ -197,7 +232,7 @@ class UnitConversionHelper {
       final suggested = price / 12.0;
       final equivDoz = price * 12.0;
       return MistakeAlert(
-        message: '⚠️ Alert: ₹${price.toStringAsFixed(0)}/Piece equals ₹${equivDoz.toStringAsFixed(0)}/Dozen! Did you mean ₹${suggested.toStringAsFixed(2)}/Piece?',
+        message: 'Entered rate is ₹${price.toStringAsFixed(0)}/Piece (₹${equivDoz.toStringAsFixed(0)}/Dozen). Did you mean ₹${suggested.toStringAsFixed(2)}/Piece?',
         suggestedRate: suggested,
         unitLabel: '/Piece',
       );
@@ -208,7 +243,7 @@ class UnitConversionHelper {
       final suggested = price / factor;
       final equivBox = price * factor;
       return MistakeAlert(
-        message: '⚠️ Alert: ₹${price.toStringAsFixed(0)}/Piece equals ₹${equivBox.toStringAsFixed(0)}/BOX! Did you mean ₹${suggested.toStringAsFixed(2)}/Piece?',
+        message: 'Entered rate is ₹${price.toStringAsFixed(0)}/Piece (₹${equivBox.toStringAsFixed(0)}/BOX). Did you mean ₹${suggested.toStringAsFixed(2)}/Piece?',
         suggestedRate: suggested,
         unitLabel: '/Piece',
       );
@@ -218,7 +253,7 @@ class UnitConversionHelper {
     if (u == 'KG' && p == 'BAG' && factor > 1 && price >= 500.0) {
       final suggested = price / factor;
       return MistakeAlert(
-        message: '⚠️ Alert: ₹${price.toStringAsFixed(0)}/KG equals ₹${(price * factor).toStringAsFixed(0)}/BAG! Did you mean ₹${suggested.toStringAsFixed(1)}/KG?',
+        message: 'Entered rate is ₹${price.toStringAsFixed(0)}/KG (₹${(price * factor).toStringAsFixed(0)}/BAG). Did you mean ₹${suggested.toStringAsFixed(1)}/KG?',
         suggestedRate: suggested,
         unitLabel: '/KG',
       );

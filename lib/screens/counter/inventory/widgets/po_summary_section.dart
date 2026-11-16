@@ -46,11 +46,11 @@ class PoSummarySection extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 10),
-              Container(
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+              Material(
+                color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+                shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                  side: BorderSide(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
                 ),
                 clipBehavior: Clip.antiAlias,
                 child: CheckboxListTile(

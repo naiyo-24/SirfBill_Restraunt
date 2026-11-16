@@ -364,8 +364,6 @@ class _CategoryDetailsDialogState extends State<CategoryDetailsDialog> {
           ),
           itemBuilder: (context, index) {
             final ing = _ingredients[index];
-            final factor = ing.uomConversionFactor > 0 ? ing.uomConversionFactor : 1.0;
-            final stockInPurchase = ing.currentStock / factor;
 
             return Padding(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -412,7 +410,7 @@ class _CategoryDetailsDialogState extends State<CategoryDetailsDialog> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '${stockInPurchase.toStringAsFixed(1)} ${ing.purchaseUom}',
+                          ing.formattedStock,
                           style: TextStyle(
                             fontSize: 12.5,
                             fontWeight: FontWeight.w700,
@@ -420,7 +418,7 @@ class _CategoryDetailsDialogState extends State<CategoryDetailsDialog> {
                           ),
                         ),
                         Text(
-                          '(${ing.currentStock.toStringAsFixed(0)} ${ing.recipeUom})',
+                          '(${ing.currentStock.toStringAsFixed(0)} ${ing.recipeUom} total)',
                           style: TextStyle(
                             fontSize: 10.5,
                             color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),

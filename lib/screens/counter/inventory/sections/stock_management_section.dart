@@ -155,7 +155,7 @@ class _StockManagementSectionState extends State<StockManagementSection> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${(item.currentStock / (item.recipeUom == 'G' || item.recipeUom == 'ML' ? 1000 : 1)).toStringAsFixed(1)} ${item.purchaseUom}',
+                  item.formattedStock,
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
