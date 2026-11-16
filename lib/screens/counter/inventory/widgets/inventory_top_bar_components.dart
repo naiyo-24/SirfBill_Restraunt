@@ -191,6 +191,27 @@ class InventoryProfilePill extends StatelessWidget {
     required this.onLogout,
   });
 
+  String _getDisplayName(String name) {
+    final clean = name.trim();
+    if (clean.isEmpty) return 'Manager';
+    final lower = clean.toLowerCase();
+    if (lower.contains('inventory') || lower.contains('purchase')) {
+      return 'Inventory Manager';
+    } else if (lower.contains('cashier')) {
+      return 'POS Cashier';
+    } else if (lower.contains('waiter') || lower.contains('captain')) {
+      return 'Captain';
+    } else if (lower.contains('kitchen')) {
+      return 'Kitchen Chef';
+    } else if (lower.contains('crm') || lower.contains('report')) {
+      return 'Store Manager';
+    }
+    if (clean.length > 25) {
+      return userRole.isNotEmpty ? userRole : 'Manager';
+    }
+    return clean;
+  }
+
   String _getInitials(String name) {
     final parts = name.trim().split(RegExp(r'\s+'));
     if (parts.length >= 2) {
@@ -205,6 +226,7 @@ class InventoryProfilePill extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final borderColor = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+    final displayName = _getDisplayName(userName);
 
     return PopupMenuButton<String>(
       offset: const Offset(0, 48),
@@ -260,7 +282,7 @@ class InventoryProfilePill extends StatelessWidget {
               ),
               child: Center(
                 child: Text(
-                  _getInitials(userName),
+                  _getInitials(displayName),
                   style: const TextStyle(
                     fontSize: 12,
                     color: Colors.white,
@@ -279,7 +301,7 @@ class InventoryProfilePill extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      userName.isNotEmpty ? userName : 'Manager',
+                      displayName,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -289,7 +311,7 @@ class InventoryProfilePill extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      userRole.isNotEmpty ? userRole : 'Inventory & Purchase',
+                      userRole.isNotEmpty ? userRole : 'MANAGER',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontSize: 9.5, color: Color(0xFF94A3B8)),

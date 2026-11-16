@@ -157,6 +157,7 @@ class Ingredient {
   final String storageLocation;
   final bool isPerishable;
   final int? shelfLifeDays;
+  final String? imageUrl;
   final DateTime lastRestockedAt;
 
   const Ingredient({
@@ -177,6 +178,7 @@ class Ingredient {
     required this.storageLocation,
     this.isPerishable = false,
     this.shelfLifeDays,
+    this.imageUrl,
     required this.lastRestockedAt,
   });
 
@@ -220,6 +222,7 @@ class Ingredient {
       storageLocation: json['storage_location']?.toString() ?? json['storage_zone']?.toString() ?? '',
       isPerishable: json['is_perishable'] == true,
       shelfLifeDays: parseInt(json['shelf_life_days']),
+      imageUrl: json['image_url']?.toString(),
       lastRestockedAt: json['last_restocked_at'] != null
           ? DateTime.tryParse(json['last_restocked_at'].toString()) ?? DateTime.now()
           : DateTime.now(),
@@ -243,6 +246,7 @@ class Ingredient {
         'storage_location': storageLocation,
         'is_perishable': isPerishable,
         if (shelfLifeDays != null) 'shelf_life_days': shelfLifeDays,
+        if (imageUrl != null && imageUrl!.isNotEmpty) 'image_url': imageUrl,
       };
 }
 

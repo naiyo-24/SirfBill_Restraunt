@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/inventory_models.dart';
 import '../services/inventory_api_service.dart';
+import 'ingredient_image_picker.dart';
 
 class AddIngredientDialog extends StatefulWidget {
   final Ingredient? initialIngredient;
@@ -28,6 +29,7 @@ class _AddIngredientDialogState extends State<AddIngredientDialog> {
   String _purchaseUom = 'KG';
   String _recipeUom = 'G';
   String _selectedSupplier = '';
+  String? _imageUrl;
   bool _isPerishable = false;
   bool _userEditedSku = false;
   bool _isSaving = false;
@@ -92,6 +94,7 @@ class _AddIngredientDialogState extends State<AddIngredientDialog> {
       _recipeUom = init.recipeUom;
       _selectedSupplier = init.primarySupplierId;
       _isPerishable = init.isPerishable;
+      _imageUrl = init.imageUrl;
     } else {
       _nameController.addListener(_onNameChanged);
     }
@@ -123,16 +126,7 @@ class _AddIngredientDialogState extends State<AddIngredientDialog> {
   @override
   void dispose() {
     _nameController.removeListener(_onNameChanged);
-    for (final c in [
-      _nameController,
-      _codeController,
-      _conversionController,
-      _currentStockController,
-      _minParController,
-      _idealParController,
-      _costController,
-      _storageController,
-    ]) {
+    for (final c in [_nameController, _codeController, _conversionController, _currentStockController, _minParController, _idealParController, _costController, _storageController]) {
       c.dispose();
     }
     super.dispose();
@@ -215,6 +209,11 @@ class _AddIngredientDialogState extends State<AddIngredientDialog> {
                             ),
                           ),
                         ],
+                      ),
+                      const SizedBox(height: 12),
+                      IngredientImagePicker(
+                        initialImageUrl: _imageUrl,
+                        onImageChanged: (url) => setState(() => _imageUrl = url),
                       ),
                       const SizedBox(height: 12),
                       Row(
@@ -426,6 +425,17 @@ class _AddIngredientDialogState extends State<AddIngredientDialog> {
           ? _codeController.text.trim()
           : _generateSku(_nameController.text, _selectedCategory);
 
+      String? finalImageUrl = (_imageUrl != null && _imageUrl!.trim().isNotEmpty) ? _imageUrl!.trim() : null;
+      if (finalImageUrl != null && (finalImageUrl.startsWith('http://') || finalImageUrl.startsWith('https://'))) {
+        try {
+          final uploaded = await InventoryApiService.uploadIngredientFromUrl(finalImageUrl);
+          if (uploaded != null && uploaded.isNotEmpty) {
+            finalImageUrl = uploaded;
+            _imageUrl = uploaded;
+          }
+        } catch (_) {}
+      }
+
       final payload = {
         'name': _nameController.text.trim(),
         'sku': sku.isNotEmpty ? sku : 'ING-ITEM',
@@ -444,6 +454,7 @@ class _AddIngredientDialogState extends State<AddIngredientDialog> {
         'storage_location': _storageController.text.trim(),
         'storage_zone': _storageController.text.trim(),
         'is_perishable': _isPerishable,
+        'image_url': finalImageUrl,
         'is_active': true,
       };
 

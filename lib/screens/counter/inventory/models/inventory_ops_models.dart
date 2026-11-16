@@ -15,87 +15,152 @@ enum POStatus {
 
 /// PO Item
 class PurchaseOrderItem {
+  final String id;
   final String ingredientId;
   final String ingredientName;
   final double orderedQty;
   final double receivedQty;
   final String uom;
   final double unitPrice;
+  final double taxRate;
+  final double taxAmount;
+  final double totalPrice;
 
   const PurchaseOrderItem({
+    this.id = '',
     required this.ingredientId,
     required this.ingredientName,
     required this.orderedQty,
     this.receivedQty = 0.0,
     required this.uom,
     required this.unitPrice,
+    this.taxRate = 0.0,
+    this.taxAmount = 0.0,
+    this.totalPrice = 0.0,
   });
-
-  double get totalPrice => orderedQty * unitPrice;
 }
 
 /// Purchase Order Model
 class PurchaseOrder {
   final String id;
   final String poNumber;
+  final String outletName;
+  final String outletAddress;
+  final String outletCity;
+  final String outletPhone;
+  final String outletEmail;
+  final String outletGstin;
   final String supplierId;
   final String supplierName;
+  final String supplierEmail;
+  final String supplierPhone;
+  final String supplierAddress;
   final DateTime orderDate;
   final DateTime expectedDeliveryDate;
   final POStatus status;
   final List<PurchaseOrderItem> items;
+  final double subtotal;
+  final double taxAmount;
   final double totalAmount;
   final String notes;
 
   const PurchaseOrder({
     required this.id,
     required this.poNumber,
+    this.outletName = '',
+    this.outletAddress = '',
+    this.outletCity = '',
+    this.outletPhone = '',
+    this.outletEmail = '',
+    this.outletGstin = '',
     required this.supplierId,
     required this.supplierName,
+    this.supplierEmail = '',
+    this.supplierPhone = '',
+    this.supplierAddress = '',
     required this.orderDate,
     required this.expectedDeliveryDate,
     required this.status,
     required this.items,
+    this.subtotal = 0.0,
+    this.taxAmount = 0.0,
     required this.totalAmount,
     this.notes = '',
   });
 
   factory PurchaseOrder.fromPurchaseBill(Map<String, dynamic> json) {
-    final statusStr = (json['payment_status'] ?? json['status'] ?? '').toString().toLowerCase();
+    final statusStr = (json['status'] ?? json['payment_status'] ?? '').toString().toLowerCase();
     POStatus st = POStatus.sent;
-    if (statusStr.contains('paid') || statusStr.contains('completed')) {
+    if (statusStr.contains('draft')) {
+      st = POStatus.draft;
+    } else if (statusStr.contains('paid') || statusStr.contains('completed')) {
       st = POStatus.completed;
     } else if (statusStr.contains('partial')) {
       st = POStatus.partiallyReceived;
     } else if (statusStr.contains('cancel')) {
       st = POStatus.cancelled;
+    } else if (statusStr.contains('issued') || statusStr.contains('sent')) {
+      st = POStatus.sent;
     }
 
-    final billDateStr = json['bill_date'] ?? json['created_at'];
+    final billDateStr = json['order_date'] ?? json['bill_date'] ?? json['created_at'];
     final dt = billDateStr != null ? DateTime.tryParse(billDateStr.toString()) ?? DateTime.now() : DateTime.now();
+
+    final expDeliveryStr = json['expected_delivery_date'];
+    final expDt = expDeliveryStr != null ? DateTime.tryParse(expDeliveryStr.toString()) ?? dt.add(const Duration(days: 2)) : dt.add(const Duration(days: 2));
+
+    double parseNum(dynamic v, [double def = 0.0]) {
+      if (v == null) return def;
+      if (v is num) return v.toDouble();
+      return double.tryParse(v.toString()) ?? def;
+    }
 
     final List itemsJson = json['items'] is List ? json['items'] : [];
     final items = itemsJson.map((it) {
+      final qty = parseNum(it['quantity_ordered'] ?? it['quantity'], 1.0);
+      final price = parseNum(it['unit_price'] ?? it['cost_price'], 0.0);
+      final taxRate = parseNum(it['tax_rate'], 0.0);
+      final taxAmt = parseNum(it['tax_amount'], (qty * price) * (taxRate / 100.0));
+      final lineTot = parseNum(it['total_price'], (qty * price) + taxAmt);
       return PurchaseOrderItem(
+        id: (it['id'] ?? '').toString(),
         ingredientId: (it['ingredient_id'] ?? it['item_id'] ?? '').toString(),
-        ingredientName: (it['name'] ?? it['item_name'] ?? 'Raw Material').toString(),
-        orderedQty: (it['quantity'] is num) ? (it['quantity'] as num).toDouble() : 1.0,
-        receivedQty: (it['received_quantity'] is num) ? (it['received_quantity'] as num).toDouble() : 1.0,
+        ingredientName: (it['ingredient_name'] ?? it['name'] ?? it['item_name'] ?? 'Raw Material').toString(),
+        orderedQty: qty,
+        receivedQty: parseNum(it['quantity_received'] ?? it['received_quantity'], 0.0),
         uom: (it['unit'] ?? 'KG').toString(),
-        unitPrice: (it['cost_price'] is num) ? (it['cost_price'] as num).toDouble() : 0.0,
+        unitPrice: price,
+        taxRate: taxRate,
+        taxAmount: taxAmt,
+        totalPrice: lineTot,
       );
     }).toList();
 
+    final totAmt = parseNum(json['total_amount']);
+    final taxTot = parseNum(json['tax_amount'], items.fold(0.0, (sum, it) => sum + it.taxAmount));
+    final subTot = parseNum(json['subtotal'], totAmt - taxTot);
+
     return PurchaseOrder(
       id: json['id']?.toString() ?? '',
-      poNumber: json['invoice_no']?.toString() ?? 'PO-${json['id']?.toString().substring(0, 6) ?? '001'}',
-      supplierId: json['distributor_id']?.toString() ?? '',
-      supplierName: json['distributor_name']?.toString() ?? json['supplier_name']?.toString() ?? 'Direct Supplier',
+      poNumber: json['po_number']?.toString() ?? json['invoice_no']?.toString() ?? 'PO-${json['id']?.toString().substring(0, 6) ?? '001'}',
+      outletName: json['outlet_name']?.toString() ?? '',
+      outletAddress: json['outlet_address']?.toString() ?? '',
+      outletCity: json['outlet_city']?.toString() ?? '',
+      outletPhone: json['outlet_phone']?.toString() ?? '',
+      outletEmail: json['outlet_email']?.toString() ?? '',
+      outletGstin: json['outlet_gstin']?.toString() ?? '',
+      supplierId: json['supplier_id']?.toString() ?? json['distributor_id']?.toString() ?? '',
+      supplierName: json['supplier_name']?.toString() ?? json['distributor_name']?.toString() ?? 'Direct Supplier',
+      supplierEmail: json['supplier_email']?.toString() ?? json['email']?.toString() ?? '',
+      supplierPhone: json['supplier_phone']?.toString() ?? json['phone']?.toString() ?? '',
+      supplierAddress: json['supplier_address']?.toString() ?? json['address']?.toString() ?? '',
       orderDate: dt,
-      expectedDeliveryDate: dt.add(const Duration(days: 2)),
+      expectedDeliveryDate: expDt,
       status: st,
       items: items,
-      totalAmount: (json['total_amount'] is num) ? (json['total_amount'] as num).toDouble() : 0.0,
+      subtotal: subTot,
+      taxAmount: taxTot,
+      totalAmount: totAmt,
       notes: json['notes']?.toString() ?? '',
     );
   }

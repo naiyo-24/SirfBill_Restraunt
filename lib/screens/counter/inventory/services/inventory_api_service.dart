@@ -288,6 +288,53 @@ class InventoryApiService {
     }
   }
 
+  static Future<String?> uploadIngredientImage(Uint8List bytes, String filename) async {
+    try {
+      final formData = FormData.fromMap({
+        'file': MultipartFile.fromBytes(
+          bytes,
+          filename: filename,
+        ),
+      });
+
+      final response = await ApiClient().dio.post(
+        '/api/restaurant/inventory/ingredients/upload-image',
+        data: formData,
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        return response.data['image_url']?.toString();
+      }
+    } on DioException catch (e) {
+      final msg = e.response?.data?['detail'] ?? e.message;
+      throw msg ?? 'Failed to upload image';
+    } catch (e) {
+      debugPrint('[InventoryApiService] uploadIngredientImage error: $e');
+      rethrow;
+    }
+    return null;
+  }
+
+  static Future<String?> uploadIngredientFromUrl(String url) async {
+    try {
+      final response = await ApiClient().dio.post(
+        '/api/restaurant/inventory/ingredients/upload-from-url',
+        data: {'url': url.trim()},
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        return response.data['image_url']?.toString();
+      }
+    } on DioException catch (e) {
+      final msg = e.response?.data?['detail'] ?? e.message;
+      throw msg ?? 'Failed to download image from link';
+    } catch (e) {
+      debugPrint('[InventoryApiService] uploadIngredientFromUrl error: $e');
+      rethrow;
+    }
+    return null;
+  }
+
   // ==========================================
   // SUPPLIERS / DISTRIBUTORS
   // ==========================================
@@ -330,6 +377,33 @@ class InventoryApiService {
       throw e.response?.data?['detail'] ?? 'Failed to create supplier';
     }
     return null;
+  }
+
+  static Future<Supplier?> updateSupplier(String id, Map<String, dynamic> data) async {
+    try {
+      final response = await ApiClient().dio.patch(
+        '/api/admin/distributors/$id',
+        data: data,
+      );
+      if (response.statusCode == 200) {
+        return Supplier.fromJson(response.data);
+      }
+    } on DioException catch (e) {
+      throw e.response?.data?['detail'] ?? 'Failed to update supplier';
+    }
+    return null;
+  }
+
+  static Future<bool> deleteSupplier(String id) async {
+    try {
+      final response = await ApiClient().dio.delete(
+        '/api/admin/distributors/$id',
+      );
+      return response.statusCode == 200 || response.statusCode == 204;
+    } catch (e) {
+      debugPrint('[InventoryApiService] deleteSupplier error: $e');
+      return false;
+    }
   }
 
   // ==========================================
