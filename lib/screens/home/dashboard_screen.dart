@@ -63,7 +63,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       description: 'Ingredients, recipes, suppliers and stock.',
       icon: Icons.inventory_2_rounded,
       primaryColor: Color(0xFF3B82F6), // Blue
-      nextRoute: '/counter/inventory',
+      nextRoute: '/inventory',
     ),
     ModuleCardData(
       indexText: '04',
@@ -157,8 +157,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       }
 
       if (mounted) {
+        final encodedRole = Uri.encodeComponent(module.title);
+        final encodedRoute = Uri.encodeComponent(module.nextRoute);
         context.push(
-          '/role_login',
+          '/role_login?roleName=$encodedRole&nextRoute=$encodedRoute',
           extra: {
             'roleName': module.title,
             'themeColor': module.primaryColor,

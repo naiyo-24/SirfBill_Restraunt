@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'router/app_router.dart';
@@ -8,6 +9,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'services/auth_service.dart';
 import 'config/api_constants.dart';
 import 'widgets/app_zoom_wrapper.dart';
+import 'utils/web_platform.dart';
 
 class AppScrollBehavior extends MaterialScrollBehavior {
   const AppScrollBehavior();
@@ -24,6 +26,9 @@ class AppScrollBehavior extends MaterialScrollBehavior {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  if (kIsWeb) {
+    debugDefaultTargetPlatformOverride = getSafeWebPlatform();
+  }
   PaintingBinding.instance.imageCache.maximumSize = 1000;
   PaintingBinding.instance.imageCache.maximumSizeBytes = 250 << 20; // 250 MB
   try {

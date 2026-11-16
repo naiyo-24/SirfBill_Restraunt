@@ -14,6 +14,7 @@ import '../screens/counter/order_management_screen.dart';
 import '../screens/counter/kitchen_display_screen.dart';
 import '../screens/counter/menu_management_screen.dart';
 import '../screens/counter/reports_screen.dart';
+import '../screens/counter/inventory/inventory_screen.dart';
 import '../screens/admin/restaurant_admin_panel_screen.dart';
 import '../screens/waiter/waiter_order_screen.dart';
 
@@ -34,14 +35,14 @@ final goRouter = GoRouter(
     final loc = state.matchedLocation;
     final isPublicRoute = loc == '/role_login' || loc == '/splash' || loc == '/dashboard';
 
+    final fullUri = state.uri.path;
+    if (fullUri.contains('/counter/inventory') || loc.contains('/counter/inventory')) {
+      return '/inventory';
+    }
+
     // If not logged in and not on a public route, redirect to dashboard
     if (!isLoggedIn && !isPublicRoute) {
       return '/dashboard';
-    }
-
-    // Redirect disabled inventory route to billing
-    if (loc.startsWith('/counter/inventory')) {
-      return '/counter/billing';
     }
 
     // Auto-forward from splash based on role
@@ -54,6 +55,8 @@ final goRouter = GoRouter(
           return '/kitchen';
         } else if (role == 'WAITER' || role == 'CAPTAIN' || role == 'SERVER') {
           return '/waiter';
+        } else if (role == 'INVENTORY' || role == 'STOCK') {
+          return '/inventory';
         }
         return '/counter/billing';
       }
@@ -81,21 +84,57 @@ final goRouter = GoRouter(
       builder: (context, state) => const WaiterOrderScreen(),
     ),
     GoRoute(
+      path: '/inventory',
+      builder: (context, state) => const RestaurantInventoryScreen(isStandalone: true),
+    ),
+    GoRoute(
+      path: '/counter/inventory',
+      redirect: (context, state) => '/inventory',
+    ),
+    GoRoute(
       path: '/role_login',
       builder: (context, state) {
         final Map<String, dynamic> extra = state.extra is Map<String, dynamic>
             ? state.extra as Map<String, dynamic>
             : {};
+        final q = state.uri.queryParameters;
+        final roleName = (extra['roleName'] as String?) ?? q['roleName'] ?? 'Restaurant POS';
+
+        final Color themeColor = extra['themeColor'] is Color
+            ? extra['themeColor'] as Color
+            : (roleName.contains('Inventory')
+                ? const Color(0xFF3B82F6)
+                : (roleName.contains('Kitchen')
+                    ? const Color(0xFFF97316)
+                    : (roleName.contains('Waiter')
+                        ? const Color(0xFFF59E0B)
+                        : (roleName.contains('CRM')
+                            ? const Color(0xFF8B5CF6)
+                            : (roleName.contains('Admin')
+                                ? const Color(0xFF6366F1)
+                                : const Color(0xFF10B981))))));
+
+        String nextRoute = (extra['nextRoute'] as String?) ?? q['nextRoute'] ?? '';
+        if (nextRoute.isEmpty) {
+          if (roleName.contains('Inventory')) {
+            nextRoute = '/inventory';
+          } else if (roleName.contains('Kitchen')) {
+            nextRoute = '/kitchen';
+          } else if (roleName.contains('Waiter')) {
+            nextRoute = '/waiter';
+          } else if (roleName.contains('Admin')) {
+            nextRoute = '/admin';
+          } else if (roleName.contains('CRM')) {
+            nextRoute = '/counter/customers';
+          } else {
+            nextRoute = '/counter/billing';
+          }
+        }
+
         return RoleLoginScreen(
-          roleName: extra['roleName'] is String
-              ? extra['roleName'] as String
-              : 'Restaurant POS',
-          themeColor: extra['themeColor'] is Color
-              ? extra['themeColor'] as Color
-              : const Color(0xFF10B981),
-          nextRoute: extra['nextRoute'] is String
-              ? extra['nextRoute'] as String
-              : '/counter/billing',
+          roleName: roleName,
+          themeColor: themeColor,
+          nextRoute: nextRoute,
         );
       },
     ),
@@ -158,21 +197,6 @@ final goRouter = GoRouter(
             ),
           ],
         ),
-        // 6: Inventory (Commented out - not required for this restaurant POS)
-        // StatefulShellBranch(
-        //   routes: [
-        //     GoRoute(
-        //       path: '/counter/inventory',
-        //       builder: (context, state) => const InventoryScreen(),
-        //       routes: [
-        //         GoRoute(
-        //           path: 'upload',
-        //           builder: (context, state) => const UploadManagementScreen(),
-        //         ),
-        //       ],
-        //     ),
-        //   ],
-        // ),
         // 6: Reports
         StatefulShellBranch(
           routes: [

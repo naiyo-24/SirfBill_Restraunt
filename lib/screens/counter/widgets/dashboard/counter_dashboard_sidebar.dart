@@ -44,9 +44,7 @@ class CounterDashboardSidebar extends StatelessWidget {
       (Icons.soup_kitchen_rounded, 'Kitchen (KOT)', 'F4'),
       (Icons.restaurant_menu_rounded, 'Menu Management', 'F5'),
       (Icons.people_alt_rounded, 'Customers (CRM)', 'F6'),
-      // (Icons.inventory_2_rounded, 'Inventory', 'F7'),
       (Icons.bar_chart_rounded, 'Reports', 'F7'),
-      // (Icons.account_balance_wallet_rounded, 'Expenses', 'F8'),
       (Icons.settings_rounded, 'Settings', 'F8'),
     ];
 

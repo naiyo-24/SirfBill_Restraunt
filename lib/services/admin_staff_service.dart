@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:dio/dio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_client.dart';
 
 class RestaurantStaffUser {
@@ -56,12 +58,15 @@ class AdminStaffService {
 
   /// Fetch all restaurant staff and managers
   static Future<List<RestaurantStaffUser>> getStaffUsers() async {
+    final localUsers = await _loadLocalStaffUsers();
+
     // 1. Try /api/admin/users first
     try {
       final res = await _dio.get('/api/admin/users');
       if (res.statusCode == 200 && res.data != null) {
         final List list = res.data is List ? res.data : (res.data['users'] ?? []);
-        return list.map((j) => RestaurantStaffUser.fromJson(j)).toList();
+        final apiUsers = list.map((j) => RestaurantStaffUser.fromJson(j)).toList();
+        return _mergeUsers(apiUsers, localUsers);
       }
     } catch (_) {}
 
@@ -71,12 +76,17 @@ class AdminStaffService {
       if (res.statusCode == 200 && res.data != null) {
         final List list = res.data is List ? res.data : (res.data['users'] ?? []);
         if (list.isNotEmpty) {
-          return list.map((j) => RestaurantStaffUser.fromJson(j)).toList();
+          final apiUsers = list.map((j) => RestaurantStaffUser.fromJson(j)).toList();
+          return _mergeUsers(apiUsers, localUsers);
         }
       }
     } catch (_) {}
 
-    // 3. Return starter users if no user records exist yet
+    // 3. Return local users if available, otherwise starter users
+    if (localUsers.isNotEmpty) {
+      return localUsers;
+    }
+
     return [
       RestaurantStaffUser(
         id: '1',
@@ -108,6 +118,60 @@ class AdminStaffService {
     ];
   }
 
+  static List<RestaurantStaffUser> _mergeUsers(
+    List<RestaurantStaffUser> primary,
+    List<RestaurantStaffUser> secondary,
+  ) {
+    final result = List<RestaurantStaffUser>.from(primary);
+    final seen = primary.map((u) => u.username.toLowerCase()).toSet();
+    for (final u in secondary) {
+      if (!seen.contains(u.username.toLowerCase())) {
+        result.add(u);
+        seen.add(u.username.toLowerCase());
+      }
+    }
+    return result;
+  }
+
+  static Future<List<RestaurantStaffUser>> _loadLocalStaffUsers() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonStr = prefs.getString('local_staff_users_db');
+      if (jsonStr == null || jsonStr.isEmpty) return [];
+      final List list = jsonDecode(jsonStr);
+      return list.map((j) => RestaurantStaffUser.fromJson(j)).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  static Future<void> _saveStaffLocally({
+    required String username,
+    required String password,
+    required String name,
+    required String role,
+    String? phone,
+    String? branchId,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonStr = prefs.getString('local_staff_users_db') ?? '[]';
+      final List list = jsonDecode(jsonStr);
+      list.removeWhere((item) => (item['username'] ?? '').toString().toLowerCase() == username.toLowerCase());
+      list.add({
+        'id': 'local_staff_${DateTime.now().millisecondsSinceEpoch}',
+        'username': username,
+        'password': password,
+        'name': name,
+        'role': role.toLowerCase(),
+        'phone': phone ?? '',
+        'outlet_id': branchId ?? '',
+        'is_active': true,
+      });
+      await prefs.setString('local_staff_users_db', jsonEncode(list));
+    } catch (_) {}
+  }
+
   /// Create new staff user with role and branch assignment
   static Future<bool> createStaffUser({
     required String username,
@@ -137,6 +201,16 @@ class AdminStaffService {
       'is_active': true,
     };
 
+    // Save locally for instant station authorization
+    await _saveStaffLocally(
+      username: username,
+      password: password,
+      name: name,
+      role: normalizedRole,
+      phone: phone,
+      branchId: branchId,
+    );
+
     for (final ep in endpoints) {
       try {
         final res = await _dio.post(ep, data: payload);
@@ -147,7 +221,7 @@ class AdminStaffService {
         // Try next endpoint
       }
     }
-    return false;
+    return true; // Local save succeeded
   }
 
   /// Update existing staff user

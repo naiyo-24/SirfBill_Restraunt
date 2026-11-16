@@ -286,7 +286,7 @@ class _OutletDetailsModalState extends State<OutletDetailsModal> with SingleTick
         'color': const Color(0xFF3B82F6),
         'userId': _customUsernames['inventory'] ?? 'inventory_$cleanCode@sirfbill.com',
         'pass': _customPasswords['inventory'] ?? '123456',
-        'role': 'manager',
+        'role': 'inventory',
       },
       {
         'key': 'crm',
