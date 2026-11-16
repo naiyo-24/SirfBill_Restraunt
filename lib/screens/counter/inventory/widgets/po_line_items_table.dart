@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/inventory_models.dart';
 import '../models/po_line_item_input.dart';
+import '../utils/unit_conversion_helper.dart';
 import 'po_item_helper_banner.dart';
 
 class PoLineItemsTable extends StatelessWidget {
@@ -238,7 +239,7 @@ class PoLineItemsTable extends StatelessWidget {
                                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                                     contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
                                   ),
-                                  items: ['KG', 'G', 'L', 'ML', 'PCS', 'BAG', 'BOX'].map((u) => DropdownMenuItem(
+                                  items: ['KG', 'G', 'L', 'ML', 'PCS', 'DOZ', 'BAG', 'BOX'].map((u) => DropdownMenuItem(
                                     value: u,
                                     child: Text(u, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                                   )).toList(),
@@ -246,37 +247,20 @@ class PoLineItemsTable extends StatelessWidget {
                                     final newUnit = v ?? 'KG';
                                     final oldUnit = item.unit;
                                     if (newUnit != oldUnit && ing != null) {
-                                      final factor = ing.uomConversionFactor > 0 ? ing.uomConversionFactor : 1000.0;
                                       final currentPrice = double.tryParse(item.priceController.text.trim()) ?? 0.0;
-
-                                      final isNewRecipe = newUnit.toUpperCase() == ing.recipeUom.toUpperCase() ||
-                                          (newUnit.toUpperCase() == 'G' && ing.purchaseUom.toUpperCase() == 'KG') ||
-                                          (newUnit.toUpperCase() == 'ML' && ing.purchaseUom.toUpperCase() == 'L');
-
-                                      final isOldPurchase = oldUnit.toUpperCase() == ing.purchaseUom.toUpperCase() ||
-                                          (oldUnit.toUpperCase() == 'KG' && newUnit.toUpperCase() == 'G') ||
-                                          (oldUnit.toUpperCase() == 'L' && newUnit.toUpperCase() == 'ML');
-
-                                      final isNewPurchase = newUnit.toUpperCase() == ing.purchaseUom.toUpperCase() ||
-                                          (newUnit.toUpperCase() == 'KG' && oldUnit.toUpperCase() == 'G') ||
-                                          (newUnit.toUpperCase() == 'L' && oldUnit.toUpperCase() == 'ML');
-
-                                      final isOldRecipe = oldUnit.toUpperCase() == ing.recipeUom.toUpperCase() ||
-                                          (oldUnit.toUpperCase() == 'G' && newUnit.toUpperCase() == 'KG') ||
-                                          (oldUnit.toUpperCase() == 'ML' && newUnit.toUpperCase() == 'L');
-
-                                      if (isOldPurchase && isNewRecipe) {
-                                        // Switching from Purchase Unit (KG) to Recipe Unit (G)
-                                        final ratePerRecipe = currentPrice > 0 ? (currentPrice / factor) : ing.costPerRecipeUnit;
-                                        item.priceController.text = ratePerRecipe < 0.01
-                                            ? ratePerRecipe.toStringAsFixed(4)
-                                            : ratePerRecipe.toStringAsFixed(2);
-                                      } else if (isOldRecipe && isNewPurchase) {
-                                        // Switching from Recipe Unit (G) to Purchase Unit (KG)
-                                        final ratePerPurchase = currentPrice > 0 ? (currentPrice * factor) : ing.costPerPurchaseUnit;
-                                        item.priceController.text = ratePerPurchase == ratePerPurchase.roundToDouble()
-                                            ? ratePerPurchase.toInt().toString()
-                                            : ratePerPurchase.toStringAsFixed(2);
+                                      final factor = ing.uomConversionFactor > 0 ? ing.uomConversionFactor : 1000.0;
+                                      final converted = UnitConversionHelper.convertUnitPrice(
+                                        currentPrice: currentPrice > 0 ? currentPrice : ing.costPerPurchaseUnit,
+                                        oldUnit: oldUnit,
+                                        newUnit: newUnit,
+                                        purchaseUom: ing.purchaseUom,
+                                        recipeUom: ing.recipeUom,
+                                        conversionFactor: factor,
+                                      );
+                                      if (converted > 0) {
+                                        item.priceController.text = converted == converted.roundToDouble()
+                                            ? converted.toInt().toString()
+                                            : (converted < 0.01 ? converted.toStringAsFixed(4) : converted.toStringAsFixed(2));
                                       }
                                     }
                                     item.unit = newUnit;
