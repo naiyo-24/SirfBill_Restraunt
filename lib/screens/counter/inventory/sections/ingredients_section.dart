@@ -370,7 +370,6 @@ class _IngredientsSectionState extends State<IngredientsSection> {
       ),
     );
   }
-  }
 
   Future<void> _confirmDeleteIngredient(Ingredient item) async {
     final confirm = await showDialog<bool>(
