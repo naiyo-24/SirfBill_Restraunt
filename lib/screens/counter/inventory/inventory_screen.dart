@@ -245,7 +245,7 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
                         child: AnimatedSwitcher(
                           duration: const Duration(milliseconds: 180),
                           child: KeyedSubtree(
-                            key: ValueKey('${_currentSection.name}_$_refreshKeyCounter'),
+                            key: ValueKey('${_currentSection}_$_refreshKeyCounter'),
                             child: _buildActiveSection(),
                           ),
                         ),

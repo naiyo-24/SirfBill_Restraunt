@@ -166,7 +166,31 @@ class _AddIngredientDialogState extends State<AddIngredientDialog> {
                       color: isDark ? Colors.white : const Color(0xFF0F172A),
                     ),
                   ),
-                  IconButton(onPressed: () => Navigator.of(context).pop(), icon: const Icon(Icons.close, size: 20)),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextButton.icon(
+                        onPressed: () => showDialog(
+                          context: context,
+                          builder: (_) => const IngredientFormGuideDialog(),
+                        ),
+                        icon: const Icon(Icons.help_outline_rounded, size: 16, color: Color(0xFF10B981)),
+                        label: const Text(
+                          'Field Guide',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF10B981),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      IconButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(Icons.close, size: 20),
+                      ),
+                    ],
+                  ),
                 ],
               ),
               const Divider(height: 20),
@@ -181,7 +205,7 @@ class _AddIngredientDialogState extends State<AddIngredientDialog> {
                             child: _buildTextField(
                               controller: _nameController,
                               label: 'Ingredient Name',
-                              hint: 'e.g. Basmati Rice, Chicken',
+                              hint: 'e.g. Basmati Rice, Chicken Breast',
                               validator: (v) => v!.isEmpty ? 'Required' : null,
                             ),
                           ),
@@ -220,19 +244,90 @@ class _AddIngredientDialogState extends State<AddIngredientDialog> {
                       const SizedBox(height: 12),
                       Row(
                         children: [
-                          Expanded(child: _buildCategoryDropdown()),
+                          Expanded(
+                            child: IngredientCategoryDropdown(
+                              categories: _categories,
+                              selectedCategory: _selectedCategory,
+                              onChanged: (v) {
+                                if (v != null) {
+                                  setState(() {
+                                    _selectedCategory = v;
+                                    if (!_userEditedSku && _nameController.text.trim().isNotEmpty) {
+                                      _codeController.text = _generateSku(_nameController.text, v);
+                                    }
+                                  });
+                                }
+                              },
+                            ),
+                          ),
                           const SizedBox(width: 12),
-                          Expanded(child: _buildSupplierDropdown()),
+                          Expanded(
+                            child: IngredientSupplierDropdown(
+                              suppliers: _suppliers,
+                              selectedSupplier: _selectedSupplier,
+                              onChanged: (v) {
+                                if (v != null) setState(() => _selectedSupplier = v);
+                              },
+                            ),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 12),
+
+                      // Dual-UOM helper banner
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF10B981).withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.2)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.info_outline, size: 16, color: Color(0xFF10B981)),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Dual-UOM: Purchased in bulk ($_purchaseUom), used in recipes ($_recipeUom). 1 $_purchaseUom = ${_conversionController.text.isEmpty ? "1000" : _conversionController.text} $_recipeUom.',
+                                style: const TextStyle(fontSize: 11.5, color: Color(0xFF10B981), fontWeight: FontWeight.w600),
+                              ),
+                            ),
+                            InkWell(
+                              onTap: () => showDialog(context: context, builder: (_) => const IngredientFormGuideDialog()),
+                              child: const Text('View Guide →', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF10B981), decoration: TextDecoration.underline)),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
                       Row(
                         children: [
-                          Expanded(child: _buildUomDropdown(label: 'Purchase Unit (Supplier)', value: _purchaseUom, onChanged: (v) => setState(() => _purchaseUom = v!))),
+                          Expanded(
+                            child: IngredientUomDropdown(
+                              label: 'Purchase Unit (Supplier)',
+                              value: _purchaseUom,
+                              onChanged: (v) => setState(() => _purchaseUom = v!),
+                            ),
+                          ),
                           const SizedBox(width: 12),
-                          Expanded(child: _buildUomDropdown(label: 'Recipe Unit (Kitchen BOM)', value: _recipeUom, onChanged: (v) => setState(() => _recipeUom = v!))),
+                          Expanded(
+                            child: IngredientUomDropdown(
+                              label: 'Recipe Unit (Kitchen BOM)',
+                              value: _recipeUom,
+                              onChanged: (v) => setState(() => _recipeUom = v!),
+                            ),
+                          ),
                           const SizedBox(width: 12),
-                          Expanded(child: _buildTextField(controller: _conversionController, label: 'Conversion (1 Purchase = X Recipe)', hint: '1000', keyboardType: TextInputType.number)),
+                          Expanded(
+                            child: _buildTextField(
+                              controller: _conversionController,
+                              label: 'Conversion (1 Pur = X Rec)',
+                              hint: 'e.g. 1000',
+                              keyboardType: TextInputType.number,
+                              onChanged: (_) => setState(() {}),
+                            ),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 12),
@@ -240,11 +335,11 @@ class _AddIngredientDialogState extends State<AddIngredientDialog> {
                         children: [
                           Expanded(child: _buildTextField(controller: _currentStockController, label: 'Current Stock ($_recipeUom)', hint: '0', keyboardType: TextInputType.number)),
                           const SizedBox(width: 12),
-                          Expanded(child: _buildTextField(controller: _minParController, label: 'Min Par Level (Alert)', hint: '5000', keyboardType: TextInputType.number)),
+                          Expanded(child: _buildTextField(controller: _minParController, label: 'Min Par Alert ($_recipeUom)', hint: '5000', keyboardType: TextInputType.number)),
                           const SizedBox(width: 12),
-                          Expanded(child: _buildTextField(controller: _idealParController, label: 'Ideal Par Level', hint: '20000', keyboardType: TextInputType.number)),
+                          Expanded(child: _buildTextField(controller: _idealParController, label: 'Ideal Par / Max Cap', hint: '20000', keyboardType: TextInputType.number)),
                           const SizedBox(width: 12),
-                          Expanded(child: _buildTextField(controller: _costController, label: 'Cost / Purchase Unit (₹)', hint: '280', keyboardType: TextInputType.number)),
+                          Expanded(child: _buildTextField(controller: _costController, label: 'Cost / $_purchaseUom (₹)', hint: '280', keyboardType: TextInputType.number)),
                         ],
                       ),
                       const SizedBox(height: 12),
@@ -311,112 +406,18 @@ class _AddIngredientDialogState extends State<AddIngredientDialog> {
     String? Function(String?)? validator,
     Widget? suffixIcon,
     ValueChanged<String>? onChanged,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-        const SizedBox(height: 4),
-        TextFormField(
-          controller: controller,
-          keyboardType: keyboardType,
-          validator: validator,
-          onChanged: onChanged,
-          style: const TextStyle(fontSize: 13),
-          decoration: InputDecoration(
-            hintText: hint,
-            hintStyle: const TextStyle(fontSize: 12, color: Colors.grey),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-            suffixIcon: suffixIcon,
-          ),
-        ),
-      ],
-    );
-  }
+  }) =>
+      IngredientFormTextField(
+        controller: controller,
+        label: label,
+        hint: hint,
+        keyboardType: keyboardType,
+        validator: validator,
+        suffixIcon: suffixIcon,
+        onChanged: onChanged,
+      );
 
-  Widget _buildCategoryDropdown() {
-    final validCategory = _categories.any((c) => c.id == _selectedCategory)
-        ? _selectedCategory
-        : (_categories.isNotEmpty ? _categories.first.id : null);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('Category', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-        const SizedBox(height: 4),
-        DropdownButtonFormField<String>(
-          initialValue: validCategory,
-          decoration: InputDecoration(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-            hintText: _categories.isEmpty ? 'No Categories Configured' : 'Select Category',
-          ),
-          items: _categories.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name, style: const TextStyle(fontSize: 13)))).toList(),
-          onChanged: (v) {
-            if (v != null) {
-              setState(() {
-                _selectedCategory = v;
-                if (!_userEditedSku && _nameController.text.trim().isNotEmpty) {
-                  _codeController.text = _generateSku(_nameController.text, v);
-                }
-              });
-            }
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSupplierDropdown() {
-    final validSupplier = _suppliers.any((s) => s.id == _selectedSupplier)
-        ? _selectedSupplier
-        : (_suppliers.isNotEmpty ? _suppliers.first.id : null);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('Primary Supplier', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-        const SizedBox(height: 4),
-        DropdownButtonFormField<String>(
-          initialValue: validSupplier,
-          decoration: InputDecoration(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-            hintText: _suppliers.isEmpty ? 'No Suppliers Added' : 'Select Supplier',
-          ),
-          items: _suppliers.map((s) => DropdownMenuItem(value: s.id, child: Text(s.name, style: const TextStyle(fontSize: 13)))).toList(),
-          onChanged: (v) {
-            if (v != null) setState(() => _selectedSupplier = v);
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildUomDropdown({
-    required String label,
-    required String value,
-    required ValueChanged<String?> onChanged,
-  }) {
-    final units = ['KG', 'G', 'L', 'ML', 'PCS', 'DOZ', 'BAG', 'BOX'];
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-        const SizedBox(height: 4),
-        DropdownButtonFormField<String>(
-          initialValue: value,
-          decoration: InputDecoration(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-          ),
-          items: units.map((u) => DropdownMenuItem(value: u, child: Text(u, style: const TextStyle(fontSize: 13)))).toList(),
-          onChanged: onChanged,
-        ),
-      ],
-    );
-  }
 
   Future<void> _saveIngredient() async {
     if (!_formKey.currentState!.validate()) return;

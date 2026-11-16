@@ -116,3 +116,49 @@ class IngredientUomDropdown extends StatelessWidget {
     );
   }
 }
+
+class IngredientFormTextField extends StatelessWidget {
+  final TextEditingController controller;
+  final String label;
+  final String hint;
+  final TextInputType keyboardType;
+  final String? Function(String?)? validator;
+  final Widget? suffixIcon;
+  final ValueChanged<String>? onChanged;
+
+  const IngredientFormTextField({
+    super.key,
+    required this.controller,
+    required this.label,
+    required this.hint,
+    this.keyboardType = TextInputType.text,
+    this.validator,
+    this.suffixIcon,
+    this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 4),
+        TextFormField(
+          controller: controller,
+          keyboardType: keyboardType,
+          validator: validator,
+          onChanged: onChanged,
+          style: const TextStyle(fontSize: 13),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: const TextStyle(fontSize: 12, color: Colors.grey),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+            suffixIcon: suffixIcon,
+          ),
+        ),
+      ],
+    );
+  }
+}
