@@ -92,52 +92,66 @@ class InventorySidebar extends StatelessWidget {
           duration: const Duration(milliseconds: 260),
           curve: Curves.fastOutSlowIn,
           width: _isCollapsed ? 44.0 : 232.0,
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 40,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF10B981), Color(0xFF059669)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(10),
-                  boxShadow: [
-                    BoxShadow(color: const Color(0xFF10B981).withValues(alpha: 0.25), blurRadius: 6, offset: const Offset(0, 2)),
+          height: 40.0,
+          child: ClipRect(
+            child: OverflowBox(
+              minWidth: 0,
+              maxWidth: 232.0,
+              minHeight: 40.0,
+              maxHeight: 40.0,
+              alignment: Alignment.centerLeft,
+              child: SizedBox(
+                width: 232.0,
+                height: 40.0,
+                child: Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF10B981), Color(0xFF059669)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: [
+                          BoxShadow(color: const Color(0xFF10B981).withValues(alpha: 0.25), blurRadius: 6, offset: const Offset(0, 2)),
+                        ],
+                      ),
+                      child: const Center(child: Icon(Icons.inventory_2_rounded, color: Colors.white, size: 20)),
+                    ),
+                    if (!_isCollapsed) ...[
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: AnimatedOpacity(
+                          duration: const Duration(milliseconds: 180),
+                          opacity: _isCollapsed ? 0.0 : 1.0,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'INVENTORY',
+                                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, letterSpacing: 0.6, color: textColor),
+                                overflow: TextOverflow.clip,
+                                maxLines: 1,
+                              ),
+                              Text(
+                                'Restaurant Culinary BOM',
+                                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: subtitleColor),
+                                overflow: TextOverflow.clip,
+                                maxLines: 1,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
-                child: const Center(child: Icon(Icons.inventory_2_rounded, color: Colors.white, size: 20)),
               ),
-              if (!_isCollapsed) ...[
-                const SizedBox(width: 10),
-                Expanded(
-                  child: AnimatedOpacity(
-                    duration: const Duration(milliseconds: 180),
-                    opacity: _isCollapsed ? 0.0 : 1.0,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'INVENTORY',
-                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, letterSpacing: 0.6, color: textColor),
-                          overflow: TextOverflow.clip,
-                          maxLines: 1,
-                        ),
-                        Text(
-                          'Restaurant Culinary BOM',
-                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: subtitleColor),
-                          overflow: TextOverflow.clip,
-                          maxLines: 1,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ],
+            ),
           ),
         ),
       ),

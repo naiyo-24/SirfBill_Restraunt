@@ -1,8 +1,10 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/stock_transfer_models.dart';
 import '../services/inventory_api_service.dart';
 import '../services/stock_transfer_api_service.dart';
+import 'dispatch_stock_transfer_dialog.dart';
 import 'inventory_status_badge.dart';
 import 'receive_stock_transfer_dialog.dart';
 
@@ -49,62 +51,9 @@ class _StockTransferDetailsDialogState extends State<StockTransferDetailsDialog>
     if (mounted) setState(() => _currentOutletId = outlet);
   }
 
-  Future<void> _dispatchTransfer() async {
-    final isStation = _t.transferType == StockTransferType.interStation;
-    final vehicleCtrl = TextEditingController(text: _t.vehicleNumber);
-    final driverCtrl = TextEditingController(text: _t.driverName);
-    final notesCtrl = TextEditingController();
-
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(isStation ? 'Confirm Inter-Station Transfer' : 'Confirm Dispatch & Lock Stock', style: const TextStyle(fontWeight: FontWeight.bold)),
-        content: SizedBox(
-          width: 420,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(isStation ? 'This will transfer stock to destination station.' : 'This will deduct stock from source and log TRANSFER_OUT ledger entries.', style: const TextStyle(fontSize: 12, color: Colors.grey)),
-              const SizedBox(height: 12),
-              if (!isStation) ...[
-                TextField(controller: vehicleCtrl, decoration: const InputDecoration(labelText: 'Vehicle / Van Number')),
-                const SizedBox(height: 10),
-              ],
-              TextField(controller: driverCtrl, decoration: InputDecoration(labelText: isStation ? 'Transferred By (Staff Name)' : 'Driver Name')),
-              const SizedBox(height: 10),
-              TextField(controller: notesCtrl, decoration: const InputDecoration(labelText: 'Dispatch Notes')),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white), child: Text(isStation ? 'Transfer Stock' : 'Dispatch Goods')),
-        ],
-      ),
-    );
-
-    if (confirm != true) return;
-
-    setState(() => _isActionInProgress = true);
-    try {
-      await StockTransferApiService.dispatchTransfer(
-        _t.id,
-        vehicleNumber: vehicleCtrl.text.trim(),
-        driverName: driverCtrl.text.trim(),
-        notes: notesCtrl.text.trim(),
-      );
-      if (!mounted) return;
-      Navigator.pop(context);
-      widget.onUpdated();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Transfer dispatched successfully! Items are In-Transit.'), backgroundColor: Colors.blue),
-      );
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
-    } finally {
-      if (mounted) setState(() => _isActionInProgress = false);
-    }
+  void _dispatchTransfer() {
+    Navigator.pop(context);
+    DispatchStockTransferDialog.show(context, transfer: _t, onDispatched: widget.onUpdated);
   }
 
   Future<void> _cancelTransfer() async {
@@ -232,6 +181,7 @@ class _StockTransferDetailsDialogState extends State<StockTransferDetailsDialog>
                         child: Text('Notes: ${_t.notes}', style: const TextStyle(fontSize: 12)),
                       ),
                     ],
+                    _buildSignaturesCard(isDark, borderColor),
                   ],
                 ),
               ),
@@ -240,6 +190,44 @@ class _StockTransferDetailsDialogState extends State<StockTransferDetailsDialog>
             _buildActionButtons(),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildSignaturesCard(bool isDark, Color borderColor) {
+    final hasSig = (_t.senderSignature?.isNotEmpty == true) || (_t.driverSignature?.isNotEmpty == true) || (_t.receiverSignature?.isNotEmpty == true);
+    if (!hasSig) return const SizedBox.shrink();
+
+    Widget sigItem(String title, String? b64, String fallback) {
+      return Expanded(
+        child: Column(
+          children: [
+            Container(
+              height: 48,
+              alignment: Alignment.center,
+              child: (b64 != null && b64.isNotEmpty)
+                  ? Image.memory(base64Decode(b64.replaceFirst(RegExp(r'data:image/[^;]+;base64,'), '')), fit: BoxFit.contain)
+                  : Text(fallback, style: const TextStyle(fontSize: 10, color: Colors.grey, fontStyle: FontStyle.italic)),
+            ),
+            const Divider(height: 8),
+            Text(title, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(top: 14),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(8), border: Border.all(color: borderColor)),
+      child: Row(
+        children: [
+          sigItem('Dispatched By', _t.senderSignature, 'Pending Sign'),
+          const SizedBox(width: 12),
+          sigItem('Carrier / Driver', _t.driverSignature, 'Pending Sign'),
+          const SizedBox(width: 12),
+          sigItem('Received By', _t.receiverSignature, 'Pending Sign'),
+        ],
       ),
     );
   }

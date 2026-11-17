@@ -78,12 +78,14 @@ class StockTransferApiService {
     return null;
   }
 
-  /// Dispatches a DRAFT transfer to IN_TRANSIT
+  /// Dispatches a DRAFT transfer to IN_TRANSIT with optional signatures
   static Future<bool> dispatchTransfer(
     String id, {
     String? vehicleNumber,
     String? driverName,
     String? notes,
+    String? senderSignature,
+    String? driverSignature,
   }) async {
     try {
       final response = await ApiClient().dio.post(
@@ -92,6 +94,8 @@ class StockTransferApiService {
           if (vehicleNumber != null && vehicleNumber.isNotEmpty) 'vehicle_number': vehicleNumber,
           if (driverName != null && driverName.isNotEmpty) 'driver_name': driverName,
           if (notes != null && notes.isNotEmpty) 'notes': notes,
+          if (senderSignature != null && senderSignature.isNotEmpty) 'sender_signature': senderSignature,
+          if (driverSignature != null && driverSignature.isNotEmpty) 'driver_signature': driverSignature,
         },
       );
       return response.statusCode == 200 || response.statusCode == 204;
@@ -108,6 +112,7 @@ class StockTransferApiService {
     String id, {
     required List<Map<String, dynamic>> items,
     String? notes,
+    String? receiverSignature,
   }) async {
     try {
       final response = await ApiClient().dio.post(
@@ -115,6 +120,7 @@ class StockTransferApiService {
         data: {
           'items': items,
           if (notes != null && notes.isNotEmpty) 'notes': notes,
+          if (receiverSignature != null && receiverSignature.isNotEmpty) 'receiver_signature': receiverSignature,
         },
       );
       return response.statusCode == 200 || response.statusCode == 204;

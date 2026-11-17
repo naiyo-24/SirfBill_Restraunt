@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/stock_transfer_models.dart';
 import '../services/stock_transfer_api_service.dart';
+import 'signature_draw_box.dart';
 
 class _ReceiveItemRow {
   final StockTransferItem item;
@@ -49,6 +50,7 @@ class ReceiveStockTransferDialog extends StatefulWidget {
 class _ReceiveStockTransferDialogState extends State<ReceiveStockTransferDialog> {
   late List<_ReceiveItemRow> _rows;
   final TextEditingController _notesCtrl = TextEditingController();
+  final SignatureDrawController _receiverSignCtrl = SignatureDrawController();
   bool _isSaving = false;
 
   @override
@@ -60,6 +62,7 @@ class _ReceiveStockTransferDialogState extends State<ReceiveStockTransferDialog>
   @override
   void dispose() {
     _notesCtrl.dispose();
+    _receiverSignCtrl.dispose();
     for (final r in _rows) {
       r.receivedCtrl.dispose();
       r.reasonCtrl.dispose();
@@ -86,10 +89,12 @@ class _ReceiveStockTransferDialogState extends State<ReceiveStockTransferDialog>
         'variance_reason': r.variance > 0 ? r.reasonCtrl.text.trim() : '',
       }).toList();
 
+      final receiverSig = await _receiverSignCtrl.toPngBase64();
       await StockTransferApiService.receiveTransfer(
         widget.transfer.id,
         items: itemsPayload,
         notes: _notesCtrl.text.trim(),
+        receiverSignature: receiverSig,
       );
 
       if (!mounted) return;
@@ -166,6 +171,13 @@ class _ReceiveStockTransferDialogState extends State<ReceiveStockTransferDialog>
                     TextField(
                       controller: _notesCtrl,
                       decoration: const InputDecoration(labelText: 'Receiving Notes / Temperature Verification', hintText: 'e.g. Verified temperature at arrival: 3.5°C'),
+                    ),
+                    const SizedBox(height: 14),
+                    SignatureDrawBox(
+                      title: 'Received & Verified By (Chef / Manager Signature)',
+                      subtitle: 'Sign using mouse or finger / touch to verify stock arrival',
+                      controller: _receiverSignCtrl,
+                      height: 100,
                     ),
                   ],
                 ),

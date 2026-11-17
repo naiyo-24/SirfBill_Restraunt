@@ -115,6 +115,9 @@ class StockTransferHeader {
   final String vehicleNumber;
   final String driverName;
   final String driverPhone;
+  final String? senderSignature;
+  final String? driverSignature;
+  final String? receiverSignature;
   final int totalItems;
   final double totalValuation;
   final String notes;
@@ -139,6 +142,9 @@ class StockTransferHeader {
     this.vehicleNumber = '',
     this.driverName = '',
     this.driverPhone = '',
+    this.senderSignature,
+    this.driverSignature,
+    this.receiverSignature,
     this.totalItems = 0,
     this.totalValuation = 0.0,
     this.notes = '',
@@ -174,6 +180,9 @@ class StockTransferHeader {
       vehicleNumber: json['vehicle_number']?.toString() ?? '',
       driverName: json['driver_name']?.toString() ?? '',
       driverPhone: json['driver_phone']?.toString() ?? '',
+      senderSignature: json['sender_signature']?.toString(),
+      driverSignature: json['driver_signature']?.toString(),
+      receiverSignature: json['receiver_signature']?.toString(),
       totalItems: json['total_items'] is int ? json['total_items'] : (json['total_items_count'] is int ? json['total_items_count'] : itemsList.length),
       totalValuation: parseNum(json['total_valuation']),
       notes: json['notes']?.toString() ?? '',
@@ -198,4 +207,7 @@ class StockTransferHeader {
     }
     return toStation.isNotEmpty ? toStation : 'Destination Station';
   }
+
+  bool get hasVariance => items.any((it) => it.quantityVariance > 0);
+  List<StockTransferItem> get varianceItems => items.where((it) => it.quantityVariance > 0).toList();
 }

@@ -28,6 +28,7 @@ import 'widgets/inventory_sidebar.dart';
 import 'widgets/inventory_top_bar.dart';
 import 'widgets/low_stock_notification_dialog.dart';
 import 'widgets/receive_stock_transfer_dialog.dart';
+import 'widgets/stock_transfer_details_dialog.dart';
 
 class RestaurantInventoryScreen extends StatefulWidget {
   final InventorySection initialSection;
@@ -56,9 +57,14 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
   int _refreshKeyCounter = 0;
 
   final Map<InventorySection, int> _badgeCounts = {};
-  List<Ingredient> _lowStockItems = [];
-  List<StockTransferHeader> _incomingTransfers = [];
+  List<Ingredient>? _lowStockItems = [];
+  List<StockTransferHeader>? _incomingTransfers = [];
+  List<StockTransferHeader>? _outboundVarianceTransfers = [];
   bool _isSidebarCollapsed = false;
+
+  List<Ingredient> get _safeLowStock => _lowStockItems ?? const [];
+  List<StockTransferHeader> get _safeIncoming => _incomingTransfers ?? const [];
+  List<StockTransferHeader> get _safeVariances => _outboundVarianceTransfers ?? const [];
 
   @override
   void initState() {
@@ -66,9 +72,7 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
     _isSidebarCollapsed = false;
     _currentSection = widget.initialSection;
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) {
-        setState(() => _currentTime = DateTime.now());
-      }
+      if (mounted) setState(() => _currentTime = DateTime.now());
     });
     _loadUserInfo();
   }
@@ -126,13 +130,18 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
 
       List<StockTransferHeader> incoming = [];
       try {
-        final transfers = await StockTransferApiService.getTransfers(
-          outletId: resolvedOutlet,
-          status: 'IN_TRANSIT',
-        );
+        final transfers = await StockTransferApiService.getTransfers(outletId: resolvedOutlet, status: 'IN_TRANSIT');
         incoming = transfers.where((t) => t.toOutletId == resolvedOutlet).toList();
       } catch (e) {
         debugPrint('[InventoryScreen] Failed to load in-transit transfers: $e');
+      }
+
+      List<StockTransferHeader> outboundVariances = [];
+      try {
+        final completed = await StockTransferApiService.getTransfers(outletId: resolvedOutlet, status: 'COMPLETED');
+        outboundVariances = completed.where((t) => t.fromOutletId == resolvedOutlet && t.hasVariance).toList();
+      } catch (e) {
+        debugPrint('[InventoryScreen] Failed to load variance transfers: $e');
       }
 
       if (mounted) {
@@ -144,9 +153,11 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
           _branchName = branchName;
           _lowStockItems = lowItems;
           _incomingTransfers = incoming;
+          _outboundVarianceTransfers = outboundVariances;
           _badgeCounts.clear();
           if (lowStockCount > 0) _badgeCounts[InventorySection.ingredients] = lowStockCount;
-          if (incoming.isNotEmpty) _badgeCounts[InventorySection.stockTransfers] = incoming.length;
+          final transferBadge = incoming.length + outboundVariances.length;
+          if (transferBadge > 0) _badgeCounts[InventorySection.stockTransfers] = transferBadge;
         });
       }
     } catch (_) {}
@@ -165,21 +176,13 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
   void _openLowStockNotifications() {
     LowStockNotificationDialog.show(
       context,
-      lowStockItems: _lowStockItems,
-      incomingTransfers: _incomingTransfers,
-      onOrderIngredient: (ing) {
-        CreatePurchaseOrderDialog.show(context, initialIngredient: ing).then((_) {
-          _loadUserInfo();
-        });
-      },
-      onOrderAll: () {
-        CreatePurchaseOrderDialog.show(context, initialIngredients: _lowStockItems).then((_) {
-          _loadUserInfo();
-        });
-      },
-      onReceiveTransfer: (t) {
-        ReceiveStockTransferDialog.show(context, transfer: t, onReceived: _loadUserInfo);
-      },
+      lowStockItems: _safeLowStock,
+      incomingTransfers: _safeIncoming,
+      outboundVarianceTransfers: _safeVariances,
+      onOrderIngredient: (ing) => CreatePurchaseOrderDialog.show(context, initialIngredient: ing).then((_) => _loadUserInfo()),
+      onOrderAll: () => CreatePurchaseOrderDialog.show(context, initialIngredients: _safeLowStock).then((_) => _loadUserInfo()),
+      onReceiveTransfer: (t) => ReceiveStockTransferDialog.show(context, transfer: t, onReceived: _loadUserInfo),
+      onInspectTransfer: (t) => StockTransferDetailsDialog.show(context, transfer: t, onUpdated: _loadUserInfo),
     );
   }
 
@@ -201,7 +204,7 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
     setState(() {
       _currentSection = section;
       if (Responsive.isDesktop(context)) {
-        _isSidebarCollapsed = true; // Auto-shrink to show only icons when option selected!
+        _isSidebarCollapsed = true;
       }
     });
     if (!Responsive.isDesktop(context) && _scaffoldKey.currentState?.isDrawerOpen == true) {
@@ -211,9 +214,7 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
 
   void _toggleSidebar() {
     if (Responsive.isDesktop(context)) {
-      setState(() {
-        _isSidebarCollapsed = !_isSidebarCollapsed;
-      });
+      setState(() => _isSidebarCollapsed = !_isSidebarCollapsed);
     } else {
       if (_scaffoldKey.currentState?.isDrawerOpen == true) {
         Navigator.pop(context);
@@ -228,39 +229,21 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
-          children: [
-            Icon(Icons.logout_rounded, color: Color(0xFFEF4444)),
-            SizedBox(width: 8),
-            Text('Sign Out of Inventory', style: TextStyle(fontWeight: FontWeight.bold)),
-          ],
-        ),
-        content: const Text(
-          'Are you sure you want to log out of the culinary inventory module and return to the dashboard?',
-        ),
+        title: const Row(children: [Icon(Icons.logout_rounded, color: Color(0xFFEF4444)), SizedBox(width: 8), Text('Sign Out of Inventory')]),
+        content: const Text('Are you sure you want to log out of the culinary inventory module and return to the dashboard?'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFEF4444),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444), foregroundColor: Colors.white),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Logout'),
           ),
         ],
       ),
     );
-
     if (confirm == true && mounted) {
       await AuthService.logout();
-      if (mounted) {
-        context.go('/dashboard');
-      }
+      if (mounted) context.go('/dashboard');
     }
   }
 
@@ -290,7 +273,6 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
         body: SafeArea(
           child: Column(
             children: [
-              // Top Bar Header
               InventoryTopBar(
                 isDesktop: isDesktop,
                 currentTime: _currentTime,
@@ -305,17 +287,13 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
                 onMenuPressed: _toggleSidebar,
                 onLogout: _handleLogout,
                 onRefresh: () {
-                  setState(() {
-                    _refreshKeyCounter++;
-                  });
+                  setState(() => _refreshKeyCounter++);
                   _loadUserInfo();
                 },
                 onBackToDashboard: () => context.go('/dashboard'),
-                lowStockCount: _lowStockItems.length + _incomingTransfers.length,
+                lowStockCount: _safeLowStock.length + _safeIncoming.length + _safeVariances.length,
                 onOpenNotifications: _openLowStockNotifications,
               ),
-
-              // Sidebar + Section Content
               Expanded(
                 child: Row(
                   children: [
@@ -325,8 +303,9 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
                         color: contentBg,
                         child: Column(
                           children: [
-                            if (_incomingTransfers.isNotEmpty) _buildIncomingTransferAlertBanner(isDark, _incomingTransfers.first),
-                            if (_lowStockItems.isNotEmpty) _buildLowStockAlertBanner(isDark),
+                            if (_safeIncoming.isNotEmpty) _buildIncomingTransferAlertBanner(isDark, _safeIncoming.first),
+                            if (_safeVariances.isNotEmpty) _buildVarianceAlertBanner(isDark, _safeVariances.first),
+                            if (_safeLowStock.isNotEmpty) _buildLowStockAlertBanner(isDark),
                             Expanded(
                               child: AnimatedSwitcher(
                                 duration: const Duration(milliseconds: 180),
@@ -351,8 +330,8 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
   }
 
   Widget _buildLowStockAlertBanner(bool isDark) {
-    final count = _lowStockItems.length;
-    final itemNames = _lowStockItems.map((e) => e.name).take(3).join(', ');
+    final count = _safeLowStock.length;
+    final itemNames = _safeLowStock.map((e) => e.name).take(3).join(', ');
     final suffix = count > 3 ? ' +${count - 3} more' : '';
 
     return Container(
@@ -367,21 +346,14 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
         children: [
           Container(
             padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: const Color(0xFFEF4444),
-              borderRadius: BorderRadius.circular(8),
-            ),
+            decoration: BoxDecoration(color: const Color(0xFFEF4444), borderRadius: BorderRadius.circular(8)),
             child: const Icon(Icons.notifications_active_rounded, color: Colors.white, size: 16),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               'Critical Par Alert: $count item${count > 1 ? 's' : ''} ($itemNames$suffix) below minimum threshold.',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 12.5,
-                color: isDark ? const Color(0xFFFCA5A5) : const Color(0xFF991B1B),
-              ),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: isDark ? const Color(0xFFFCA5A5) : const Color(0xFF991B1B)),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -393,6 +365,52 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
             label: const Text('Review & Reorder'),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFEF4444),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+              elevation: 0,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVarianceAlertBanner(bool isDark, StockTransferHeader t) {
+    final lossCount = t.varianceItems.length;
+    final totalLossVal = t.varianceItems.fold<double>(0.0, (sum, i) => sum + (i.quantityVariance * i.unitCost));
+    return Container(
+      margin: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF7C2D12).withValues(alpha: 0.35) : const Color(0xFFFFFBEB),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.6), width: 1.2),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(color: const Color(0xFFF59E0B), borderRadius: BorderRadius.circular(8)),
+            child: const Icon(Icons.report_problem_rounded, color: Colors.white, size: 16),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Discrepancy Alert: Transfer ${t.transferNumber} received at ${t.toOutletName} with $lossCount short item(s) (Shortage Value: ₹${totalLossVal.toStringAsFixed(2)}).',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: isDark ? const Color(0xFFFDE68A) : const Color(0xFFB45309)),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 10),
+          ElevatedButton.icon(
+            onPressed: () => StockTransferDetailsDialog.show(context, transfer: t, onUpdated: _loadUserInfo),
+            icon: const Icon(Icons.receipt_long_rounded, size: 14),
+            label: const Text('View Challan & Variance'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFD97706),
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5),
@@ -418,21 +436,14 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
         children: [
           Container(
             padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: const Color(0xFF3B82F6),
-              borderRadius: BorderRadius.circular(8),
-            ),
+            decoration: BoxDecoration(color: const Color(0xFF3B82F6), borderRadius: BorderRadius.circular(8)),
             child: const Icon(Icons.local_shipping_rounded, color: Colors.white, size: 16),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               'Incoming Delivery: Transfer ${t.transferNumber} from ${t.fromOutletName} is In-Transit (${t.vehicleNumber.isNotEmpty ? t.vehicleNumber : "Delivery Van"}) • ${t.totalItems} commodity line(s).',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 12.5,
-                color: isDark ? const Color(0xFF93C5FD) : const Color(0xFF1E40AF),
-              ),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: isDark ? const Color(0xFF93C5FD) : const Color(0xFF1E40AF)),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -458,32 +469,19 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
 
   Widget _buildActiveSection() {
     switch (_currentSection) {
-      case InventorySection.dashboard:
-        return InventoryDashboardSection(onNavigateSection: _onSectionSelected);
-      case InventorySection.ingredients:
-        return IngredientsSection(onIngredientsLoaded: _handleIngredientsLoaded);
-      case InventorySection.categories:
-        return const CategoriesSection();
-      case InventorySection.suppliers:
-        return const SuppliersSection();
-      case InventorySection.purchaseOrders:
-        return const PurchaseOrdersSection();
-      case InventorySection.goodsReceived:
-        return const GrnSection();
-      case InventorySection.stockManagement:
-        return const StockManagementSection();
-      case InventorySection.stockTransfers:
-        return const StockTransfersSection();
-      case InventorySection.recipeManagement:
-        return const RecipeManagementSection();
-      case InventorySection.stockConsumption:
-        return const StockConsumptionSection();
-      case InventorySection.wastage:
-        return const WastageSection();
-      case InventorySection.stockAudit:
-        return const StockAuditSection();
-      case InventorySection.reports:
-        return const InventoryReportsSection();
+      case InventorySection.dashboard: return InventoryDashboardSection(onNavigateSection: _onSectionSelected);
+      case InventorySection.ingredients: return IngredientsSection(onIngredientsLoaded: _handleIngredientsLoaded);
+      case InventorySection.categories: return const CategoriesSection();
+      case InventorySection.suppliers: return const SuppliersSection();
+      case InventorySection.purchaseOrders: return const PurchaseOrdersSection();
+      case InventorySection.goodsReceived: return const GrnSection();
+      case InventorySection.stockManagement: return const StockManagementSection();
+      case InventorySection.stockTransfers: return const StockTransfersSection();
+      case InventorySection.recipeManagement: return const RecipeManagementSection();
+      case InventorySection.stockConsumption: return const StockConsumptionSection();
+      case InventorySection.wastage: return const WastageSection();
+      case InventorySection.stockAudit: return const StockAuditSection();
+      case InventorySection.reports: return const InventoryReportsSection();
     }
   }
 }
