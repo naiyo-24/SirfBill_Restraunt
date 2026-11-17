@@ -463,6 +463,7 @@ class InventoryApiService {
     required String outletId,
     required String notes,
     required List<Map<String, dynamic>> items,
+    DateTime? auditStartedAt,
   }) async {
     try {
       final response = await ApiClient().dio.post(
@@ -471,6 +472,7 @@ class InventoryApiService {
           'outlet_id': outletId,
           'notes': notes,
           'items': items,
+          if (auditStartedAt != null) 'audit_started_at': auditStartedAt.toIso8601String(),
         },
       );
       if (response.statusCode == 200 || response.statusCode == 201) {

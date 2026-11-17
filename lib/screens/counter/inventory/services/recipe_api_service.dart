@@ -9,10 +9,10 @@ class RecipeApiService {
   static Future<String> getResolvedOutletId() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final assignedId = prefs.getString('assigned_outlet_id');
-      if (assignedId != null && assignedId.isNotEmpty) return assignedId;
       final selectedId = prefs.getString('selected_shop_id');
       if (selectedId != null && selectedId.isNotEmpty) return selectedId;
+      final assignedId = prefs.getString('assigned_outlet_id');
+      if (assignedId != null && assignedId.isNotEmpty) return assignedId;
       return await InventoryService.getShopId();
     } catch (_) {
       return '';

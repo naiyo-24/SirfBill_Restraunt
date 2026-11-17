@@ -41,6 +41,7 @@ class PhysicalCountAuditDialog extends StatefulWidget {
 class _PhysicalCountAuditDialogState extends State<PhysicalCountAuditDialog> {
   final TextEditingController _notesCtrl = TextEditingController(text: 'Physical Cycle Count Audit');
   final TextEditingController _searchCtrl = TextEditingController();
+  final DateTime _auditStartedAt = DateTime.now().toUtc();
 
   bool _isLoading = true;
   bool _isSubmitting = false;
@@ -102,6 +103,7 @@ class _PhysicalCountAuditDialogState extends State<PhysicalCountAuditDialog> {
           'ingredient_id': r.ingredient.id,
           'physical_count': r.physicalCount!,
           'input_uom': r.inputUom,
+          'expected_stock': r.ingredient.currentStock,
         };
       }).toList();
 
@@ -109,6 +111,7 @@ class _PhysicalCountAuditDialogState extends State<PhysicalCountAuditDialog> {
         outletId: outletId,
         notes: _notesCtrl.text.trim(),
         items: itemsPayload,
+        auditStartedAt: _auditStartedAt,
       );
 
       if (!mounted) return;
@@ -133,11 +136,17 @@ class _PhysicalCountAuditDialogState extends State<PhysicalCountAuditDialog> {
   }
 
   void _showAuditSummaryModal(Map<String, dynamic> res, int count) {
+    double parseVal(dynamic v) {
+      if (v == null) return 0.0;
+      if (v is num) return v.toDouble();
+      return double.tryParse(v.toString()) ?? 0.0;
+    }
+
     final batchId = res['audit_batch_id']?.toString() ?? 'BATCH-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
     final itemsAdjusted = res['items_adjusted'] ?? count;
-    final netVariance = (res['net_variance_rupees'] as num?)?.toDouble() ?? 0.0;
-    final surplus = (res['total_surplus_rupees'] as num?)?.toDouble() ?? 0.0;
-    final deficit = (res['total_deficit_rupees'] as num?)?.toDouble() ?? 0.0;
+    final netVariance = parseVal(res['net_variance_rupees']);
+    final surplus = parseVal(res['total_surplus_rupees']);
+    final deficit = parseVal(res['total_deficit_rupees']);
 
     showDialog(
       context: context,

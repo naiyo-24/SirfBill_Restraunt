@@ -5,7 +5,8 @@ import '../services/stock_consumption_api_service.dart';
 import '../widgets/inventory_header.dart';
 
 class StockConsumptionSection extends StatefulWidget {
-  const StockConsumptionSection({super.key});
+  final String? outletId;
+  const StockConsumptionSection({super.key, this.outletId});
 
   @override
   State<StockConsumptionSection> createState() => _StockConsumptionSectionState();
@@ -38,6 +39,14 @@ class _StockConsumptionSectionState extends State<StockConsumptionSection> {
   }
 
   @override
+  void didUpdateWidget(covariant StockConsumptionSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.outletId != widget.outletId) {
+      _loadStream();
+    }
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
@@ -47,6 +56,7 @@ class _StockConsumptionSectionState extends State<StockConsumptionSection> {
     setState(() => _isLoading = true);
     try {
       final data = await StockConsumptionApiService.fetchConsumptionStream(
+        outletId: widget.outletId,
         reason: _reasonFilter,
         search: _searchQuery,
       );

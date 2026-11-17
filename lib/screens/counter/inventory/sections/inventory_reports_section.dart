@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
 import '../models/inventory_models.dart';
 import '../services/inventory_api_service.dart';
+import '../services/food_cost_api_service.dart';
 import '../widgets/inventory_header.dart';
 import '../widgets/inventory_kpi_card.dart';
+import '../widgets/food_cost_reconciliation_card.dart';
 
 class InventoryReportsSection extends StatefulWidget {
-  const InventoryReportsSection({super.key});
+  final String? outletId;
+
+  const InventoryReportsSection({
+    super.key,
+    this.outletId,
+  });
 
   @override
   State<InventoryReportsSection> createState() => _InventoryReportsSectionState();
@@ -13,6 +20,7 @@ class InventoryReportsSection extends StatefulWidget {
 
 class _InventoryReportsSectionState extends State<InventoryReportsSection> {
   bool _isLoading = true;
+  bool _isExporting = false;
   List<Ingredient> _ingredients = [];
   List<IngredientCategory> _categories = [];
 
@@ -22,12 +30,20 @@ class _InventoryReportsSectionState extends State<InventoryReportsSection> {
     _loadData();
   }
 
+  @override
+  void didUpdateWidget(covariant InventoryReportsSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.outletId != widget.outletId) {
+      _loadData();
+    }
+  }
+
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     try {
       final results = await Future.wait([
-        InventoryApiService.getIngredients(),
-        InventoryApiService.getCategories(),
+        InventoryApiService.getIngredients(outletId: widget.outletId),
+        InventoryApiService.getCategories(outletId: widget.outletId),
       ]);
       if (mounted) {
         setState(() {
@@ -38,6 +54,41 @@ class _InventoryReportsSectionState extends State<InventoryReportsSection> {
     } catch (_) {
     } finally {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _handleExportValuation() async {
+    setState(() => _isExporting = true);
+    try {
+      final success = await FoodCostApiService.exportValuationCsv(
+        outletId: widget.outletId,
+      );
+      if (!mounted) return;
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Stock Valuation CSV exported successfully.'),
+            backgroundColor: Color(0xFF10B981),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to export valuation CSV. Please try again.'),
+            backgroundColor: Color(0xFFEF4444),
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Export error: $e'),
+          backgroundColor: const Color(0xFFEF4444),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isExporting = false);
     }
   }
 
@@ -58,16 +109,15 @@ class _InventoryReportsSectionState extends State<InventoryReportsSection> {
           isRefreshing: _isLoading,
           actions: [
             OutlinedButton.icon(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Exporting Inventory Valuation Report (PDF/Excel)...'),
-                    backgroundColor: Color(0xFF10B981),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.file_download_outlined, size: 16),
-              label: const Text('Export Valuation'),
+              onPressed: _isExporting ? null : _handleExportValuation,
+              icon: _isExporting
+                  ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF10B981)),
+                    )
+                  : const Icon(Icons.file_download_outlined, size: 16),
+              label: Text(_isExporting ? 'Exporting...' : 'Export Valuation'),
             ),
           ],
         ),
@@ -94,7 +144,7 @@ class _InventoryReportsSectionState extends State<InventoryReportsSection> {
                       ],
                     ),
                     const SizedBox(height: 24),
-                    _buildFoodCostVarianceCard(context, isDark),
+                    FoodCostReconciliationCard(outletId: widget.outletId),
                   ],
                 ),
         ),
@@ -289,37 +339,6 @@ class _InventoryReportsSectionState extends State<InventoryReportsSection> {
             Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildFoodCostVarianceCard(BuildContext context, bool isDark) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E293B) : Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Actual vs. Theoretical Food Cost Reconciliation',
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              color: isDark ? Colors.white : const Color(0xFF0F172A),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Theoretical cost is computed by POS Recipe BOM consumption. Variances are attributed to Recorded Wastage and Unrecorded Prep Loss/Spillage in kitchen operations.',
-            style: TextStyle(fontSize: 12, color: isDark ? Colors.grey : Colors.blueGrey),
-          ),
-        ],
       ),
     );
   }

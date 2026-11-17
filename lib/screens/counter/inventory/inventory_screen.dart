@@ -189,6 +189,7 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
   Future<void> _selectShop(Shop shop) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('selected_shop_id', shop.id);
+    await prefs.setString('assigned_outlet_id', shop.id);
     await prefs.setString('assigned_outlet_name', shop.name);
     await InventoryService.setShopId(shop.id);
     if (mounted) {
@@ -478,10 +479,10 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
       case InventorySection.stockManagement: return const StockManagementSection();
       case InventorySection.stockTransfers: return const StockTransfersSection();
       case InventorySection.recipeManagement: return const RecipeManagementSection();
-      case InventorySection.stockConsumption: return const StockConsumptionSection();
+      case InventorySection.stockConsumption: return StockConsumptionSection(outletId: _currentShopId);
       case InventorySection.wastage: return const WastageSection();
       case InventorySection.stockAudit: return const StockAuditSection();
-      case InventorySection.reports: return const InventoryReportsSection();
+      case InventorySection.reports: return InventoryReportsSection(outletId: _currentShopId);
     }
   }
 }
