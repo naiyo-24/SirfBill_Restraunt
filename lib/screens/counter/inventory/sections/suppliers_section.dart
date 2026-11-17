@@ -1,9 +1,8 @@
-// ignore_for_file: duplicate_ignore, use_build_context_synchronously
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../models/inventory_models.dart';
 import '../services/inventory_api_service.dart';
+import '../services/procurement_api_service.dart';
+import '../widgets/add_supplier_dialog.dart';
 import '../widgets/inventory_header.dart';
 import '../widgets/supplier_details_dialog.dart';
 
@@ -18,11 +17,14 @@ class _SuppliersSectionState extends State<SuppliersSection> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   bool _isLoading = true;
-  List<Supplier> _suppliers = [];
+  List<Supplier> _suppliers = const [];
+  List<PurchaseOrder> _orders = const [];
 
   @override
   void initState() {
     super.initState();
+    _suppliers = [];
+    _orders = [];
     _loadSuppliers();
   }
 
@@ -36,14 +38,36 @@ class _SuppliersSectionState extends State<SuppliersSection> {
     setState(() => _isLoading = true);
     try {
       final list = await InventoryApiService.getSuppliers(search: _searchQuery);
+      final orders = await ProcurementApiService.getPurchaseOrders();
       if (mounted) {
-        setState(() => _suppliers = list);
+        setState(() {
+          _suppliers = list;
+          _orders = orders;
+        });
       }
     } catch (_) {
-      if (mounted) setState(() => _suppliers = []);
+      if (mounted) {
+        setState(() {
+          _suppliers = [];
+          _orders = [];
+        });
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  List<PurchaseOrder> _getSupplierOrders(Supplier s) {
+    // Defend against null on Flutter Web hot reload state
+    final ordersList = _orders;
+    // ignore: unnecessary_null_comparison
+    if (ordersList == null || ordersList.isEmpty) return [];
+    return ordersList.where((po) {
+      if (po.supplierId.isNotEmpty && po.supplierId == s.id) return true;
+      final poSupp = po.supplierName.trim().toLowerCase();
+      final supp = s.name.trim().toLowerCase();
+      return poSupp.isNotEmpty && (poSupp == supp || poSupp.contains(supp) || supp.contains(poSupp));
+    }).toList();
   }
 
   @override
@@ -222,25 +246,52 @@ class _SuppliersSectionState extends State<SuppliersSection> {
                 ),
                 Expanded(
                   flex: 2,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF10B981).withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          '${s.activeOrderCount} Invoices',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF10B981),
+                  child: Builder(
+                    builder: (_) {
+                      final matchingOrders = _getSupplierOrders(s);
+                      final orderCount = matchingOrders.length;
+                      final totalSpend = matchingOrders.fold(0.0, (sum, po) => sum + po.totalAmount);
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: orderCount > 0
+                                  ? const Color(0xFF10B981).withValues(alpha: 0.12)
+                                  : (isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9)),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  '$orderCount ${orderCount == 1 ? 'Purchase' : 'Purchases'}',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: orderCount > 0 ? const Color(0xFF10B981) : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                                  ),
+                                ),
+                                if (totalSpend > 0) ...[
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    '₹${totalSpend.toStringAsFixed(0)}',
+                                    style: TextStyle(
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.w600,
+                                      color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
                           ),
-                        ),
-                      ),
-                    ],
+                        ],
+                      );
+                    },
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -262,204 +313,16 @@ class _SuppliersSectionState extends State<SuppliersSection> {
       context: context,
       builder: (_) => SupplierDetailsDialog(
         supplier: s,
+        orders: _orders,
         onUpdated: _loadSuppliers,
       ),
     );
   }
 
   void _openAddSupplierDialog(BuildContext context) {
-    final nameCtrl = TextEditingController();
-    final contactCtrl = TextEditingController();
-    final phoneCtrl = TextEditingController();
-    final emailCtrl = TextEditingController();
-    final gstinCtrl = TextEditingController();
-    final termsCtrl = TextEditingController(text: '15');
-    final addressCtrl = TextEditingController();
-    bool isSaving = false;
-    String? gstinError;
-
     showDialog(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('Add Supplier / Vendor'),
-          content: SizedBox(
-            width: 480,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TextField(
-                    controller: nameCtrl,
-                    decoration: const InputDecoration(labelText: 'Company / Business Name *'),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: contactCtrl,
-                          decoration: const InputDecoration(labelText: 'Contact Person Name'),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextField(
-                          controller: phoneCtrl,
-                          keyboardType: TextInputType.phone,
-                          inputFormatters: [
-                            LengthLimitingTextInputFormatter(10),
-                            FilteringTextInputFormatter.digitsOnly,
-                          ],
-                          decoration: const InputDecoration(
-                            labelText: 'Phone Number',
-                            hintText: '10-digit mobile number',
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: emailCtrl,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(
-                      labelText: 'Email Address',
-                      hintText: 'e.g. billing@vendor.com',
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        flex: 3,
-                        child: TextField(
-                          controller: gstinCtrl,
-                          maxLength: 15,
-                          textCapitalization: TextCapitalization.characters,
-                          inputFormatters: [
-                            LengthLimitingTextInputFormatter(15),
-                            FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9]')),
-                            _UpperCaseInputFormatter(),
-                          ],
-                          onChanged: (val) {
-                            setDialogState(() {
-                              if (val.trim().isNotEmpty && val.trim().length != 15) {
-                                gstinError = 'Must be 15 chars (${val.trim().length}/15)';
-                              } else {
-                                gstinError = null;
-                              }
-                            });
-                          },
-                          decoration: InputDecoration(
-                            labelText: 'GSTIN (15 Chars)',
-                            hintText: 'e.g. 19AAAAA0000A1Z5',
-                            errorText: gstinError,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        flex: 2,
-                        child: TextField(
-                          controller: termsCtrl,
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                          decoration: const InputDecoration(labelText: 'Credit Terms (Days)'),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: addressCtrl,
-                    maxLines: 2,
-                    decoration: const InputDecoration(
-                      labelText: 'Business Address',
-                      hintText: 'Shop / Warehouse address',
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-            ElevatedButton(
-              onPressed: isSaving
-                  ? null
-                  : () async {
-                      final name = nameCtrl.text.trim();
-                      if (name.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Please enter supplier name'), backgroundColor: Colors.orange),
-                        );
-                        return;
-                      }
-
-                      final gstin = gstinCtrl.text.trim().toUpperCase();
-                      if (gstin.isNotEmpty && gstin.length != 15) {
-                        setDialogState(() {
-                          gstinError = 'GSTIN must be exactly 15 alphanumeric characters';
-                        });
-                        return;
-                      }
-
-                      setDialogState(() => isSaving = true);
-                      try {
-                        await InventoryApiService.createSupplier({
-                          'name': name,
-                          'contact_person': contactCtrl.text.trim(),
-                          'phone': phoneCtrl.text.trim(),
-                          'email': emailCtrl.text.trim(),
-                          'address': addressCtrl.text.trim(),
-                          'gstin': gstin,
-                          'payment_terms_days': int.tryParse(termsCtrl.text) ?? 15,
-                        });
-                        if (mounted) {
-                          Navigator.pop(ctx);
-                          _loadSuppliers();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Supplier registered successfully!'),
-                              backgroundColor: Color(0xFF10B981),
-                            ),
-                          );
-                        }
-                      } catch (e) {
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-                          );
-                        }
-                      } finally {
-                        setDialogState(() => isSaving = false);
-                      }
-                    },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF10B981),
-                foregroundColor: Colors.white,
-              ),
-              child: isSaving
-                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Text('Save Supplier'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _UpperCaseInputFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
-    return TextEditingValue(
-      text: newValue.text.toUpperCase(),
-      selection: newValue.selection,
+      builder: (_) => AddSupplierDialog(onCreated: _loadSuppliers),
     );
   }
 }

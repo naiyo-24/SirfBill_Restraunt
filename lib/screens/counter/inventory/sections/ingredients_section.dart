@@ -8,7 +8,9 @@ import '../widgets/inventory_header.dart';
 import '../widgets/inventory_status_badge.dart';
 
 class IngredientsSection extends StatefulWidget {
-  const IngredientsSection({super.key});
+  final ValueChanged<List<Ingredient>>? onIngredientsLoaded;
+
+  const IngredientsSection({super.key, this.onIngredientsLoaded});
 
   @override
   State<IngredientsSection> createState() => _IngredientsSectionState();
@@ -49,6 +51,7 @@ class _IngredientsSectionState extends State<IngredientsSection> {
           _categories = cats;
           _ingredients = items;
         });
+        widget.onIngredientsLoaded?.call(items);
       }
     } catch (_) {
       if (mounted) {

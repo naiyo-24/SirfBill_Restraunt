@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../models/inventory_ops_models.dart';
 import '../widgets/inventory_header.dart';
 import '../widgets/inventory_status_badge.dart';
+import '../widgets/physical_count_audit_dialog.dart';
 
 class StockAuditSection extends StatefulWidget {
   const StockAuditSection({super.key});
@@ -183,16 +184,11 @@ class _StockAuditSectionState extends State<StockAuditSection> {
   void _openStartAuditDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Start Physical Count'),
-        content: const SizedBox(
-          width: 400,
-          child: Text('Select storage zone (e.g. Dry Pantry, Walk-in Chiller) to start cycle audit.'),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
-        ],
+      barrierDismissible: false,
+      builder: (ctx) => PhysicalCountAuditDialog(
+        onAuditSubmitted: () {
+          setState(() {});
+        },
       ),
     );
   }

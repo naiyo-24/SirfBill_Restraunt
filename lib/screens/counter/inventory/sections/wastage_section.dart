@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../models/inventory_ops_models.dart';
+import '../models/inventory_models.dart';
+import '../services/inventory_api_service.dart';
 import '../widgets/inventory_header.dart';
+import '../widgets/adjust_stock_dialog.dart';
 
 class WastageSection extends StatefulWidget {
   const WastageSection({super.key});
@@ -14,6 +16,20 @@ class _WastageSectionState extends State<WastageSection> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   final List<WastageRecord> _wastages = [];
+  List<Ingredient> _ingredients = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadIngredients();
+  }
+
+  Future<void> _loadIngredients() async {
+    try {
+      final list = await InventoryApiService.getIngredients();
+      if (mounted) setState(() => _ingredients = list);
+    } catch (_) {}
+  }
 
   @override
   void dispose() {
@@ -210,18 +226,24 @@ class _WastageSectionState extends State<WastageSection> {
   }
 
   void _openRecordWastageDialog(BuildContext context) {
+    if (_ingredients.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Loading ingredients, please wait...')),
+      );
+      _loadIngredients();
+      return;
+    }
+
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Log Kitchen Wastage'),
-        content: const SizedBox(
-          width: 400,
-          child: Text('Select ingredient, quantity lost, and disposal cause for food cost audit.'),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
-        ],
+      builder: (ctx) => AdjustStockDialog(
+        ingredients: _ingredients,
+        initialReason: 'WASTAGE',
+        customTitle: 'Log Kitchen Wastage',
+        onAdjusted: () {
+          _loadIngredients();
+          setState(() {});
+        },
       ),
     );
   }

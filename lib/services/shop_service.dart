@@ -114,9 +114,12 @@ class Shop {
 }
 
 class ShopService {
-  static Future<List<Shop>> getShops() async {
+  static Future<List<Shop>> getShops({bool allBranches = false}) async {
     try {
-      final response = await ApiClient().dio.get('/api/admin/shops');
+      final response = await ApiClient().dio.get(
+        '/api/admin/shops',
+        queryParameters: allBranches ? {'all_branches': true} : null,
+      );
 
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data;

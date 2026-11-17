@@ -1,15 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 import '../models/inventory_models.dart';
 import '../services/inventory_api_service.dart';
+import 'inventory_status_badge.dart';
+import 'purchase_order_details_dialog.dart';
 
 class SupplierDetailsDialog extends StatefulWidget {
   final Supplier supplier;
+  final List<PurchaseOrder> orders;
   final VoidCallback onUpdated;
 
   const SupplierDetailsDialog({
     super.key,
     required this.supplier,
+    this.orders = const [],
     required this.onUpdated,
   });
 
@@ -221,15 +226,33 @@ class _SupplierDetailsDialogState extends State<SupplierDetailsDialog> {
     );
   }
 
+  List<PurchaseOrder> get _matchingOrders {
+    final list = widget.orders;
+    // ignore: unnecessary_null_comparison
+    if (list == null || list.isEmpty) return [];
+    return list.where((po) {
+      if (po.supplierId.isNotEmpty && po.supplierId == _supplier.id) return true;
+      final poSupp = po.supplierName.trim().toLowerCase();
+      final supp = _supplier.name.trim().toLowerCase();
+      return poSupp.isNotEmpty && (poSupp == supp || poSupp.contains(supp) || supp.contains(poSupp));
+    }).toList();
+  }
+
   Widget _buildDetailsView(bool isDark) {
+    final matchingPOs = _matchingOrders;
+    final totalSpend = matchingPOs.fold(0.0, (sum, po) => sum + po.totalAmount);
+    final dateFormat = DateFormat('dd MMM yyyy');
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
             Expanded(child: _buildMetricCard('Credit Terms', '${_supplier.paymentTermsDays} Days', Icons.calendar_month_outlined, isDark)),
-            const SizedBox(width: 12),
-            Expanded(child: _buildMetricCard('Active Invoices', '${_supplier.activeOrderCount}', Icons.receipt_long_outlined, isDark)),
+            const SizedBox(width: 8),
+            Expanded(child: _buildMetricCard('Total Purchases', '${matchingPOs.length} Invoices', Icons.receipt_long_outlined, isDark)),
+            const SizedBox(width: 8),
+            Expanded(child: _buildMetricCard('Total Spend', '₹${totalSpend.toStringAsFixed(0)}', Icons.payments_outlined, isDark)),
           ],
         ),
         const SizedBox(height: 20),
@@ -240,6 +263,89 @@ class _SupplierDetailsDialogState extends State<SupplierDetailsDialog> {
         _buildInfoTile('Email Address', _supplier.email.isNotEmpty ? _supplier.email : 'Not provided', Icons.email_outlined, isDark, canCopy: _supplier.email.isNotEmpty),
         _buildInfoTile('GSTIN Number', _supplier.gstin.isNotEmpty ? _supplier.gstin : 'Unregistered', Icons.verified_outlined, isDark, canCopy: _supplier.gstin.isNotEmpty),
         _buildInfoTile('Business Address', _supplier.address.isNotEmpty ? _supplier.address : 'Not provided', Icons.location_on_outlined, isDark),
+        const SizedBox(height: 20),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Purchases from this Supplier (${matchingPOs.length})', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            Text('${matchingPOs.length} Orders', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+          ],
+        ),
+        const SizedBox(height: 10),
+        if (matchingPOs.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+            ),
+            child: const Center(
+              child: Text(
+                'No purchases or invoices recorded yet with this vendor.',
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ),
+          )
+        else
+          Column(
+            children: matchingPOs.map((po) {
+              return InkWell(
+                onTap: () => showDialog(context: context, builder: (_) => PurchaseOrderDetailsDialog(po: po)),
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Icon(Icons.receipt_rounded, color: Color(0xFF10B981), size: 18),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Text(po.poNumber, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                const SizedBox(width: 8),
+                                InventoryStatusBadge.status(po.status.label, color: po.status.color),
+                              ],
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              '${dateFormat.format(po.orderDate)} • ${po.items.length} item${po.items.length == 1 ? '' : 's'} (${po.items.map((i) => i.ingredientName).take(2).join(', ')})',
+                              style: const TextStyle(fontSize: 11, color: Colors.grey),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        '₹${po.totalAmount.toStringAsFixed(0)}',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF10B981)),
+                      ),
+                      const SizedBox(width: 6),
+                      const Icon(Icons.chevron_right, size: 16, color: Colors.grey),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
       ],
     );
   }
@@ -320,14 +426,8 @@ class _SupplierDetailsDialogState extends State<SupplierDetailsDialog> {
           controller: _gstinCtrl,
           maxLength: 15,
           textCapitalization: TextCapitalization.characters,
-          inputFormatters: [
-            LengthLimitingTextInputFormatter(15),
-            FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9]')),
-          ],
-          decoration: InputDecoration(
-            labelText: 'GSTIN Number (15 Characters)',
-            errorText: _gstinError,
-          ),
+          inputFormatters: [LengthLimitingTextInputFormatter(15), FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9]'))],
+          decoration: InputDecoration(labelText: 'GSTIN Number (15 Characters)', errorText: _gstinError),
         ),
         const SizedBox(height: 10),
         TextField(controller: _termsCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Credit Terms (Days)')),

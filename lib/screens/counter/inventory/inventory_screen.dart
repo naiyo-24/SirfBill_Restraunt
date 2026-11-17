@@ -79,7 +79,7 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
     try {
       final name = await AuthService.getUserName();
       final role = await AuthService.getUserRole();
-      final shops = await ShopService.getShops();
+      final shops = await ShopService.getShops(allBranches: true);
       final prefs = await SharedPreferences.getInstance();
       final savedId = prefs.getString('assigned_outlet_id') ?? prefs.getString('selected_shop_id');
       final savedName = prefs.getString('assigned_outlet_name');
@@ -93,13 +93,23 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
         branchName = match.name;
       }
 
+      final resolvedOutlet = (savedId != null && savedId.isNotEmpty)
+          ? savedId
+          : (shops.isNotEmpty ? shops.first.id : '');
+      if (resolvedOutlet.isNotEmpty) {
+        await prefs.setString('selected_shop_id', resolvedOutlet);
+        await InventoryService.setShopId(resolvedOutlet);
+      }
+
       int lowStockCount = 0;
       List<Ingredient> lowItems = [];
       try {
-        final items = await InventoryApiService.getIngredients();
+        final items = await InventoryApiService.getIngredients(outletId: resolvedOutlet);
         lowItems = items.where((i) => i.isLowStock || i.isOutOfStock).toList();
         lowStockCount = lowItems.length;
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('[InventoryScreen] Failed to load low stock items: $e');
+      }
 
       if (mounted) {
         setState(() {
@@ -110,7 +120,7 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
             _userRole = role.trim();
           }
           _shops = shops;
-          _currentShopId = savedId ?? (shops.isNotEmpty ? shops.first.id : null);
+          _currentShopId = resolvedOutlet.isNotEmpty ? resolvedOutlet : null;
           _branchName = branchName;
           _lowStockItems = lowItems;
           _badgeCounts.clear();
@@ -120,6 +130,16 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
         });
       }
     } catch (_) {}
+  }
+
+  void _handleIngredientsLoaded(List<Ingredient> items) {
+    final lowItems = items.where((i) => i.isLowStock || i.isOutOfStock).toList();
+    if (mounted) {
+      setState(() {
+        _lowStockItems = lowItems;
+        _badgeCounts[InventorySection.ingredients] = lowItems.length;
+      });
+    }
   }
 
   void _openLowStockNotifications() {
@@ -149,6 +169,7 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
         _currentShopId = shop.id;
         _branchName = shop.name;
       });
+      _loadUserInfo();
     }
   }
 
@@ -278,12 +299,19 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
                     Expanded(
                       child: Container(
                         color: contentBg,
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 180),
-                          child: KeyedSubtree(
-                            key: ValueKey('${_currentSection}_$_refreshKeyCounter'),
-                            child: _buildActiveSection(),
-                          ),
+                        child: Column(
+                          children: [
+                            if (_lowStockItems.isNotEmpty) _buildLowStockAlertBanner(isDark),
+                            Expanded(
+                              child: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 180),
+                                child: KeyedSubtree(
+                                  key: ValueKey('${_currentSection}_$_refreshKeyCounter'),
+                                  child: _buildActiveSection(),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -297,12 +325,67 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
     );
   }
 
+  Widget _buildLowStockAlertBanner(bool isDark) {
+    final count = _lowStockItems.length;
+    final itemNames = _lowStockItems.map((e) => e.name).take(3).join(', ');
+    final suffix = count > 3 ? ' +${count - 3} more' : '';
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF7F1D1D).withValues(alpha: 0.35) : const Color(0xFFFEF2F2),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFEF4444).withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEF4444),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(Icons.notifications_active_rounded, color: Colors.white, size: 16),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Critical Par Alert: $count item${count > 1 ? 's' : ''} ($itemNames$suffix) below minimum threshold.',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 12.5,
+                color: isDark ? const Color(0xFFFCA5A5) : const Color(0xFF991B1B),
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 10),
+          ElevatedButton.icon(
+            onPressed: _openLowStockNotifications,
+            icon: const Icon(Icons.shopping_cart_checkout, size: 14),
+            label: const Text('Review & Reorder'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+              elevation: 0,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildActiveSection() {
     switch (_currentSection) {
       case InventorySection.dashboard:
         return InventoryDashboardSection(onNavigateSection: _onSectionSelected);
       case InventorySection.ingredients:
-        return const IngredientsSection();
+        return IngredientsSection(onIngredientsLoaded: _handleIngredientsLoaded);
       case InventorySection.categories:
         return const CategoriesSection();
       case InventorySection.suppliers:

@@ -3,6 +3,7 @@ import '../models/inventory_models.dart';
 import '../services/inventory_api_service.dart';
 import '../widgets/inventory_header.dart';
 import '../widgets/inventory_status_badge.dart';
+import '../widgets/adjust_stock_dialog.dart';
 
 class StockManagementSection extends StatefulWidget {
   const StockManagementSection({super.key});
@@ -198,94 +199,12 @@ class _StockManagementSectionState extends State<StockManagementSection> {
       return;
     }
 
-    final targetItem = item ?? _ingredients.first;
-    final qtyCtrl = TextEditingController();
-    final reasonCtrl = TextEditingController(text: 'Cycle Count Audit');
-    bool isSaving = false;
-
     showDialog(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Text('Adjust Stock for ${targetItem.name}'),
-          content: SizedBox(
-            width: 400,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Current balance: ${(targetItem.currentStock / 1000).toStringAsFixed(2)} ${targetItem.purchaseUom}',
-                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: qtyCtrl,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: 'Adjustment Quantity (${targetItem.purchaseUom}) *',
-                    hintText: 'e.g. +5.0 or -2.5',
-                  ),
-                ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: reasonCtrl,
-                  decoration: const InputDecoration(labelText: 'Adjustment Reason (e.g. Spoilage, Physical Audit, Misplacement)'),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-            ElevatedButton(
-              onPressed: isSaving
-                  ? null
-                  : () async {
-                      final parsed = double.tryParse(qtyCtrl.text.trim());
-                      if (parsed == null) return;
-                      setDialogState(() => isSaving = true);
-                      try {
-                        final ok = await InventoryApiService.recordStockAdjustment(
-                          ingredientId: targetItem.id,
-                          signedQuantity: parsed * (targetItem.recipeUom == 'G' || targetItem.recipeUom == 'ML' ? 1000 : 1),
-                          reason: reasonCtrl.text.trim(),
-                        );
-                        if (mounted) {
-                          // ignore: use_build_context_synchronously
-                          Navigator.pop(ctx);
-                          if (ok) {
-                            _loadIngredients();
-                            // ignore: use_build_context_synchronously
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Stock balance adjusted successfully!'),
-                                backgroundColor: Color(0xFF10B981),
-                              ),
-                            );
-                          }
-                        }
-                      } catch (e) {
-                        if (mounted) {
-                          // ignore: use_build_context_synchronously
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-                          );
-                        }
-                      } finally {
-                        setDialogState(() => isSaving = false);
-                      }
-                    },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF10B981),
-                foregroundColor: Colors.white,
-              ),
-              child: isSaving
-                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Text('Confirm Adjustment'),
-            ),
-          ],
-        ),
+      builder: (ctx) => AdjustStockDialog(
+        initialIngredient: item,
+        ingredients: _ingredients,
+        onAdjusted: _loadIngredients,
       ),
     );
   }

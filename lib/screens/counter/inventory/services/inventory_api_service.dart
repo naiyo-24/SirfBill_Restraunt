@@ -402,10 +402,8 @@ class InventoryApiService {
 
   static Future<bool> deleteSupplier(String id) async {
     try {
-      final response = await ApiClient().dio.delete(
-        '/api/admin/distributors/$id',
-      );
-      return response.statusCode == 200 || response.statusCode == 204;
+      final res = await ApiClient().dio.delete('/api/admin/distributors/$id');
+      return res.statusCode == 200 || res.statusCode == 204;
     } catch (e) {
       debugPrint('[InventoryApiService] deleteSupplier error: $e');
       return false;
@@ -417,20 +415,14 @@ class InventoryApiService {
   // ==========================================
 
   static Future<List<PurchaseOrder>> getPurchaseOrders({String? shopId}) async {
-    final targetOutlet = (shopId != null && shopId.isNotEmpty)
-        ? shopId
-        : await getResolvedOutletId();
+    final targetOutlet = (shopId != null && shopId.isNotEmpty) ? shopId : await getResolvedOutletId();
     try {
-      final response = await ApiClient().dio.get(
+      final res = await ApiClient().dio.get(
         '/api/admin/purchases/',
-        queryParameters: {
-          if (targetOutlet.isNotEmpty) 'shop_id': targetOutlet,
-        },
+        queryParameters: {if (targetOutlet.isNotEmpty) 'shop_id': targetOutlet},
       );
-      if (response.statusCode == 200 && response.data is List) {
-        return (response.data as List)
-            .map((b) => PurchaseOrder.fromPurchaseBill(b))
-            .toList();
+      if (res.statusCode == 200 && res.data is List) {
+        return (res.data as List).map((b) => PurchaseOrder.fromPurchaseBill(b)).toList();
       }
     } catch (e) {
       debugPrint('[InventoryApiService] getPurchaseOrders error: $e');
@@ -439,12 +431,13 @@ class InventoryApiService {
   }
 
   // ==========================================
-  // STOCK ADJUSTMENTS / MOVEMENTS
+  // STOCK ADJUSTMENTS & BULK AUDIT RECONCILIATION
   // ==========================================
 
   static Future<bool> recordStockAdjustment({
     required String ingredientId,
     required double signedQuantity,
+    String inputUom = 'RECIPE',
     required String reason,
     String? notes,
   }) async {
@@ -454,6 +447,7 @@ class InventoryApiService {
         data: {
           'ingredient_id': ingredientId,
           'signed_quantity': signedQuantity,
+          'input_uom': inputUom,
           'reason': reason,
           'notes': notes ?? '',
         },
@@ -463,5 +457,31 @@ class InventoryApiService {
       debugPrint('[InventoryApiService] recordStockAdjustment error: $e');
       return false;
     }
+  }
+
+  static Future<Map<String, dynamic>?> submitStockAudit({
+    required String outletId,
+    required String notes,
+    required List<Map<String, dynamic>> items,
+  }) async {
+    try {
+      final response = await ApiClient().dio.post(
+        '/api/restaurant/inventory/audits/submit',
+        data: {
+          'outlet_id': outletId,
+          'notes': notes,
+          'items': items,
+        },
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (response.data is Map<String, dynamic>) {
+          return response.data as Map<String, dynamic>;
+        }
+        return {'success': true};
+      }
+    } catch (e) {
+      debugPrint('[InventoryApiService] submitStockAudit error: $e');
+    }
+    return null;
   }
 }
