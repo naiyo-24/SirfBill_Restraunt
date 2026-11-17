@@ -21,8 +21,10 @@ import 'sections/stock_management_section.dart';
 import 'sections/stock_transfers_section.dart';
 import 'sections/suppliers_section.dart';
 import 'sections/wastage_section.dart';
+import 'widgets/create_purchase_order_dialog.dart';
 import 'widgets/inventory_sidebar.dart';
 import 'widgets/inventory_top_bar.dart';
+import 'widgets/low_stock_notification_dialog.dart';
 
 class RestaurantInventoryScreen extends StatefulWidget {
   final InventorySection initialSection;
@@ -51,10 +53,13 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
   int _refreshKeyCounter = 0;
 
   final Map<InventorySection, int> _badgeCounts = {};
+  List<Ingredient> _lowStockItems = [];
+  bool _isSidebarCollapsed = false;
 
   @override
   void initState() {
     super.initState();
+    _isSidebarCollapsed = false;
     _currentSection = widget.initialSection;
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) {
@@ -89,9 +94,11 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
       }
 
       int lowStockCount = 0;
+      List<Ingredient> lowItems = [];
       try {
         final items = await InventoryApiService.getIngredients();
-        lowStockCount = items.where((i) => i.isLowStock || i.isOutOfStock).length;
+        lowItems = items.where((i) => i.isLowStock || i.isOutOfStock).toList();
+        lowStockCount = lowItems.length;
       } catch (_) {}
 
       if (mounted) {
@@ -105,6 +112,7 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
           _shops = shops;
           _currentShopId = savedId ?? (shops.isNotEmpty ? shops.first.id : null);
           _branchName = branchName;
+          _lowStockItems = lowItems;
           _badgeCounts.clear();
           if (lowStockCount > 0) {
             _badgeCounts[InventorySection.ingredients] = lowStockCount;
@@ -112,6 +120,23 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
         });
       }
     } catch (_) {}
+  }
+
+  void _openLowStockNotifications() {
+    LowStockNotificationDialog.show(
+      context,
+      lowStockItems: _lowStockItems,
+      onOrderIngredient: (ing) {
+        CreatePurchaseOrderDialog.show(context, initialIngredient: ing).then((_) {
+          _loadUserInfo();
+        });
+      },
+      onOrderAll: () {
+        CreatePurchaseOrderDialog.show(context, initialIngredients: _lowStockItems).then((_) {
+          _loadUserInfo();
+        });
+      },
+    );
   }
 
   Future<void> _selectShop(Shop shop) async {
@@ -130,6 +155,9 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
   void _onSectionSelected(InventorySection section) {
     setState(() {
       _currentSection = section;
+      if (Responsive.isDesktop(context)) {
+        _isSidebarCollapsed = true; // Auto-shrink to show only icons when option selected!
+      }
     });
     if (!Responsive.isDesktop(context) && _scaffoldKey.currentState?.isDrawerOpen == true) {
       Navigator.pop(context);
@@ -137,7 +165,11 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
   }
 
   void _toggleSidebar() {
-    if (!Responsive.isDesktop(context)) {
+    if (Responsive.isDesktop(context)) {
+      setState(() {
+        _isSidebarCollapsed = !_isSidebarCollapsed;
+      });
+    } else {
       if (_scaffoldKey.currentState?.isDrawerOpen == true) {
         Navigator.pop(context);
       } else {
@@ -193,9 +225,11 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final contentBg = isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC);
 
-    Widget buildSidebar() => InventorySidebar(
+    Widget buildSidebar({bool isDrawer = false}) => InventorySidebar(
           selectedSection: _currentSection,
           onSectionSelected: _onSectionSelected,
+          isCollapsed: isDrawer ? false : (_isSidebarCollapsed == true),
+          onToggleCollapse: _toggleSidebar,
           onLogout: _handleLogout,
           badgeCounts: _badgeCounts,
           isStandalone: widget.isStandalone,
@@ -207,7 +241,7 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
       child: Scaffold(
         key: _scaffoldKey,
         backgroundColor: isDark ? const Color(0xFF0F172A) : Colors.white,
-        drawer: isDesktop ? null : Drawer(child: buildSidebar()),
+        drawer: isDesktop ? null : Drawer(child: buildSidebar(isDrawer: true)),
         body: SafeArea(
           child: Column(
             children: [
@@ -232,6 +266,8 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
                   _loadUserInfo();
                 },
                 onBackToDashboard: () => context.go('/dashboard'),
+                lowStockCount: _lowStockItems.length,
+                onOpenNotifications: _openLowStockNotifications,
               ),
 
               // Sidebar + Section Content

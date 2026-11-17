@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../services/shop_service.dart';
 import '../models/inventory_models.dart';
+import 'inventory_notification_bell.dart';
 import 'inventory_top_bar_components.dart';
 
 class InventoryTopBar extends StatelessWidget {
@@ -18,6 +19,8 @@ class InventoryTopBar extends StatelessWidget {
   final VoidCallback onLogout;
   final VoidCallback? onRefresh;
   final VoidCallback? onBackToDashboard;
+  final int lowStockCount;
+  final VoidCallback? onOpenNotifications;
 
   const InventoryTopBar({
     super.key,
@@ -35,6 +38,8 @@ class InventoryTopBar extends StatelessWidget {
     required this.onLogout,
     this.onRefresh,
     this.onBackToDashboard,
+    this.lowStockCount = 0,
+    this.onOpenNotifications,
   });
 
   Widget _buildShortcutChip({
@@ -103,7 +108,7 @@ class InventoryTopBar extends StatelessWidget {
     final headerBg = isDark ? const Color(0xFF1E293B) : Colors.white;
     final borderColor = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
     final screenWidth = MediaQuery.of(context).size.width;
-    final showMiddlePills = isDesktop && screenWidth >= 1000;
+    final showMiddlePills = isDesktop && screenWidth >= 1260;
 
     return Container(
       height: isDesktop ? 70 : 64,
@@ -119,12 +124,31 @@ class InventoryTopBar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          if (!isDesktop)
-            IconButton(
-              icon: const Icon(Icons.menu),
-              onPressed: onMenuPressed,
-              tooltip: 'Toggle Navigation Menu',
+          // 3-Bar Hamburger Menu Toggle
+          Tooltip(
+            message: 'Toggle Sidebar Menu',
+            child: InkWell(
+              borderRadius: BorderRadius.circular(10),
+              onTap: onMenuPressed,
+              child: Container(
+                width: 38,
+                height: 38,
+                margin: const EdgeInsets.only(right: 12),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: borderColor, width: 1.2),
+                ),
+                child: Center(
+                  child: Icon(
+                    Icons.menu_rounded,
+                    size: 20,
+                    color: isDark ? Colors.white : const Color(0xFF1E293B),
+                  ),
+                ),
+              ),
             ),
+          ),
 
           // Logo / Branding
           Image.asset(
@@ -258,10 +282,18 @@ class InventoryTopBar extends StatelessWidget {
             const Spacer(),
           ],
 
-          // Right side Calendar + Profile Pills
+          // Right side Bell + Calendar + Profile Pills
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
+              if (onOpenNotifications != null) ...[
+                InventoryNotificationBell(
+                  count: lowStockCount,
+                  onTap: onOpenNotifications!,
+                  isDark: isDark,
+                ),
+                const SizedBox(width: 10),
+              ],
               InventoryDateCalendarPill(currentTime: currentTime),
               const SizedBox(width: 10),
               InventoryProfilePill(

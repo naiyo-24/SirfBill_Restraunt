@@ -8,7 +8,29 @@ import 'po_line_items_table.dart';
 import 'po_summary_section.dart';
 
 class CreatePurchaseOrderDialog extends StatefulWidget {
-  const CreatePurchaseOrderDialog({super.key});
+  final Ingredient? initialIngredient;
+  final List<Ingredient>? initialIngredients;
+
+  const CreatePurchaseOrderDialog({
+    super.key,
+    this.initialIngredient,
+    this.initialIngredients,
+  });
+
+  static Future<PurchaseOrder?> show(
+    BuildContext context, {
+    Ingredient? initialIngredient,
+    List<Ingredient>? initialIngredients,
+  }) {
+    return showDialog<PurchaseOrder>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => CreatePurchaseOrderDialog(
+        initialIngredient: initialIngredient,
+        initialIngredients: initialIngredients,
+      ),
+    );
+  }
 
   @override
   State<CreatePurchaseOrderDialog> createState() => _CreatePurchaseOrderDialogState();
@@ -54,15 +76,49 @@ class _CreatePurchaseOrderDialogState extends State<CreatePurchaseOrderDialog> {
         setState(() {
           _suppliers = results[0] as List<Supplier>;
           _ingredients = results[1] as List<Ingredient>;
-          String? prefSup;
-          if (_ingredients.isNotEmpty) {
-            final first = _ingredients.first;
-            if (first.primarySupplierId.isNotEmpty && _suppliers.any((s) => s.id == first.primarySupplierId)) {
-              prefSup = first.primarySupplierId;
+
+          final prefillList = widget.initialIngredients ??
+              (widget.initialIngredient != null ? [widget.initialIngredient!] : <Ingredient>[]);
+
+          if (prefillList.isNotEmpty) {
+            for (final ing in prefillList) {
+              final item = PoLineItemInput();
+              item.ingredientId = ing.id;
+              item.ingredientName = ing.name;
+              item.unit = ing.purchaseUom.isNotEmpty ? ing.purchaseUom : 'KG';
+              item.priceController.text = ing.costPerPurchaseUnit > 0
+                  ? (ing.costPerPurchaseUnit == ing.costPerPurchaseUnit.roundToDouble()
+                      ? ing.costPerPurchaseUnit.toInt().toString()
+                      : ing.costPerPurchaseUnit.toStringAsFixed(2))
+                  : '100';
+
+              final factor = ing.uomConversionFactor > 0 ? ing.uomConversionFactor : 1.0;
+              final deficit = (ing.idealParLevel > ing.currentStock)
+                  ? ((ing.idealParLevel - ing.currentStock) / factor)
+                  : 1.0;
+              final reorderQty = deficit <= 0 ? 1.0 : deficit;
+              item.qtyController.text = reorderQty == reorderQty.roundToDouble()
+                  ? reorderQty.toInt().toString()
+                  : reorderQty.toStringAsFixed(1);
+              _items.add(item);
             }
+            final first = prefillList.first;
+            if (first.primarySupplierId.isNotEmpty && _suppliers.any((s) => s.id == first.primarySupplierId)) {
+              _selectedSupplierId = first.primarySupplierId;
+            } else if (_suppliers.isNotEmpty) {
+              _selectedSupplierId = _suppliers.first.id;
+            }
+          } else {
+            String? prefSup;
+            if (_ingredients.isNotEmpty) {
+              final first = _ingredients.first;
+              if (first.primarySupplierId.isNotEmpty && _suppliers.any((s) => s.id == first.primarySupplierId)) {
+                prefSup = first.primarySupplierId;
+              }
+            }
+            _selectedSupplierId = prefSup ?? (_suppliers.isNotEmpty ? _suppliers.first.id : null);
+            _addItem();
           }
-          _selectedSupplierId = prefSup ?? (_suppliers.isNotEmpty ? _suppliers.first.id : null);
-          _addItem();
           _isLoading = false;
         });
       }
@@ -126,15 +182,11 @@ class _CreatePurchaseOrderDialogState extends State<CreatePurchaseOrderDialog> {
   Future<void> _submitPO() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedSupplierId == null || _selectedSupplierId!.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a supplier / vendor'), backgroundColor: Colors.red),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a supplier / vendor'), backgroundColor: Colors.red));
       return;
     }
     if (_items.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please add at least one line item'), backgroundColor: Colors.red),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please add at least one line item'), backgroundColor: Colors.red));
       return;
     }
 
@@ -365,16 +417,10 @@ class _CreatePurchaseOrderDialogState extends State<CreatePurchaseOrderDialog> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'TARGET SUPPLIER / VENDOR',
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.5, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569)),
-              ),
+              Text('TARGET SUPPLIER / VENDOR', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.5, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569))),
               const SizedBox(height: 6),
-              // ignore: deprecated_member_use
               DropdownButtonFormField<String>(
-                initialValue: _suppliers.any((s) => s.id == _selectedSupplierId)
-                    ? _selectedSupplierId
-                    : (_suppliers.isNotEmpty ? _suppliers.first.id : null),
+                initialValue: _suppliers.any((s) => s.id == _selectedSupplierId) ? _selectedSupplierId : null,
                 isExpanded: true,
                 style: TextStyle(fontSize: 13, color: isDark ? Colors.white : const Color(0xFF0F172A), fontWeight: FontWeight.w600),
                 decoration: InputDecoration(
@@ -385,10 +431,7 @@ class _CreatePurchaseOrderDialogState extends State<CreatePurchaseOrderDialog> {
                   enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0))),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 ),
-                items: _suppliers.map((s) => DropdownMenuItem(
-                  value: s.id,
-                  child: Text('${s.name} ${s.phone.isNotEmpty ? "(${s.phone})" : ""}', overflow: TextOverflow.ellipsis),
-                )).toList(),
+                items: _suppliers.map((s) => DropdownMenuItem(value: s.id, child: Text('${s.name} ${s.phone.isNotEmpty ? "(${s.phone})" : ""}', overflow: TextOverflow.ellipsis))).toList(),
                 onChanged: (v) => setState(() => _selectedSupplierId = v),
               ),
             ],
@@ -400,37 +443,22 @@ class _CreatePurchaseOrderDialogState extends State<CreatePurchaseOrderDialog> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'EXPECTED DELIVERY DATE',
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.5, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569)),
-              ),
+              Text('EXPECTED DELIVERY DATE', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.5, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569))),
               const SizedBox(height: 6),
               InkWell(
                 onTap: () async {
-                  final picked = await showDatePicker(
-                    context: context,
-                    initialDate: _expectedDeliveryDate,
-                    firstDate: DateTime.now(),
-                    lastDate: DateTime.now().add(const Duration(days: 90)),
-                  );
+                  final picked = await showDatePicker(context: context, initialDate: _expectedDeliveryDate, firstDate: DateTime.now(), lastDate: DateTime.now().add(const Duration(days: 90)));
                   if (picked != null) setState(() => _expectedDeliveryDate = picked);
                 },
                 borderRadius: BorderRadius.circular(10),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-                  decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
-                  ),
+                  decoration: BoxDecoration(color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(10), border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0))),
                   child: Row(
                     children: [
                       const Icon(Icons.event_available_rounded, size: 18, color: Color(0xFF10B981)),
                       const SizedBox(width: 10),
-                      Text(
-                        _displayFormat.format(_expectedDeliveryDate),
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: isDark ? Colors.white : const Color(0xFF0F172A)),
-                      ),
+                      Text(_displayFormat.format(_expectedDeliveryDate), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: isDark ? Colors.white : const Color(0xFF0F172A))),
                       const Spacer(),
                       const Icon(Icons.arrow_drop_down, color: Colors.grey),
                     ],
@@ -450,10 +478,7 @@ class _CreatePurchaseOrderDialogState extends State<CreatePurchaseOrderDialog> {
       children: [
         OutlinedButton(
           onPressed: () => Navigator.of(context).pop(),
-          style: OutlinedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          ),
+          style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
           child: const Text('Cancel'),
         ),
         const SizedBox(width: 14),
@@ -462,18 +487,8 @@ class _CreatePurchaseOrderDialogState extends State<CreatePurchaseOrderDialog> {
           icon: _isSaving
               ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
               : Icon(_sendImmediately ? Icons.send_rounded : Icons.save_rounded, size: 16),
-          label: Text(
-            _sendImmediately ? 'Create & Dispatch PO' : 'Save as Draft',
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-          ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF10B981),
-            foregroundColor: Colors.white,
-            elevation: 3,
-            shadowColor: const Color(0xFF10B981).withValues(alpha: 0.4),
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 13),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          ),
+          label: Text(_sendImmediately ? 'Create & Dispatch PO' : 'Save as Draft', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981), foregroundColor: Colors.white, elevation: 3, padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 13), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
         ),
       ],
     );

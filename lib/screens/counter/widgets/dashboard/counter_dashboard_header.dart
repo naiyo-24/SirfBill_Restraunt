@@ -129,11 +129,31 @@ class CounterDashboardHeader extends StatelessWidget {
       ),
       child: Row(
         children: [
-          IconButton(
-            icon: const Icon(Icons.menu),
-            onPressed: onMenuPressed,
+          // 3-Bar Hamburger Menu Toggle Pill (matching Inventory design)
+          Tooltip(
+            message: 'Toggle Navigation Menu',
+            child: InkWell(
+              borderRadius: BorderRadius.circular(10),
+              onTap: onMenuPressed,
+              child: Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: borderColor, width: 1.2),
+                ),
+                child: Center(
+                  child: Icon(
+                    Icons.menu_rounded,
+                    size: 20,
+                    color: isDark ? Colors.white : const Color(0xFF1E293B),
+                  ),
+                ),
+              ),
+            ),
           ),
-          SizedBox(width: isDesktop ? 16 : 8),
+          SizedBox(width: isDesktop ? 16 : 10),
           Image.asset(
             isDark ? 'assets/LOGO_DM.png' : 'assets/LOGO.png',
             height: isDesktop ? 75 : 45,

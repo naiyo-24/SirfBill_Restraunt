@@ -18,6 +18,7 @@ class _IngredientsSectionState extends State<IngredientsSection> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   String? _selectedCategoryId;
+  bool _showLowStockOnly = false;
   bool _isLoading = true;
   List<IngredientCategory> _categories = [];
   List<Ingredient> _ingredients = [];
@@ -65,6 +66,7 @@ class _IngredientsSectionState extends State<IngredientsSection> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    final lowStockCount = _ingredients.where((i) => i.isLowStock || i.isOutOfStock).length;
     final filteredItems = _ingredients.where((item) {
       final q = _searchQuery.toLowerCase();
       final matchesSearch = q.isEmpty ||
@@ -72,7 +74,8 @@ class _IngredientsSectionState extends State<IngredientsSection> {
           item.code.toLowerCase().contains(q);
       final matchesCategory =
           _selectedCategoryId == null || item.categoryId == _selectedCategoryId;
-      return matchesSearch && matchesCategory;
+      final matchesStock = !_showLowStockOnly || (item.isLowStock || item.isOutOfStock);
+      return matchesSearch && matchesCategory && matchesStock;
     }).toList();
 
     return Column(
@@ -99,7 +102,7 @@ class _IngredientsSectionState extends State<IngredientsSection> {
             ),
           ),
         ),
-        _buildCategoryFilters(isDark),
+        _buildCategoryFilters(isDark, lowStockCount),
         Expanded(
           child: _isLoading
               ? const Center(child: CircularProgressIndicator(color: Color(0xFF10B981)))
@@ -118,7 +121,7 @@ class _IngredientsSectionState extends State<IngredientsSection> {
     );
   }
 
-  Widget _buildCategoryFilters(bool isDark) {
+  Widget _buildCategoryFilters(bool isDark, int lowStockCount) {
     return Container(
       height: 48,
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -135,21 +138,34 @@ class _IngredientsSectionState extends State<IngredientsSection> {
         children: [
           _buildFilterChip(
             label: 'All Categories',
-            isSelected: _selectedCategoryId == null,
-            onSelected: () {
-              setState(() => _selectedCategoryId = null);
-              _loadData();
-            },
+            isSelected: _selectedCategoryId == null && !_showLowStockOnly,
+            onSelected: () => setState(() {
+              _selectedCategoryId = null;
+              _showLowStockOnly = false;
+            }),
             isDark: isDark,
           ),
+          if (lowStockCount > 0)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: FilterChip(
+                selected: _showLowStockOnly,
+                avatar: Icon(Icons.warning_amber_rounded, size: 14, color: _showLowStockOnly ? Colors.white : const Color(0xFFEF4444)),
+                label: Text('Low Stock Alerts ($lowStockCount)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: _showLowStockOnly ? Colors.white : const Color(0xFFEF4444))),
+                backgroundColor: isDark ? const Color(0xFFEF4444).withValues(alpha: 0.15) : const Color(0xFFFEF2F2),
+                selectedColor: const Color(0xFFEF4444),
+                onSelected: (val) => setState(() => _showLowStockOnly = val),
+                side: BorderSide(color: const Color(0xFFEF4444).withValues(alpha: 0.4)),
+              ),
+            ),
           ..._categories.map((cat) {
             return _buildFilterChip(
               label: cat.name,
-              isSelected: _selectedCategoryId == cat.id,
-              onSelected: () {
-                setState(() => _selectedCategoryId = cat.id);
-                _loadData();
-              },
+              isSelected: _selectedCategoryId == cat.id && !_showLowStockOnly,
+              onSelected: () => setState(() {
+                _selectedCategoryId = cat.id;
+                _showLowStockOnly = false;
+              }),
               isDark: isDark,
             );
           }),

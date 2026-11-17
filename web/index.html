@@ -52,6 +52,17 @@
         e.preventDefault();
       }
     }, { passive: false });
+
+    // Lock browser back arrow so clicking Chrome's "←" does not exit or disrupt working sessions
+    (function() {
+      function lockNavigation() {
+        window.history.pushState(null, document.title, window.location.href);
+      }
+      lockNavigation();
+      window.addEventListener('popstate', function() {
+        lockNavigation();
+      });
+    })();
   </script>
 </head>
 <body>
