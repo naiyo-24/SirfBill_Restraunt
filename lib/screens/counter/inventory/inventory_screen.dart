@@ -7,7 +7,9 @@ import '../../../../services/inventory_service.dart';
 import '../../../../services/shop_service.dart';
 import '../../../../utils/responsive.dart';
 import 'models/inventory_models.dart';
+import 'models/stock_transfer_models.dart';
 import 'services/inventory_api_service.dart';
+import 'services/stock_transfer_api_service.dart';
 import 'sections/categories_section.dart';
 import 'sections/grn_section.dart';
 import 'sections/ingredients_section.dart';
@@ -25,6 +27,7 @@ import 'widgets/create_purchase_order_dialog.dart';
 import 'widgets/inventory_sidebar.dart';
 import 'widgets/inventory_top_bar.dart';
 import 'widgets/low_stock_notification_dialog.dart';
+import 'widgets/receive_stock_transfer_dialog.dart';
 
 class RestaurantInventoryScreen extends StatefulWidget {
   final InventorySection initialSection;
@@ -54,6 +57,7 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
 
   final Map<InventorySection, int> _badgeCounts = {};
   List<Ingredient> _lowStockItems = [];
+  List<StockTransferHeader> _incomingTransfers = [];
   bool _isSidebarCollapsed = false;
 
   @override
@@ -78,18 +82,27 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
   Future<void> _loadUserInfo() async {
     try {
       final name = await AuthService.getUserName();
-      final role = await AuthService.getUserRole();
-      final shops = await ShopService.getShops(allBranches: true);
+      final role = (await AuthService.getUserRole() ?? '').trim().toUpperCase();
+      final allShops = await ShopService.getShops(allBranches: true);
       final prefs = await SharedPreferences.getInstance();
-      final savedId = prefs.getString('assigned_outlet_id') ?? prefs.getString('selected_shop_id');
+      final assignedOutletId = prefs.getString('assigned_outlet_id');
+      final savedId = (assignedOutletId != null && assignedOutletId.isNotEmpty)
+          ? assignedOutletId
+          : prefs.getString('selected_shop_id');
       final savedName = prefs.getString('assigned_outlet_name');
+
+      final isAdmin = role == 'ADMIN' || role == 'OWNER' || role == 'SUPER_ADMIN';
+      final isRestricted = !isAdmin && (assignedOutletId != null && assignedOutletId.isNotEmpty);
+
+      List<Shop> shops = allShops;
+      if (isRestricted) {
+        final assigned = allShops.where((s) => s.id == assignedOutletId).toList();
+        if (assigned.isNotEmpty) shops = assigned;
+      }
 
       String branchName = savedName ?? 'Karim\'s - Original From Jama Masjid Delhi 6';
       if (shops.isNotEmpty) {
-        final match = shops.firstWhere(
-          (s) => s.id == savedId,
-          orElse: () => shops.first,
-        );
+        final match = shops.firstWhere((s) => s.id == savedId, orElse: () => shops.first);
         branchName = match.name;
       }
 
@@ -111,22 +124,29 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
         debugPrint('[InventoryScreen] Failed to load low stock items: $e');
       }
 
+      List<StockTransferHeader> incoming = [];
+      try {
+        final transfers = await StockTransferApiService.getTransfers(
+          outletId: resolvedOutlet,
+          status: 'IN_TRANSIT',
+        );
+        incoming = transfers.where((t) => t.toOutletId == resolvedOutlet).toList();
+      } catch (e) {
+        debugPrint('[InventoryScreen] Failed to load in-transit transfers: $e');
+      }
+
       if (mounted) {
         setState(() {
-          if (name != null && name.trim().isNotEmpty) {
-            _userName = name.trim();
-          }
-          if (role != null && role.trim().isNotEmpty) {
-            _userRole = role.trim();
-          }
+          if (name != null && name.trim().isNotEmpty) _userName = name.trim();
+          if (role.isNotEmpty) _userRole = role;
           _shops = shops;
           _currentShopId = resolvedOutlet.isNotEmpty ? resolvedOutlet : null;
           _branchName = branchName;
           _lowStockItems = lowItems;
+          _incomingTransfers = incoming;
           _badgeCounts.clear();
-          if (lowStockCount > 0) {
-            _badgeCounts[InventorySection.ingredients] = lowStockCount;
-          }
+          if (lowStockCount > 0) _badgeCounts[InventorySection.ingredients] = lowStockCount;
+          if (incoming.isNotEmpty) _badgeCounts[InventorySection.stockTransfers] = incoming.length;
         });
       }
     } catch (_) {}
@@ -146,6 +166,7 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
     LowStockNotificationDialog.show(
       context,
       lowStockItems: _lowStockItems,
+      incomingTransfers: _incomingTransfers,
       onOrderIngredient: (ing) {
         CreatePurchaseOrderDialog.show(context, initialIngredient: ing).then((_) {
           _loadUserInfo();
@@ -155,6 +176,9 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
         CreatePurchaseOrderDialog.show(context, initialIngredients: _lowStockItems).then((_) {
           _loadUserInfo();
         });
+      },
+      onReceiveTransfer: (t) {
+        ReceiveStockTransferDialog.show(context, transfer: t, onReceived: _loadUserInfo);
       },
     );
   }
@@ -287,7 +311,7 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
                   _loadUserInfo();
                 },
                 onBackToDashboard: () => context.go('/dashboard'),
-                lowStockCount: _lowStockItems.length,
+                lowStockCount: _lowStockItems.length + _incomingTransfers.length,
                 onOpenNotifications: _openLowStockNotifications,
               ),
 
@@ -301,6 +325,7 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
                         color: contentBg,
                         child: Column(
                           children: [
+                            if (_incomingTransfers.isNotEmpty) _buildIncomingTransferAlertBanner(isDark, _incomingTransfers.first),
                             if (_lowStockItems.isNotEmpty) _buildLowStockAlertBanner(isDark),
                             Expanded(
                               child: AnimatedSwitcher(
@@ -368,6 +393,57 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
             label: const Text('Review & Reorder'),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFEF4444),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+              elevation: 0,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildIncomingTransferAlertBanner(bool isDark, StockTransferHeader t) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E3A8A).withValues(alpha: 0.35) : const Color(0xFFEFF6FF),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFF3B82F6).withValues(alpha: 0.5), width: 1.2),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: const Color(0xFF3B82F6),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(Icons.local_shipping_rounded, color: Colors.white, size: 16),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Incoming Delivery: Transfer ${t.transferNumber} from ${t.fromOutletName} is In-Transit (${t.vehicleNumber.isNotEmpty ? t.vehicleNumber : "Delivery Van"}) • ${t.totalItems} commodity line(s).',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 12.5,
+                color: isDark ? const Color(0xFF93C5FD) : const Color(0xFF1E40AF),
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 10),
+          ElevatedButton.icon(
+            onPressed: () => ReceiveStockTransferDialog.show(context, transfer: t, onReceived: _loadUserInfo),
+            icon: const Icon(Icons.check_circle_outline_rounded, size: 14),
+            label: const Text('Receive & Reconcile'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF3B82F6),
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5),

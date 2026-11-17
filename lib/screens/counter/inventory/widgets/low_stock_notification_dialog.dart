@@ -1,30 +1,39 @@
 import 'package:flutter/material.dart';
 import '../models/inventory_models.dart';
+import '../models/stock_transfer_models.dart';
 
 class LowStockNotificationDialog extends StatelessWidget {
   final List<Ingredient> lowStockItems;
+  final List<StockTransferHeader> incomingTransfers;
   final ValueChanged<Ingredient>? onOrderIngredient;
   final VoidCallback? onOrderAll;
+  final ValueChanged<StockTransferHeader>? onReceiveTransfer;
 
   const LowStockNotificationDialog({
     super.key,
     required this.lowStockItems,
+    this.incomingTransfers = const [],
     this.onOrderIngredient,
     this.onOrderAll,
+    this.onReceiveTransfer,
   });
 
   static Future<void> show(
     BuildContext context, {
     required List<Ingredient> lowStockItems,
+    List<StockTransferHeader> incomingTransfers = const [],
     ValueChanged<Ingredient>? onOrderIngredient,
     VoidCallback? onOrderAll,
+    ValueChanged<StockTransferHeader>? onReceiveTransfer,
   }) {
     return showDialog(
       context: context,
       builder: (ctx) => LowStockNotificationDialog(
         lowStockItems: lowStockItems,
+        incomingTransfers: incomingTransfers,
         onOrderIngredient: onOrderIngredient,
         onOrderAll: onOrderAll,
+        onReceiveTransfer: onReceiveTransfer,
       ),
     );
   }
@@ -39,7 +48,7 @@ class LowStockNotificationDialog extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       backgroundColor: isDark ? const Color(0xFF0F172A) : Colors.white,
       child: Container(
-        width: 650,
+        width: 680,
         constraints: BoxConstraints(
           maxHeight: MediaQuery.of(context).size.height * 0.85,
         ),
@@ -51,15 +60,48 @@ class LowStockNotificationDialog extends StatelessWidget {
             _buildHeader(context, isDark, outOfStockCount, lowCount),
             const SizedBox(height: 16),
             Expanded(
-              child: lowStockItems.isEmpty
+              child: (lowStockItems.isEmpty && incomingTransfers.isEmpty)
                   ? _buildEmptyState(isDark)
-                  : ListView.separated(
-                      itemCount: lowStockItems.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 10),
-                      itemBuilder: (context, index) {
-                        final item = lowStockItems[index];
-                        return _buildNotificationItem(context, item, isDark);
-                      },
+                  : ListView(
+                      children: [
+                        if (incomingTransfers.isNotEmpty) ...[
+                          Row(
+                            children: [
+                              const Icon(Icons.local_shipping_rounded, size: 16, color: Color(0xFF3B82F6)),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Incoming Stock Transfers (${incomingTransfers.length})',
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF3B82F6)),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          for (final t in incomingTransfers) ...[
+                            _buildIncomingTransferCard(context, t, isDark),
+                            const SizedBox(height: 8),
+                          ],
+                          const SizedBox(height: 12),
+                          const Divider(),
+                          const SizedBox(height: 12),
+                        ],
+                        if (lowStockItems.isNotEmpty) ...[
+                          Row(
+                            children: [
+                              const Icon(Icons.warning_amber_rounded, size: 16, color: Color(0xFFEF4444)),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Low Stock Par Alerts (${lowStockItems.length})',
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFFEF4444)),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          for (final item in lowStockItems) ...[
+                            _buildNotificationItem(context, item, isDark),
+                            const SizedBox(height: 8),
+                          ],
+                        ],
+                      ],
                     ),
             ),
             if (lowStockItems.isNotEmpty) ...[
@@ -68,6 +110,76 @@ class LowStockNotificationDialog extends StatelessWidget {
             ],
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildIncomingTransferCard(BuildContext context, StockTransferHeader t, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF0FDF4),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF10B981).withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(Icons.local_shipping_rounded, color: Color(0xFF10B981), size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      t.transferNumber,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF3B82F6).withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text(
+                        'IN TRANSIT',
+                        style: TextStyle(color: Color(0xFF3B82F6), fontSize: 9.5, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  'From: ${t.fromOutletName} • ${t.totalItems} item(s) • Van: ${t.vehicleNumber.isNotEmpty ? t.vehicleNumber : "Delivery Van"}',
+                  style: const TextStyle(fontSize: 11, color: Colors.grey),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              onReceiveTransfer?.call(t);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF10B981),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+            ),
+            child: const Text('Receive', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
+          ),
+        ],
       ),
     );
   }

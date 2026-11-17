@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/stock_transfer_models.dart';
+import '../services/inventory_api_service.dart';
 import '../services/stock_transfer_api_service.dart';
 import 'inventory_status_badge.dart';
 import 'receive_stock_transfer_dialog.dart';
@@ -34,14 +35,22 @@ class StockTransferDetailsDialog extends StatefulWidget {
 class _StockTransferDetailsDialogState extends State<StockTransferDetailsDialog> {
   late StockTransferHeader _t;
   bool _isActionInProgress = false;
+  String _currentOutletId = '';
 
   @override
   void initState() {
     super.initState();
     _t = widget.transfer;
+    _resolveCurrentOutlet();
+  }
+
+  Future<void> _resolveCurrentOutlet() async {
+    final outlet = await InventoryApiService.getResolvedOutletId();
+    if (mounted) setState(() => _currentOutletId = outlet);
   }
 
   Future<void> _dispatchTransfer() async {
+    final isStation = _t.transferType == StockTransferType.interStation;
     final vehicleCtrl = TextEditingController(text: _t.vehicleNumber);
     final driverCtrl = TextEditingController(text: _t.driverName);
     final notesCtrl = TextEditingController();
@@ -50,17 +59,19 @@ class _StockTransferDetailsDialogState extends State<StockTransferDetailsDialog>
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Confirm Dispatch & Lock Stock', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(isStation ? 'Confirm Inter-Station Transfer' : 'Confirm Dispatch & Lock Stock', style: const TextStyle(fontWeight: FontWeight.bold)),
         content: SizedBox(
           width: 420,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('This will deduct stock from source and log TRANSFER_OUT ledger entries.', style: TextStyle(fontSize: 12, color: Colors.grey)),
+              Text(isStation ? 'This will transfer stock to destination station.' : 'This will deduct stock from source and log TRANSFER_OUT ledger entries.', style: const TextStyle(fontSize: 12, color: Colors.grey)),
               const SizedBox(height: 12),
-              TextField(controller: vehicleCtrl, decoration: const InputDecoration(labelText: 'Vehicle / Van Number')),
-              const SizedBox(height: 10),
-              TextField(controller: driverCtrl, decoration: const InputDecoration(labelText: 'Driver Name')),
+              if (!isStation) ...[
+                TextField(controller: vehicleCtrl, decoration: const InputDecoration(labelText: 'Vehicle / Van Number')),
+                const SizedBox(height: 10),
+              ],
+              TextField(controller: driverCtrl, decoration: InputDecoration(labelText: isStation ? 'Transferred By (Staff Name)' : 'Driver Name')),
               const SizedBox(height: 10),
               TextField(controller: notesCtrl, decoration: const InputDecoration(labelText: 'Dispatch Notes')),
             ],
@@ -68,11 +79,7 @@ class _StockTransferDetailsDialogState extends State<StockTransferDetailsDialog>
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
-            child: const Text('Dispatch Goods'),
-          ),
+          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white), child: Text(isStation ? 'Transfer Stock' : 'Dispatch Goods')),
         ],
       ),
     );
@@ -120,11 +127,7 @@ class _StockTransferDetailsDialogState extends State<StockTransferDetailsDialog>
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Close')),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
-            child: const Text('Confirm Cancel'),
-          ),
+          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white), child: const Text('Confirm Cancel')),
         ],
       ),
     );
@@ -191,6 +194,11 @@ class _StockTransferDetailsDialogState extends State<StockTransferDetailsDialog>
                       Text('Created: ${dateFormat.format(_t.createdAt)} • Initiated by ${_t.transferredBy}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
                     ],
                   ),
+                ),
+                IconButton(
+                  tooltip: 'Digital Bill / Print Challan',
+                  onPressed: () => StockTransferApiService.openTransferBillView(_t.id),
+                  icon: const Icon(Icons.receipt_long_rounded, color: Color(0xFF10B981)),
                 ),
                 IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
               ],
@@ -274,16 +282,22 @@ class _StockTransferDetailsDialogState extends State<StockTransferDetailsDialog>
   }
 
   Widget _buildLogisticsCard(bool isDark, Color borderColor) {
+    final isStation = _t.transferType == StockTransferType.interStation;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(8), border: Border.all(color: borderColor)),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _logisticsItem(Icons.local_shipping_outlined, 'Vehicle', _t.vehicleNumber.isNotEmpty ? _t.vehicleNumber : 'Not assigned'),
-          _logisticsItem(Icons.person_pin_outlined, 'Driver', _t.driverName.isNotEmpty ? _t.driverName : 'Unassigned'),
-          _logisticsItem(Icons.phone_outlined, 'Contact', _t.driverPhone.isNotEmpty ? _t.driverPhone : 'Not provided'),
-        ],
+        children: isStation
+            ? [
+                _logisticsItem(Icons.person_pin_outlined, 'Transferred By', _t.driverName.isNotEmpty ? _t.driverName : (_t.transferredBy.isNotEmpty ? _t.transferredBy : 'Staff')),
+                _logisticsItem(Icons.phone_outlined, 'Contact Phone', _t.driverPhone.isNotEmpty ? _t.driverPhone : 'Not provided'),
+              ]
+            : [
+                _logisticsItem(Icons.local_shipping_outlined, 'Vehicle', _t.vehicleNumber.isNotEmpty ? _t.vehicleNumber : 'Not assigned'),
+                _logisticsItem(Icons.person_pin_outlined, 'Driver', _t.driverName.isNotEmpty ? _t.driverName : 'Unassigned'),
+                _logisticsItem(Icons.phone_outlined, 'Contact', _t.driverPhone.isNotEmpty ? _t.driverPhone : 'Not provided'),
+              ],
       ),
     );
   }
@@ -304,6 +318,24 @@ class _StockTransferDetailsDialogState extends State<StockTransferDetailsDialog>
     );
   }
 
+  String _formatQty(double qty, String unit) {
+    final u = unit.trim().toUpperCase();
+    if ((u == 'G' || u == 'GM') && qty >= 1000) {
+      final kg = qty / 1000;
+      final kgStr = kg % 1 == 0 ? kg.toStringAsFixed(0) : kg.toStringAsFixed(2);
+      final gmStr = qty % 1 == 0 ? qty.toStringAsFixed(0) : qty.toStringAsFixed(1);
+      return '$kgStr KG ($gmStr GM)';
+    }
+    if (u == 'ML' && qty >= 1000) {
+      final ltr = qty / 1000;
+      final ltrStr = ltr % 1 == 0 ? ltr.toStringAsFixed(0) : ltr.toStringAsFixed(2);
+      final mlStr = qty % 1 == 0 ? qty.toStringAsFixed(0) : qty.toStringAsFixed(1);
+      return '$ltrStr LTR ($mlStr ML)';
+    }
+    final qStr = qty % 1 == 0 ? qty.toStringAsFixed(0) : qty.toStringAsFixed(2);
+    return '$qStr $unit';
+  }
+
   Widget _buildItemsTable(bool isDark, Color borderColor) {
     return Container(
       decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), border: Border.all(color: borderColor)),
@@ -312,13 +344,19 @@ class _StockTransferDetailsDialogState extends State<StockTransferDetailsDialog>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
-            child: const Row(
+            child: Row(
               children: [
-                Expanded(flex: 3, child: Text('Commodity', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11))),
-                Expanded(flex: 2, child: Text('Dispatched', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11))),
-                Expanded(flex: 2, child: Text('Received', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11))),
-                Expanded(flex: 2, child: Text('Variance', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11))),
-                Expanded(flex: 2, child: Text('Total Cost', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11))),
+                const Expanded(flex: 3, child: Text('Commodity', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11))),
+                Expanded(
+                  flex: 2,
+                  child: Text(
+                    _t.status == StockTransferStatus.draft ? 'Requested' : 'Dispatched',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+                  ),
+                ),
+                const Expanded(flex: 2, child: Text('Received', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11))),
+                const Expanded(flex: 2, child: Text('Variance', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11))),
+                const Expanded(flex: 2, child: Text('Total Cost', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11))),
               ],
             ),
           ),
@@ -338,15 +376,31 @@ class _StockTransferDetailsDialogState extends State<StockTransferDetailsDialog>
                       ],
                     ),
                   ),
-                  Expanded(flex: 2, child: Text('${it.quantityDispatched} ${it.unit}', style: const TextStyle(fontSize: 12))),
-                  Expanded(flex: 2, child: Text(_t.status == StockTransferStatus.completed ? '${it.quantityReceived} ${it.unit}' : 'Pending', style: const TextStyle(fontSize: 12))),
+                  Expanded(
+                    flex: 2,
+                    child: Text(
+                      _t.status == StockTransferStatus.draft
+                          ? _formatQty(it.quantityRequested, it.unit)
+                          : _formatQty(it.quantityDispatched, it.unit),
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: Text(
+                      _t.status == StockTransferStatus.completed
+                          ? _formatQty(it.quantityReceived, it.unit)
+                          : 'Pending',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ),
                   Expanded(
                     flex: 2,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          hasLoss ? '-${it.quantityVariance} ${it.unit}' : '0.0',
+                          hasLoss ? '-${_formatQty(it.quantityVariance, it.unit)}' : '0.0',
                           style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: hasLoss ? Colors.red : Colors.teal),
                         ),
                         if (hasLoss && it.varianceReason.isNotEmpty) Text(it.varianceReason, style: const TextStyle(fontSize: 9.5, color: Colors.redAccent)),
@@ -367,6 +421,9 @@ class _StockTransferDetailsDialogState extends State<StockTransferDetailsDialog>
   }
 
   Widget _buildActionButtons() {
+    final isDestination = _currentOutletId.isEmpty || _t.toOutletId == _currentOutletId;
+    final isSource = _currentOutletId.isEmpty || _t.fromOutletId == _currentOutletId;
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -380,29 +437,52 @@ class _StockTransferDetailsDialogState extends State<StockTransferDetailsDialog>
           const SizedBox(),
         Row(
           children: [
+            OutlinedButton.icon(
+              onPressed: () => StockTransferApiService.openTransferBillView(_t.id),
+              icon: const Icon(Icons.receipt_long_rounded, size: 16),
+              label: const Text('Digital Bill'),
+              style: OutlinedButton.styleFrom(foregroundColor: const Color(0xFF10B981), side: const BorderSide(color: Color(0xFF10B981)), padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+            ),
+            const SizedBox(width: 8),
             TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
             if (_t.status == StockTransferStatus.draft) ...[
               const SizedBox(width: 10),
-              ElevatedButton.icon(
-                onPressed: _isActionInProgress ? null : _dispatchTransfer,
-                icon: const Icon(Icons.local_shipping_outlined, size: 16),
-                label: const Text('Dispatch Goods'),
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
-              ),
+              if (isSource)
+                ElevatedButton.icon(
+                  onPressed: _isActionInProgress ? null : _dispatchTransfer,
+                  icon: const Icon(Icons.local_shipping_outlined, size: 16),
+                  label: const Text('Dispatch Goods'),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
+                )
+              else
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(6)),
+                  child: const Text('Awaiting Dispatch', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Colors.grey)),
+                ),
             ],
             if (_t.status == StockTransferStatus.inTransit) ...[
               const SizedBox(width: 10),
-              ElevatedButton.icon(
-                onPressed: _isActionInProgress
-                    ? null
-                    : () {
-                        Navigator.pop(context);
-                        ReceiveStockTransferDialog.show(context, transfer: _t, onReceived: widget.onUpdated);
-                      },
-                icon: const Icon(Icons.inventory_rounded, size: 16),
-                label: const Text('Receive & Reconcile'),
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981), foregroundColor: Colors.white),
-              ),
+              if (isDestination)
+                ElevatedButton.icon(
+                  onPressed: _isActionInProgress ? null : () { Navigator.pop(context); ReceiveStockTransferDialog.show(context, transfer: _t, onReceived: widget.onUpdated); },
+                  icon: const Icon(Icons.inventory_rounded, size: 16),
+                  label: const Text('Receive & Reconcile'),
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981), foregroundColor: Colors.white),
+                )
+              else
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(color: Colors.blue.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.blue.withValues(alpha: 0.3))),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.local_shipping_rounded, size: 16, color: Colors.blue),
+                      const SizedBox(width: 6),
+                      Text('En Route to ${_t.toOutletName.isNotEmpty ? _t.toOutletName : "Destination"}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blue)),
+                    ],
+                  ),
+                ),
             ],
           ],
         ),

@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../config/api_client.dart';
 import '../models/stock_transfer_models.dart';
 import 'inventory_api_service.dart';
@@ -140,6 +141,24 @@ class StockTransferApiService {
       throw detail ?? 'Failed to cancel transfer';
     } catch (e) {
       throw 'Cancel error: $e';
+    }
+  }
+
+  /// Returns the direct URL for the digital bill / delivery challan
+  static String getTransferBillUrl(String transferId, {bool autoprint = false}) {
+    final base = ApiClient().dio.options.baseUrl.replaceAll(RegExp(r'/+$'), '');
+    return '$base/api/restaurant/inventory/transfers/$transferId/bill?autoprint=$autoprint';
+  }
+
+  /// Opens the digital bill in the browser / system viewer for viewing and printing
+  static Future<bool> openTransferBillView(String transferId, {bool autoprint = false}) async {
+    try {
+      final url = getTransferBillUrl(transferId, autoprint: autoprint);
+      final uri = Uri.parse(url);
+      return await launchUrl(uri, mode: LaunchMode.platformDefault);
+    } catch (e) {
+      debugPrint('[StockTransferApiService] openTransferBillView error: $e');
+      return false;
     }
   }
 }

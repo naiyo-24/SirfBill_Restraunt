@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/stock_transfer_models.dart';
+import '../services/inventory_api_service.dart';
 import '../services/stock_transfer_api_service.dart';
 import '../widgets/create_stock_transfer_dialog.dart';
 import '../widgets/inventory_header.dart';
@@ -22,6 +23,7 @@ class _StockTransfersSectionState extends State<StockTransfersSection> {
   StockTransferType? _selectedType;
   bool _isLoading = true;
   List<StockTransferHeader> _transfers = [];
+  String _currentOutletId = '';
 
   @override
   void initState() {
@@ -38,8 +40,14 @@ class _StockTransfersSectionState extends State<StockTransfersSection> {
   Future<void> _loadTransfers() async {
     setState(() => _isLoading = true);
     try {
+      final currentOutlet = await InventoryApiService.getResolvedOutletId();
       final list = await StockTransferApiService.getTransfers();
-      if (mounted) setState(() => _transfers = list);
+      if (mounted) {
+        setState(() {
+          _currentOutletId = currentOutlet;
+          _transfers = list;
+        });
+      }
     } catch (_) {
       if (mounted) setState(() => _transfers = []);
     } finally {
@@ -229,16 +237,60 @@ class _StockTransfersSectionState extends State<StockTransfersSection> {
               ),
               const SizedBox(width: 12),
               if (t.status == StockTransferStatus.inTransit) ...[
-                ElevatedButton(
-                  onPressed: () => ReceiveStockTransferDialog.show(context, transfer: t, onReceived: _loadTransfers),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF10B981),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                if (_currentOutletId.isEmpty || t.toOutletId == _currentOutletId)
+                  ElevatedButton(
+                    onPressed: () => ReceiveStockTransferDialog.show(context, transfer: t, onReceived: _loadTransfers),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF10B981),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                    child: const Text('Receive'),
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.local_shipping_outlined, size: 14, color: Colors.blue),
+                        SizedBox(width: 4),
+                        Text('En Route', style: TextStyle(color: Colors.blue, fontSize: 11, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
                   ),
-                  child: const Text('Receive'),
-                ),
+              ] else if (t.status == StockTransferStatus.draft) ...[
+                if (_currentOutletId.isEmpty || t.fromOutletId == _currentOutletId)
+                  ElevatedButton(
+                    onPressed: () => StockTransferDetailsDialog.show(context, transfer: t, onUpdated: _loadTransfers),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                    child: const Text('Dispatch'),
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
+                    ),
+                    child: const Text('Pending Dispatch', style: TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold)),
+                  ),
               ] else ...[
+                IconButton(
+                  tooltip: 'Digital Bill / Challan',
+                  onPressed: () => StockTransferApiService.openTransferBillView(t.id),
+                  icon: const Icon(Icons.receipt_long_outlined, size: 20, color: Color(0xFF10B981)),
+                ),
                 const Icon(Icons.chevron_right, size: 18, color: Colors.grey),
               ],
             ],

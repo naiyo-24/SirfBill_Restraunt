@@ -9,11 +9,15 @@ class _ReceiveItemRow {
   String inputUom = 'RECIPE';
 
   _ReceiveItemRow({required this.item})
-      : receivedCtrl = TextEditingController(text: item.quantityDispatched.toStringAsFixed(1)),
+      : receivedCtrl = TextEditingController(
+          text: (item.quantityDispatched > 0 ? item.quantityDispatched : item.quantityRequested)
+              .toStringAsFixed((item.quantityDispatched > 0 ? item.quantityDispatched : item.quantityRequested) % 1 == 0 ? 0 : 1),
+        ),
         reasonCtrl = TextEditingController();
 
+  double get expectedQty => item.quantityDispatched > 0 ? item.quantityDispatched : item.quantityRequested;
   double get quantityReceived => double.tryParse(receivedCtrl.text.trim()) ?? 0.0;
-  double get variance => item.quantityDispatched - quantityReceived;
+  double get variance => expectedQty - quantityReceived;
 }
 
 class ReceiveStockTransferDialog extends StatefulWidget {
@@ -188,6 +192,24 @@ class _ReceiveStockTransferDialogState extends State<ReceiveStockTransferDialog>
     );
   }
 
+  String _formatQty(double qty, String unit) {
+    final u = unit.trim().toUpperCase();
+    if ((u == 'G' || u == 'GM') && qty >= 1000) {
+      final kg = qty / 1000;
+      final kgStr = kg % 1 == 0 ? kg.toStringAsFixed(0) : kg.toStringAsFixed(2);
+      final gmStr = qty % 1 == 0 ? qty.toStringAsFixed(0) : qty.toStringAsFixed(1);
+      return '$kgStr KG ($gmStr GM)';
+    }
+    if (u == 'ML' && qty >= 1000) {
+      final ltr = qty / 1000;
+      final ltrStr = ltr % 1 == 0 ? ltr.toStringAsFixed(0) : ltr.toStringAsFixed(2);
+      final mlStr = qty % 1 == 0 ? qty.toStringAsFixed(0) : qty.toStringAsFixed(1);
+      return '$ltrStr LTR ($mlStr ML)';
+    }
+    final qStr = qty % 1 == 0 ? qty.toStringAsFixed(0) : qty.toStringAsFixed(2);
+    return '$qStr $unit';
+  }
+
   Widget _buildItemRow(_ReceiveItemRow r, bool isDark, Color borderColor) {
     final hasVariance = r.variance > 0;
 
@@ -216,7 +238,7 @@ class _ReceiveStockTransferDialogState extends State<ReceiveStockTransferDialog>
               ),
               Expanded(
                 flex: 2,
-                child: Text('${r.item.quantityDispatched} ${r.item.unit}', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+                child: Text(_formatQty(r.expectedQty, r.item.unit), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
               ),
               Expanded(
                 flex: 2,

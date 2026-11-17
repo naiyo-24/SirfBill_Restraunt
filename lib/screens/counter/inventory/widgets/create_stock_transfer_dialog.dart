@@ -131,7 +131,7 @@ class _CreateStockTransferDialogState extends State<CreateStockTransferDialog> {
         'to_outlet_id': _transferType == StockTransferType.interBranch ? _toOutletId : _fromOutletId,
         'from_station': _fromStationCtrl.text.trim(),
         'to_station': _toStationCtrl.text.trim(),
-        'vehicle_number': _vehicleCtrl.text.trim(),
+        'vehicle_number': _transferType == StockTransferType.interStation ? '' : _vehicleCtrl.text.trim(),
         'driver_name': _driverNameCtrl.text.trim(),
         'driver_phone': _driverPhoneCtrl.text.trim(),
         'notes': _notesCtrl.text.trim(),
@@ -337,18 +337,27 @@ class _CreateStockTransferDialogState extends State<CreateStockTransferDialog> {
   }
 
   Widget _buildLogisticsSection(bool isDark, Color borderColor) {
+    final isStation = _transferType == StockTransferType.interStation;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(10), border: Border.all(color: borderColor)),
-      child: Row(
-        children: [
-          Expanded(child: TextField(controller: _vehicleCtrl, decoration: const InputDecoration(labelText: 'Vehicle / Van Number', hintText: 'WB-02-AK-9821'))),
-          const SizedBox(width: 10),
-          Expanded(child: TextField(controller: _driverNameCtrl, decoration: const InputDecoration(labelText: 'Driver Name', hintText: 'Ramesh Kumar'))),
-          const SizedBox(width: 10),
-          Expanded(child: TextField(controller: _driverPhoneCtrl, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Driver Phone', hintText: '+91 98301 23456'))),
-        ],
-      ),
+      child: isStation
+          ? Row(
+              children: [
+                Expanded(child: TextField(controller: _driverNameCtrl, decoration: const InputDecoration(labelText: 'Transferred By (Name)', hintText: 'e.g. Ramesh Chef / Staff Name'))),
+                const SizedBox(width: 12),
+                Expanded(child: TextField(controller: _driverPhoneCtrl, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Contact Phone', hintText: '+91 98301 23456'))),
+              ],
+            )
+          : Row(
+              children: [
+                Expanded(child: TextField(controller: _vehicleCtrl, decoration: const InputDecoration(labelText: 'Vehicle / Van Number', hintText: 'WB-02-AK-9821'))),
+                const SizedBox(width: 10),
+                Expanded(child: TextField(controller: _driverNameCtrl, decoration: const InputDecoration(labelText: 'Driver Name', hintText: 'Ramesh Kumar'))),
+                const SizedBox(width: 10),
+                Expanded(child: TextField(controller: _driverPhoneCtrl, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Driver Phone', hintText: '+91 98301 23456'))),
+              ],
+            ),
     );
   }
 
