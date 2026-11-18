@@ -53,9 +53,9 @@ Future<void> _ensureRazorpayReady() async {
               image: options.image || 'favicon.png',
               order_id: (options.orderId && String(options.orderId).trim().length > 0) ? String(options.orderId).trim() : undefined,
               prefill: {
-                name: options.userName || 'Restaurant Admin',
-                email: options.userEmail || 'admin@sirfbill.com',
-                contact: options.userContact || '9876543210'
+                name: options.userName || '',
+                email: options.userEmail || '',
+                contact: options.userContact || ''
               },
               theme: { color: options.themeColor || '#0C2340' },
               modal: {
@@ -154,9 +154,9 @@ Future<Map<String, String>?> launchOfficialRazorpay({
     'name': 'SirfBill Technologies',
     'description': planName,
     if (orderId != null && orderId.isNotEmpty) 'orderId': orderId,
-    'userName': userName ?? 'Restaurant Admin',
-    'userEmail': userEmail ?? 'admin@sirfbill.com',
-    'userContact': userContact ?? '9876543210',
+    'userName': userName ?? '',
+    'userEmail': userEmail ?? '',
+    'userContact': userContact ?? '',
     'themeColor': '#0C2340',
   };
 

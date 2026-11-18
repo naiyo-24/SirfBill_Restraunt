@@ -1,3 +1,4 @@
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../models/subscription_plan_models.dart';
@@ -85,11 +86,23 @@ class _SubscriptionCheckoutDialogState extends State<SubscriptionCheckoutDialog>
         durationMonths: widget.plan.durationMonths,
       );
 
+      String? userEmail;
+      String? userName;
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final rawUser = prefs.getString('user_id') ?? '';
+        final rawName = prefs.getString('user_name') ?? '';
+        if (rawUser.contains('@')) userEmail = rawUser;
+        if (rawName.isNotEmpty) userName = rawName;
+      } catch (_) {}
+
       // 2. Launch official Razorpay standard checkout
       final result = await launchOfficialRazorpay(
         amount: widget.plan.safeTotalPrice,
         planName: '${widget.plan.name} (${widget.plan.billingCycle})',
         orderId: orderId,
+        userEmail: userEmail,
+        userName: userName,
       );
 
       final paymentId = result?['payment_id'] ?? '';
