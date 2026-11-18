@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../config/api_constants.dart';
 import '../../../services/shop_service.dart';
+import '../models/subscription_plan_models.dart';
 import 'admin_metric_card.dart';
 
 class AdminDashboardTab extends StatelessWidget {
@@ -9,6 +10,8 @@ class AdminDashboardTab extends StatelessWidget {
   final VoidCallback onAddBranch;
   final VoidCallback onAddUser;
   final VoidCallback onViewAllBranches;
+  final VoidCallback? onViewSubscription;
+  final SubscriptionStatusModel? subscriptionStatus;
   final Color cardBg;
   final Color borderColor;
   final Color textColor;
@@ -22,6 +25,8 @@ class AdminDashboardTab extends StatelessWidget {
     required this.onAddBranch,
     required this.onAddUser,
     required this.onViewAllBranches,
+    this.onViewSubscription,
+    this.subscriptionStatus,
     required this.cardBg,
     required this.borderColor,
     required this.textColor,
@@ -88,15 +93,18 @@ class AdminDashboardTab extends StatelessWidget {
                     subtitleColor: subtitleColor,
                   ),
                   AdminMetricCard(
-                    title: 'Gateway',
-                    value: 'REST API',
-                    trend: 'Connected (Port 8000)',
-                    icon: Icons.cloud_done_rounded,
-                    color: const Color(0xFF06B6D4),
+                    title: 'Subscription',
+                    value: subscriptionStatus?.planName ?? 'Restaurant Pro',
+                    trend: '₹${subscriptionStatus?.price.toStringAsFixed(0) ?? "299"}/mo · ${subscriptionStatus?.daysRemaining ?? 30} days left',
+                    icon: Icons.workspace_premium_rounded,
+                    color: (subscriptionStatus?.status == 'TRIAL')
+                        ? const Color(0xFFF59E0B)
+                        : (subscriptionStatus?.isActive ?? true ? const Color(0xFF10B981) : const Color(0xFFEF4444)),
                     cardBg: cardBg,
                     borderColor: borderColor,
                     textColor: textColor,
                     subtitleColor: subtitleColor,
+                    onTap: onViewSubscription,
                   ),
                 ],
               );
@@ -116,7 +124,8 @@ class AdminDashboardTab extends StatelessWidget {
           const SizedBox(height: 10),
           LayoutBuilder(
             builder: (context, constraints) {
-              final isWide = constraints.maxWidth > 650;
+              final isWide = constraints.maxWidth > 850;
+              final isMedium = constraints.maxWidth > 550;
               final shortcuts = [
                 AdminActionShortcut(
                   icon: Icons.add_business_rounded,
@@ -140,6 +149,18 @@ class AdminDashboardTab extends StatelessWidget {
                   subtitleColor: subtitleColor,
                   onTap: onAddUser,
                 ),
+                if (onViewSubscription != null)
+                  AdminActionShortcut(
+                    icon: Icons.workspace_premium_rounded,
+                    title: 'Subscription & Plans',
+                    subtitle: 'View monthly tiers, license renewal & invoices',
+                    color: const Color(0xFFE11D48),
+                    cardBg: cardBg,
+                    borderColor: borderColor,
+                    textColor: textColor,
+                    subtitleColor: subtitleColor,
+                    onTap: onViewSubscription!,
+                  ),
               ];
 
               if (isWide) {
@@ -148,14 +169,35 @@ class AdminDashboardTab extends StatelessWidget {
                     Expanded(child: shortcuts[0]),
                     const SizedBox(width: 14),
                     Expanded(child: shortcuts[1]),
+                    if (shortcuts.length > 2) ...[
+                      const SizedBox(width: 14),
+                      Expanded(child: shortcuts[2]),
+                    ],
+                  ],
+                );
+              } else if (isMedium) {
+                return Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(child: shortcuts[0]),
+                        const SizedBox(width: 12),
+                        Expanded(child: shortcuts[1]),
+                      ],
+                    ),
+                    if (shortcuts.length > 2) ...[
+                      const SizedBox(height: 10),
+                      shortcuts[2],
+                    ],
                   ],
                 );
               } else {
                 return Column(
                   children: [
-                    shortcuts[0],
-                    const SizedBox(height: 10),
-                    shortcuts[1],
+                    for (int i = 0; i < shortcuts.length; i++) ...[
+                      if (i > 0) const SizedBox(height: 10),
+                      shortcuts[i],
+                    ],
                   ],
                 );
               }

@@ -222,6 +222,7 @@ class _RoleLoginScreenState extends ConsumerState<RoleLoginScreen> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
             ),
+          ],
         ],
       ),
     );

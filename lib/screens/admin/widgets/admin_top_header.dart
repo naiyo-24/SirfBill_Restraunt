@@ -1,6 +1,7 @@
 import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
 import '../../counter/widgets/about/about_us_dialog.dart';
+import '../models/subscription_plan_models.dart';
 
 class AdminTopHeader extends StatelessWidget {
   final int selectedIndex;
@@ -15,6 +16,8 @@ class AdminTopHeader extends StatelessWidget {
   final bool isMobile;
   final bool isTablet;
   final VoidCallback? onOpenDrawer;
+  final SubscriptionStatusModel? subscriptionStatus;
+  final VoidCallback? onSelectSubscriptionTab;
 
   const AdminTopHeader({
     super.key,
@@ -30,6 +33,8 @@ class AdminTopHeader extends StatelessWidget {
     this.isMobile = false,
     this.isTablet = false,
     this.onOpenDrawer,
+    this.subscriptionStatus,
+    this.onSelectSubscriptionTab,
   });
 
   @override
@@ -43,6 +48,9 @@ class AdminTopHeader extends StatelessWidget {
     } else if (selectedIndex == 2) {
       titleText = 'Users & Staff Access';
       descText = 'Manage cashier credentials, floor staff accounts and role permissions';
+    } else if (selectedIndex == 3) {
+      titleText = 'Subscription & Monthly Plans';
+      descText = 'Manage monthly billing cycle, license features, plan renewals & upgrades';
     }
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -106,6 +114,12 @@ class AdminTopHeader extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 6),
+
+          // Top Bar Subscription Status Pill
+          if (subscriptionStatus != null) ...[
+            _buildSubscriptionStatusPill(),
+            const SizedBox(width: 8),
+          ],
 
           // Refresh Button
           if (isMobile)
@@ -373,5 +387,66 @@ class AdminTopHeader extends StatelessWidget {
     ),
   ),
 );
+  }
+
+  Widget _buildSubscriptionStatusPill() {
+    if (subscriptionStatus == null) return const SizedBox.shrink();
+    final st = subscriptionStatus!;
+    final statusUpper = st.status.toUpperCase();
+    final days = st.daysRemaining;
+    final isActive = st.isActive;
+
+    Color bg;
+    Color fg;
+    IconData icon;
+    String label;
+
+    if (statusUpper == 'TRIAL') {
+      bg = const Color(0xFFF59E0B).withValues(alpha: 0.12);
+      fg = const Color(0xFFF59E0B);
+      icon = Icons.hourglass_top_rounded;
+      label = isMobile ? 'Trial ($days d)' : 'Trial ($days days left)';
+    } else if (isActive && days > 0) {
+      bg = const Color(0xFF10B981).withValues(alpha: 0.12);
+      fg = const Color(0xFF10B981);
+      icon = Icons.verified_rounded;
+      label = isMobile ? 'Active ($days d)' : 'Active ($days days left)';
+    } else {
+      bg = const Color(0xFFEF4444).withValues(alpha: 0.12);
+      fg = const Color(0xFFEF4444);
+      icon = Icons.error_outline_rounded;
+      label = isMobile ? 'Expired' : 'Expired - Renew Now';
+    }
+
+    return Tooltip(
+      message: 'Plan: ${st.planName} (₹${st.price.toStringAsFixed(0)}/${st.billingCycle.toLowerCase()})\nClick to view subscription details',
+      child: InkWell(
+        onTap: onSelectSubscriptionTab,
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: isMobile ? 8 : 11, vertical: 6),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: fg.withValues(alpha: 0.35)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 14, color: fg),
+              const SizedBox(width: 5),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: fg,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

@@ -6,11 +6,14 @@ import '../../services/app_session_manager.dart';
 import '../../services/shop_service.dart';
 import '../../services/inventory_service.dart';
 import '../../services/admin_staff_service.dart';
+import 'models/subscription_plan_models.dart';
+import 'services/subscription_api_service.dart';
 import 'widgets/admin_sidebar.dart';
 import 'widgets/admin_top_header.dart';
 import 'widgets/admin_dashboard_tab.dart';
 import 'widgets/admin_outlets_tab.dart';
 import 'widgets/admin_users_tab.dart';
+import 'widgets/admin_subscription_tab.dart';
 import 'widgets/admin_dialogs.dart';
 
 class RestaurantAdminPanelScreen extends ConsumerStatefulWidget {
@@ -31,6 +34,7 @@ class _RestaurantAdminPanelScreenState extends ConsumerState<RestaurantAdminPane
   String _searchQuery = '';
   String _userName = '';
   String? _activeShopId;
+  SubscriptionStatusModel? _subscriptionStatus;
 
   @override
   void initState() {
@@ -45,14 +49,16 @@ class _RestaurantAdminPanelScreenState extends ConsumerState<RestaurantAdminPane
       final staffFuture = AdminStaffService.getStaffUsers();
       final nameFuture = AuthService.getUserName();
       final shopIdFuture = InventoryService.getShopId();
+      final subStatusFuture = SubscriptionApiService.fetchSubscriptionStatus();
 
-      final results = await Future.wait([branchesFuture, staffFuture, nameFuture, shopIdFuture]);
+      final results = await Future.wait([branchesFuture, staffFuture, nameFuture, shopIdFuture, subStatusFuture]);
       if (mounted) {
         setState(() {
           _branches = results[0] as List<Shop>;
           _staffUsers = results[1] as List<RestaurantStaffUser>;
           _userName = (results[2] as String?) ?? '';
           _activeShopId = results[3] as String?;
+          _subscriptionStatus = results[4] as SubscriptionStatusModel;
           _isLoading = false;
         });
       }
@@ -302,6 +308,8 @@ class _RestaurantAdminPanelScreenState extends ConsumerState<RestaurantAdminPane
           isMobile: isMobile,
           isTablet: isTablet,
           onOpenDrawer: isMobile ? () => _scaffoldKey.currentState?.openDrawer() : null,
+          subscriptionStatus: _subscriptionStatus,
+          onSelectSubscriptionTab: () => setState(() => _selectedIndex = 3),
         ),
 
         // WORKSPACE TABS VIEW
@@ -320,6 +328,8 @@ class _RestaurantAdminPanelScreenState extends ConsumerState<RestaurantAdminPane
                       onAddBranch: _showAddBranchDialog,
                       onAddUser: _showAddUserDialog,
                       onViewAllBranches: () => setState(() => _selectedIndex = 1),
+                      onViewSubscription: () => setState(() => _selectedIndex = 3),
+                      subscriptionStatus: _subscriptionStatus,
                       cardBg: cardBg,
                       borderColor: borderColor,
                       textColor: textColor,
@@ -355,6 +365,17 @@ class _RestaurantAdminPanelScreenState extends ConsumerState<RestaurantAdminPane
                       textColor: textColor,
                       subtitleColor: subtitleColor,
                       isDark: isDark,
+                    ),
+
+                    // TAB 3: SUBSCRIPTION & MONTHLY PLANS
+                    AdminSubscriptionTab(
+                      cardBg: cardBg,
+                      borderColor: borderColor,
+                      textColor: textColor,
+                      subtitleColor: subtitleColor,
+                      isDark: isDark,
+                      initialStatus: _subscriptionStatus,
+                      onStatusChanged: (st) => setState(() => _subscriptionStatus = st),
                     ),
                   ],
                 ),

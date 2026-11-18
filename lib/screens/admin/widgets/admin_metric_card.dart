@@ -10,6 +10,7 @@ class AdminMetricCard extends StatelessWidget {
   final Color borderColor;
   final Color textColor;
   final Color subtitleColor;
+  final VoidCallback? onTap;
 
   const AdminMetricCard({
     super.key,
@@ -22,11 +23,12 @@ class AdminMetricCard extends StatelessWidget {
     required this.borderColor,
     required this.textColor,
     required this.subtitleColor,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final cardContent = Container(
       padding: const EdgeInsets.all(11),
       decoration: BoxDecoration(
         color: cardBg,
@@ -80,6 +82,15 @@ class AdminMetricCard extends StatelessWidget {
         ],
       ),
     );
+
+    if (onTap != null) {
+      return InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: cardContent,
+      );
+    }
+    return cardContent;
   }
 }
 

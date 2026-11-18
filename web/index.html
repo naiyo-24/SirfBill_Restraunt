@@ -64,6 +64,99 @@
       });
     })();
   </script>
+
+  <!-- Razorpay Official Checkout SDK -->
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <script>
+    (function() {
+      window.addEventListener('sirfbill_launch_razorpay', function(e) {
+        console.log('[SirfBill] sirfbill_launch_razorpay event caught', e);
+        try {
+          var raw = e.detail;
+          var options = {};
+          if (typeof raw === 'string') {
+            try { options = JSON.parse(raw); } catch (pErr) { options = {}; }
+          } else if (raw && typeof raw === 'object') {
+            options = raw;
+          }
+
+          if (!window.Razorpay) {
+            console.error('[SirfBill] window.Razorpay SDK not loaded on window');
+            window.dispatchEvent(new CustomEvent('sirfbill_razorpay_dismiss', {
+              detail: JSON.stringify({ error: 'Razorpay SDK script not loaded' })
+            }));
+            return;
+          }
+
+          var key = (options.key && String(options.key).trim().length > 0)
+            ? String(options.key).trim()
+            : 'rzp_live_ReRSf5hDkv7b7S';
+
+          var parsedAmount = Number(options.amount) || 299;
+          var paise = Math.round(parsedAmount * 100);
+
+          var rzpOptions = {
+            key: key,
+            amount: paise,
+            currency: options.currency || 'INR',
+            name: options.name || 'SirfBill Technologies',
+            description: options.description || 'SirfBill Restaurant Pro License',
+            image: options.image || 'favicon.png',
+            order_id: (options.orderId && String(options.orderId).trim().length > 0) ? String(options.orderId).trim() : undefined,
+            prefill: {
+              name: options.userName || 'Restaurant Admin',
+              email: options.userEmail || 'admin@sirfbill.com',
+              contact: options.userContact || '9876543210'
+            },
+            theme: {
+              color: options.themeColor || '#0C2340'
+            },
+            modal: {
+              backdropclose: false,
+              escape: true,
+              handleback: true,
+              confirm_close: true,
+              ondismiss: function() {
+                console.log('[SirfBill] Razorpay modal dismissed');
+                window.dispatchEvent(new CustomEvent('sirfbill_razorpay_dismiss', {
+                  detail: JSON.stringify({ error: 'Dismissed by user' })
+                }));
+              }
+            },
+            handler: function(response) {
+              console.log('[SirfBill] Razorpay payment success:', response);
+              window.dispatchEvent(new CustomEvent('sirfbill_razorpay_success', {
+                detail: JSON.stringify({
+                  payment_id: response.razorpay_payment_id || '',
+                  order_id: response.razorpay_order_id || (options.orderId || ''),
+                  signature: response.razorpay_signature || ''
+                })
+              }));
+            }
+          };
+
+          console.log('[SirfBill] Launching Razorpay with options:', rzpOptions);
+          var rzp = new window.Razorpay(rzpOptions);
+
+          rzp.on('payment.failed', function(resp) {
+            console.warn('[SirfBill] Razorpay payment failed:', resp);
+            var desc = (resp && resp.error && resp.error.description) ? resp.error.description : 'Payment Failed';
+            window.dispatchEvent(new CustomEvent('sirfbill_razorpay_dismiss', {
+              detail: JSON.stringify({ error: desc })
+            }));
+          });
+
+          rzp.open();
+          console.log('[SirfBill] rzp.open() called successfully');
+        } catch (err) {
+          console.error('[SirfBill] Uncaught error launching Razorpay:', err);
+          window.dispatchEvent(new CustomEvent('sirfbill_razorpay_dismiss', {
+            detail: JSON.stringify({ error: String(err) })
+          }));
+        }
+      });
+    })();
+  </script>
 </head>
 <body>
   <!--

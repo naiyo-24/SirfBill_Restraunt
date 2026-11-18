@@ -98,6 +98,13 @@ class AdminSidebar extends StatelessWidget {
                     title: 'Users & Roles',
                     subtitle: 'Staff accounts & access',
                   ),
+                  const SizedBox(height: 6),
+                  _buildNavButton(
+                    index: 3,
+                    icon: Icons.workspace_premium_rounded,
+                    title: 'Subscription Plans',
+                    subtitle: 'Monthly billing & license',
+                  ),
                 ],
               ),
             ),
