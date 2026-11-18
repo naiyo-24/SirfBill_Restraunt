@@ -2,9 +2,9 @@
   "product_id": "sirfbill-restaurant-windows",
   "platform": "windows-x64",
   "channel": "stable",
-  "version": "1.0.42",
+  "version": "1.0.43",
   "mandatory": false,
   "release_notes": "• [INVENTORY & RECIPE BOM] Live automated recipe consumption engine deducting ingredients upon KOT dispatch\n• [WASTAGE & SPOILAGE] Financial loss tracking for unbilled kitchen loss and cooked dish explosion\n• [STOCK AUDIT] Physical inventory reconciliation, dual-UOM count normalization, and ledger balancing\n• [FOOD COST REPORT] Actual vs. Theoretical (AvT) food cost variance analysis with COGS benchmark indicators\n• [VALUATION EXPORT] Instant warehouse stock valuation CSV export with ABC classification\n• [AUTH & TERMINALS] Strict per-module credential persistence (Save ID & Password) with zero cross-module leakage",
-  "package_url": "https://github.com/sayar2121/SirfBill_Restraunt/releases/download/v1.0.42/app-update.zip",
+  "package_url": "https://github.com/sayar2121/SirfBill_Restraunt/releases/download/v1.0.43/app-update.zip",
   "sha256": "REPLACE_WITH_SHA256_HEX_OF_APP_UPDATE_ZIP"
 }
