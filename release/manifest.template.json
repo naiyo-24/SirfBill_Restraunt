@@ -4,7 +4,7 @@
   "channel": "stable",
   "version": "1.0.44",
   "mandatory": false,
-  "release_notes": "• [HARDWARE STORE] Built-in POS hardware store on login dashboard to browse and order certified thermal printers, touch terminals, handhelds, and cash drawers\n• [AUTH & TERMINALS] Strict per-module credential persistence (Save ID & Password) with zero cross-module leakage\n• [INVENTORY & RECIPE BOM] Live automated recipe consumption engine deducting ingredients upon KOT dispatch\n• [WASTAGE & SPOILAGE] Financial loss tracking for unbilled kitchen loss and cooked dish explosion\n• [STOCK AUDIT] Physical inventory reconciliation, dual-UOM count normalization, and ledger balancing\n• [FOOD COST REPORT] Actual vs. Theoretical (AvT) food cost variance analysis with COGS benchmark indicators\n• [VALUATION EXPORT] Instant warehouse stock valuation CSV export with ABC classification",
+  "release_notes": "• [SUBSCRIPTIONS & TIERS] 4 plan tiers (1 Month @ ₹299, 3 Months @ ₹1,058, 6 Months @ ₹2,012, 12 Months @ ₹3,823) with auto-validity extension (+30, +90, +180, +365 days)\n• [RAZORPAY CHECKOUT] Instant online licensing checkout via Razorpay with real-time status verification\n• [DUPLICATE GUARD] Active tier shows 'Already Done • Subscribed' to prevent accidental double-billing, with automatic renewal re-enabling upon expiry\n• [GST TAX INVOICES] Itemized 18% GST breakdown (9% CGST + 9% SGST), amount in words, in-app viewer, and vector PDF download\n• [RESPONSIVE ADMIN UI] Fluid auto-resizing across Desktop (4-column row), Tablet (2x2 grid), and Mobile (stacked cards)",
   "package_url": "https://github.com/sayar2121/SirfBill_Restraunt/releases/download/v1.0.44/app-update.zip",
   "sha256": "REPLACE_WITH_SHA256_HEX_OF_APP_UPDATE_ZIP"
 }
