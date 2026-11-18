@@ -79,12 +79,14 @@ class _SubscriptionCheckoutDialogState extends State<SubscriptionCheckoutDialog>
 
     try {
       // 1. Create order on backend with plan_code and duration_months
-      final orderId = await SubscriptionApiService.createRazorpayOrder(
+      final orderInfo = await SubscriptionApiService.createRazorpayOrderInfo(
         amount: widget.plan.safeTotalPrice,
         planId: widget.plan.id,
         planCode: widget.plan.planCode,
         durationMonths: widget.plan.durationMonths,
       );
+      final orderId = orderInfo?['order_id']?.toString();
+      final paymentLinkUrl = orderInfo?['payment_link_url']?.toString();
 
       String? userEmail;
       String? userName;
@@ -101,6 +103,7 @@ class _SubscriptionCheckoutDialogState extends State<SubscriptionCheckoutDialog>
         amount: widget.plan.safeTotalPrice,
         planName: '${widget.plan.name} (${widget.plan.billingCycle})',
         orderId: orderId,
+        paymentLinkUrl: paymentLinkUrl,
         userEmail: userEmail,
         userName: userName,
       );

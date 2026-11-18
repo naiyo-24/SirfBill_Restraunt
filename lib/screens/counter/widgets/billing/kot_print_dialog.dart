@@ -140,15 +140,15 @@ class KotPrintDialog extends StatelessWidget {
                   timestamp: timestamp,
                 ),
                 initialPageFormat: PdfPageFormat(
-                  80 * PdfPageFormat.mm,
+                  72 * PdfPageFormat.mm,
                   (85.0 + (items.length * 9.0)).clamp(100.0, 300.0) * PdfPageFormat.mm,
-                  marginAll: 4 * PdfPageFormat.mm,
+                  marginAll: 2.5 * PdfPageFormat.mm,
                 ),
                 pageFormats: {
                   '80mm Roll': PdfPageFormat(
-                    80 * PdfPageFormat.mm,
+                    72 * PdfPageFormat.mm,
                     (85.0 + (items.length * 9.0)).clamp(100.0, 300.0) * PdfPageFormat.mm,
-                    marginAll: 4 * PdfPageFormat.mm,
+                    marginAll: 2.5 * PdfPageFormat.mm,
                   ),
                 },
                 allowPrinting: true,

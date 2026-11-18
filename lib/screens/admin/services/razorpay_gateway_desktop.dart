@@ -3,10 +3,13 @@ import 'dart:io';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../services/subscription_api_service.dart';
+
 Future<Map<String, String>?> launchOfficialRazorpay({
   required double amount,
   required String planName,
   String? orderId,
+  String? paymentLinkUrl,
   String? userName,
   String? userEmail,
   String? userContact,
@@ -38,9 +41,15 @@ Future<Map<String, String>?> launchOfficialRazorpay({
           ));
         await request.response.close();
       } else if (uri.path == '/callback') {
-        final paymentId = uri.queryParameters['payment_id'] ?? '';
-        final rzpOrderId = uri.queryParameters['order_id'] ?? (orderId ?? '');
-        final signature = uri.queryParameters['signature'] ?? '';
+        final paymentId = uri.queryParameters['razorpay_payment_id'] ??
+            uri.queryParameters['payment_id'] ??
+            '';
+        final rzpOrderId = uri.queryParameters['razorpay_order_id'] ??
+            uri.queryParameters['order_id'] ??
+            (orderId ?? '');
+        final signature = uri.queryParameters['razorpay_signature'] ??
+            uri.queryParameters['signature'] ??
+            '';
 
         request.response
           ..headers.contentType = ContentType.html
@@ -79,8 +88,32 @@ Future<Map<String, String>?> launchOfficialRazorpay({
       }
     });
 
-    final checkoutUrl = 'http://127.0.0.1:$port/';
-    await launchUrl(Uri.parse(checkoutUrl), mode: LaunchMode.externalApplication);
+    // Open official Razorpay hosted payment link (rzp.io) to avoid localhost website domain check
+    final targetUrl = (paymentLinkUrl != null && paymentLinkUrl.isNotEmpty)
+        ? paymentLinkUrl
+        : 'http://127.0.0.1:$port/';
+    await launchUrl(Uri.parse(targetUrl), mode: LaunchMode.externalApplication);
+
+    // Automatic polling verification every 3 seconds
+    Timer.periodic(const Duration(seconds: 3), (timer) async {
+      if (completer.isCompleted) {
+        timer.cancel();
+        return;
+      }
+      if (orderId != null && orderId.isNotEmpty) {
+        final check = await SubscriptionApiService.checkOrderStatus(orderId);
+        if (check != null && check['paid'] == true) {
+          timer.cancel();
+          if (!completer.isCompleted) {
+            completer.complete({
+              'payment_id': 'pay_verified',
+              'order_id': orderId,
+            });
+          }
+          await server?.close();
+        }
+      }
+    });
 
     Timer(const Duration(minutes: 10), () {
       if (!completer.isCompleted) {

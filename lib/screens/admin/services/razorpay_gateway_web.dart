@@ -98,6 +98,7 @@ Future<Map<String, String>?> launchOfficialRazorpay({
   required double amount,
   required String planName,
   String? orderId,
+  String? paymentLinkUrl,
   String? userName,
   String? userEmail,
   String? userContact,

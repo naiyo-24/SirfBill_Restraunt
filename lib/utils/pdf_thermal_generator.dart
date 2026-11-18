@@ -42,8 +42,12 @@ class PdfThermalGenerator {
 
     pdf.addPage(
       pw.Page(
-        pageFormat: PdfPageFormat.roll80,
-        margin: const pw.EdgeInsets.all(10),
+        pageFormat: const PdfPageFormat(
+          72 * PdfPageFormat.mm,
+          double.infinity,
+          marginAll: 2.5 * PdfPageFormat.mm,
+        ),
+        margin: const pw.EdgeInsets.symmetric(horizontal: 2.5 * PdfPageFormat.mm, vertical: 4 * PdfPageFormat.mm),
         build: (pw.Context context) {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.center,

@@ -77,6 +77,50 @@ class SubscriptionApiService {
     return SubscriptionStatusModel.defaultActive();
   }
 
+  /// GET /api/subscriptions/check-order/{order_id}
+  static Future<Map<String, dynamic>?> checkOrderStatus(String orderId) async {
+    try {
+      final response = await ApiClient().dio.get('/api/subscriptions/check-order/$orderId');
+      if (response.statusCode == 200 && response.data != null) {
+        return Map<String, dynamic>.from(response.data as Map);
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// POST /api/subscriptions/create-order (returns full order info including payment_link_url)
+  static Future<Map<String, dynamic>?> createRazorpayOrderInfo({
+    required double amount,
+    String? planId,
+    String? planCode,
+    int? durationMonths,
+    String? outletId,
+  }) async {
+    final resolvedId = await getResolvedOutletId(outletId: outletId);
+    try {
+      final response = await ApiClient().dio.post(
+        '/api/subscriptions/create-order',
+        data: {
+          'amount': amount,
+          if (planId != null) 'plan_id': planId,
+          if (planCode != null) 'plan_code': planCode,
+          if (durationMonths != null) 'duration_months': durationMonths,
+          if (resolvedId.isNotEmpty) 'outlet_id': resolvedId,
+        },
+      ).timeout(const Duration(seconds: 6));
+
+      if (response.statusCode == 200 && response.data != null) {
+        final data = response.data;
+        if (data is Map) {
+          return Map<String, dynamic>.from(data);
+        }
+      }
+    } catch (e) {
+      debugPrint('[SubscriptionApiService] createRazorpayOrderInfo error: $e');
+    }
+    return null;
+  }
+
   /// POST /api/subscriptions/create-order
   static Future<String?> createRazorpayOrder({
     required double amount,

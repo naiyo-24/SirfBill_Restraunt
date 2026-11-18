@@ -121,15 +121,15 @@ class PosBillReceiptModal extends StatelessWidget {
                 key: ValueKey(orderNumber),
                 build: (format) async => pdfBytes,
                 initialPageFormat: const PdfPageFormat(
-                  80 * PdfPageFormat.mm,
+                  72 * PdfPageFormat.mm,
                   280 * PdfPageFormat.mm,
-                  marginAll: 4 * PdfPageFormat.mm,
+                  marginAll: 2.5 * PdfPageFormat.mm,
                 ),
                 pageFormats: const {
                   '80mm Thermal Roll': PdfPageFormat(
-                    80 * PdfPageFormat.mm,
+                    72 * PdfPageFormat.mm,
                     280 * PdfPageFormat.mm,
-                    marginAll: 4 * PdfPageFormat.mm,
+                    marginAll: 2.5 * PdfPageFormat.mm,
                   ),
                 },
                 allowPrinting: true,
@@ -171,9 +171,9 @@ class PosBillReceiptModal extends StatelessWidget {
                       await Printing.layoutPdf(
                         name: 'Bill_${orderNumber.replaceAll("#", "")}',
                         format: const PdfPageFormat(
-                          80 * PdfPageFormat.mm,
+                          72 * PdfPageFormat.mm,
                           280 * PdfPageFormat.mm,
-                          marginAll: 4 * PdfPageFormat.mm,
+                          marginAll: 2.5 * PdfPageFormat.mm,
                         ),
                         onLayout: (PdfPageFormat format) async => pdfBytes,
                       );
