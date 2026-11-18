@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import '../../../../services/auth_service.dart';
 
 class RoleLoginFormCard extends StatefulWidget {
   final String roleName;
@@ -32,6 +33,48 @@ class _RoleLoginFormCardState extends State<RoleLoginFormCard> {
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _obscurePassword = true;
+  bool _rememberMe = true;
+  bool _hasSavedCredentials = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedCredentials();
+  }
+
+  @override
+  void didUpdateWidget(covariant RoleLoginFormCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.roleName != widget.roleName) {
+      _loadSavedCredentials();
+    }
+  }
+
+  Future<void> _loadSavedCredentials() async {
+    try {
+      final creds = await AuthService.getRememberedCredentials(widget.roleName);
+      if (!mounted) return;
+      final savedUser = (creds['userId'] ?? '').toString();
+      final savedPass = (creds['password'] ?? '').toString();
+      final isRemembered = creds['rememberMe'] == true;
+
+      if (isRemembered && (savedUser.isNotEmpty || savedPass.isNotEmpty)) {
+        setState(() {
+          _userIdController.text = savedUser;
+          _passwordController.text = savedPass;
+          _rememberMe = true;
+          _hasSavedCredentials = true;
+        });
+      } else {
+        setState(() {
+          _userIdController.clear();
+          _passwordController.clear();
+          _rememberMe = false;
+          _hasSavedCredentials = false;
+        });
+      }
+    } catch (_) {}
+  }
 
   @override
   void dispose() {
@@ -40,12 +83,36 @@ class _RoleLoginFormCardState extends State<RoleLoginFormCard> {
     super.dispose();
   }
 
-  void _submit() {
+  Future<void> _clearSaved() async {
+    await AuthService.clearRememberedCredentials(widget.roleName);
+    if (!mounted) return;
+    setState(() {
+      _userIdController.clear();
+      _passwordController.clear();
+      _hasSavedCredentials = false;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Saved credentials cleared on this device.'),
+        duration: Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _submit() async {
     if (_formKey.currentState!.validate()) {
-      widget.onLogin(
-        _userIdController.text.trim(),
-        _passwordController.text.trim(),
+      final userId = _userIdController.text.trim();
+      final password = _passwordController.text.trim();
+
+      await AuthService.saveRememberedCredentials(
+        roleName: widget.roleName,
+        userId: userId,
+        password: password,
+        rememberMe: _rememberMe,
       );
+
+      widget.onLogin(userId, password);
     }
   }
 
@@ -168,7 +235,62 @@ class _RoleLoginFormCardState extends State<RoleLoginFormCard> {
               ),
               validator: (v) => v!.isEmpty ? 'Enter password' : null,
             ),
-            SizedBox(height: isMobile ? (isCompact ? 12 : 16) : 24),
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                InkWell(
+                  onTap: () => setState(() => _rememberMe = !_rememberMe),
+                  borderRadius: BorderRadius.circular(6),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: Checkbox(
+                            value: _rememberMe,
+                            onChanged: (val) => setState(() => _rememberMe = val ?? false),
+                            activeColor: widget.themeColor,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Save ID & Password',
+                          style: TextStyle(
+                            color: textColor,
+                            fontSize: isMobile ? 12 : 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                if (_hasSavedCredentials)
+                  TextButton(
+                    onPressed: _clearSaved,
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.zero,
+                      minimumSize: const Size(50, 24),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: Text(
+                      'Clear Saved',
+                      style: TextStyle(
+                        color: subtitleColor,
+                        fontSize: isMobile ? 11 : 12,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            SizedBox(height: isMobile ? (isCompact ? 10 : 14) : 18),
             SizedBox(
               width: double.infinity,
               height: isMobile ? 44 : 50,

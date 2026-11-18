@@ -313,4 +313,97 @@ class AuthService {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_roleKey);
   }
+
+  // ==========================================
+  // REMEMBERED CREDENTIALS (PER-MODULE STRICT ISOLATION)
+  // ==========================================
+
+  static String _normalizeRoleKey(String roleName) {
+    final lower = roleName.trim().toLowerCase();
+    if (lower.contains('kitchen') || lower.contains('kds') || lower.contains('chef')) {
+      return 'kitchen';
+    }
+    if (lower.contains('waiter') || lower.contains('captain') || lower.contains('server')) {
+      return 'waiter';
+    }
+    if (lower.contains('inventory') || lower.contains('stock')) {
+      return 'inventory';
+    }
+    if (lower.contains('admin') || lower.contains('owner') || lower.contains('super')) {
+      return 'admin';
+    }
+    if (lower.contains('crm') || lower.contains('customer')) {
+      return 'crm';
+    }
+    if (lower.contains('pos') || lower.contains('billing') || lower.contains('counter') || lower.contains('cashier')) {
+      return 'pos';
+    }
+    return lower.replaceAll(RegExp(r'[^a-z0-9]'), '_');
+  }
+
+  static Future<void> saveRememberedCredentials({
+    required String roleName,
+    required String userId,
+    required String password,
+    required bool rememberMe,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final roleKey = _normalizeRoleKey(roleName);
+
+    // Purge any legacy global keys to guarantee 100% strict per-module isolation
+    await prefs.remove('saved_login_last_user');
+    await prefs.remove('saved_login_last_pass');
+    await prefs.remove('saved_login_last_remember');
+
+    if (rememberMe) {
+      await prefs.setString('saved_login_user_$roleKey', userId.trim());
+      await prefs.setString('saved_login_pass_$roleKey', password.trim());
+      await prefs.setBool('saved_login_remember_$roleKey', true);
+    } else {
+      await prefs.remove('saved_login_user_$roleKey');
+      await prefs.remove('saved_login_pass_$roleKey');
+      await prefs.setBool('saved_login_remember_$roleKey', false);
+    }
+  }
+
+  static Future<Map<String, dynamic>> getRememberedCredentials(String roleName) async {
+    final prefs = await SharedPreferences.getInstance();
+    final roleKey = _normalizeRoleKey(roleName);
+
+    // Purge any legacy global keys to guarantee 100% strict per-module isolation
+    await prefs.remove('saved_login_last_user');
+    await prefs.remove('saved_login_last_pass');
+    await prefs.remove('saved_login_last_remember');
+
+    final isRemembered = prefs.getBool('saved_login_remember_$roleKey');
+    if (isRemembered == true) {
+      final user = prefs.getString('saved_login_user_$roleKey') ?? '';
+      final pass = prefs.getString('saved_login_pass_$roleKey') ?? '';
+      if (user.isNotEmpty || pass.isNotEmpty) {
+        return {
+          'userId': user,
+          'password': pass,
+          'rememberMe': true,
+        };
+      }
+    }
+
+    // STRICT ISOLATION: No fallback to other roles!
+    return {
+      'userId': '',
+      'password': '',
+      'rememberMe': false,
+    };
+  }
+
+  static Future<void> clearRememberedCredentials(String roleName) async {
+    final prefs = await SharedPreferences.getInstance();
+    final roleKey = _normalizeRoleKey(roleName);
+    await prefs.remove('saved_login_user_$roleKey');
+    await prefs.remove('saved_login_pass_$roleKey');
+    await prefs.remove('saved_login_remember_$roleKey');
+    await prefs.remove('saved_login_last_user');
+    await prefs.remove('saved_login_last_pass');
+    await prefs.remove('saved_login_last_remember');
+  }
 }

@@ -128,7 +128,7 @@ jobs:
             "channel": "stable",
             "version": "$cleanVersion",
             "mandatory": false,
-            "release_notes": "• [INVENTORY & RECIPE BOM] Live automated recipe consumption engine deducting ingredients upon KOT dispatch\n• [WASTAGE & SPOILAGE] Financial loss tracking for unbilled kitchen loss and cooked dish explosion\n• [STOCK AUDIT] Physical inventory reconciliation, dual-UOM count normalization, and ledger balancing\n• [FOOD COST REPORT] Actual vs. Theoretical (AvT) food cost variance analysis with COGS benchmark indicators\n• [VALUATION EXPORT] Instant warehouse stock valuation CSV export with ABC classification",
+            "release_notes": "• [INVENTORY & RECIPE BOM] Live automated recipe consumption engine deducting ingredients upon KOT dispatch\n• [WASTAGE & SPOILAGE] Financial loss tracking for unbilled kitchen loss and cooked dish explosion\n• [STOCK AUDIT] Physical inventory reconciliation, dual-UOM count normalization, and ledger balancing\n• [FOOD COST REPORT] Actual vs. Theoretical (AvT) food cost variance analysis with COGS benchmark indicators\n• [VALUATION EXPORT] Instant warehouse stock valuation CSV export with ABC classification\n• [AUTH & TERMINALS] Strict per-module credential persistence (Save ID & Password) with zero cross-module leakage",
             "package_url": "https://github.com/${{ github.repository }}/releases/download/$tagName/app-update.zip",
             "sha256": "$env:SHA256"
           }
