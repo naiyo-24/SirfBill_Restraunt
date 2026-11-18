@@ -7,6 +7,7 @@ import '../../services/windows_auto_updater.dart';
 import '../../services/app_session_manager.dart';
 import 'widgets/role_login_feature_panel.dart';
 import 'widgets/role_login_form_card.dart';
+import '../home/widgets/hardware_store_dialog.dart';
 
 class RoleLoginScreen extends ConsumerStatefulWidget {
   final String roleName;
@@ -191,7 +192,21 @@ class _RoleLoginScreenState extends ConsumerState<RoleLoginScreen> {
               textAlign: isWeb ? TextAlign.center : TextAlign.start,
             ),
           ),
-          if (!kIsWeb)
+          TextButton.icon(
+            onPressed: () => HardwareStoreDialog.show(context),
+            icon: const Icon(Icons.storefront_rounded, color: Colors.white, size: 16),
+            label: Text(
+              isWeb ? 'Buy Hardware' : 'Store',
+              style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+            ),
+            style: TextButton.styleFrom(
+              backgroundColor: Colors.white.withValues(alpha: 0.18),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+          ),
+          if (!kIsWeb) ...[
+            const SizedBox(width: 8),
             TextButton.icon(
               onPressed: _isCheckingUpdate ? null : _manualCheckUpdate,
               icon: _isCheckingUpdate
@@ -298,15 +313,33 @@ class _RoleLoginScreenState extends ConsumerState<RoleLoginScreen> {
   Widget _buildWebFooter() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 16),
-      // ignore: prefer_const_constructors
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: const [
-          Text(
-            '© 2026 Sirfbill Restaurant. All rights reserved.',
+        children: [
+          const Text(
+            '© 2026 Sirfbill Restaurant • Naiyo24',
             style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
           ),
-          Text(
+          InkWell(
+            onTap: () => HardwareStoreDialog.show(context),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.storefront_rounded, size: 14, color: Color(0xFF10B981)),
+                SizedBox(width: 4),
+                Text(
+                  'Need Hardware? Buy Thermal Printers & KOT Displays',
+                  style: TextStyle(
+                    color: Color(0xFF10B981),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Text(
             'Smart Restaurant POS & Operations',
             style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
           ),

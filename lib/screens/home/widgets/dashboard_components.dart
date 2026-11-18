@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../../config/api_constants.dart';
+import 'hardware_store_dialog.dart';
 
 /// 1. Subtle dotted canvas background painter.
 class DotGridPainter extends CustomPainter {
@@ -125,6 +126,38 @@ class DashboardTopBar extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
+        // Buy Hardware Product Button
+        isMobile
+            ? IconButton(
+                tooltip: 'Buy Hardware Products',
+                onPressed: () => HardwareStoreDialog.show(context),
+                icon: const Icon(
+                  Icons.storefront_rounded,
+                  color: Color(0xFF10B981),
+                  size: 20,
+                ),
+              )
+            : TextButton.icon(
+                onPressed: () => HardwareStoreDialog.show(context),
+                icon: const Icon(Icons.storefront_rounded, size: 16, color: Color(0xFF10B981)),
+                label: const Text(
+                  'Buy Hardware',
+                  style: TextStyle(
+                    color: Color(0xFF10B981),
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                style: TextButton.styleFrom(
+                  backgroundColor: const Color(0xFF10B981).withValues(alpha: 0.1),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    side: BorderSide(color: const Color(0xFF10B981).withValues(alpha: 0.2)),
+                  ),
+                ),
+              ),
+        const SizedBox(width: 8),
         if (!kIsWeb)
           isMobile
               ? IconButton(

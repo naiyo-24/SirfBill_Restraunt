@@ -6,6 +6,7 @@ import '../../providers/theme_provider.dart';
 import '../../services/windows_auto_updater.dart';
 import '../../widgets/restaurant_module_card.dart';
 import 'widgets/dashboard_components.dart';
+import 'widgets/hardware_promo_banner.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -199,9 +200,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 final isCompactHeight = screenHeight < 720;
 
                 return SingleChildScrollView(
-                  physics: screenHeight >= 500
-                      ? const NeverScrollableScrollPhysics()
-                      : const ClampingScrollPhysics(),
+                  physics: isCompactHeight ? const ClampingScrollPhysics() : const NeverScrollableScrollPhysics(),
                   child: ConstrainedBox(
                     constraints: BoxConstraints(minHeight: screenHeight),
                     child: Column(
@@ -299,10 +298,23 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           ),
                         ),
 
-                        // 3. Footer Branding
+                        // 3. Hardware Store Promo Banner
+                        Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: isWeb ? 36.0 : (isMobile ? 12.0 : 16.0),
+                            vertical: isMobile ? 4.0 : (isCompactHeight ? 4.0 : 8.0),
+                          ),
+                          child: HardwarePromoBanner(
+                            isDark: isDark,
+                            isMobile: isMobile,
+                            isCompactHeight: isCompactHeight,
+                          ),
+                        ),
+
+                        // 4. Footer Branding
                         Container(
                           padding: EdgeInsets.symmetric(
-                            vertical: isMobile ? 8 : (isTablet ? (isCompactHeight ? 8 : 12) : (isCompactHeight ? 16 : 24)),
+                            vertical: isMobile ? 6 : (isTablet ? (isCompactHeight ? 6 : 10) : (isCompactHeight ? 10 : 18)),
                           ),
                           child: DashboardFooter(
                             isDark: isDark,
