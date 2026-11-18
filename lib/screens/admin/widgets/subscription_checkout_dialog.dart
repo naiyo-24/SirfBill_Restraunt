@@ -79,7 +79,7 @@ class _SubscriptionCheckoutDialogState extends State<SubscriptionCheckoutDialog>
     try {
       // 1. Create order on backend with plan_code and duration_months
       final orderId = await SubscriptionApiService.createRazorpayOrder(
-        amount: widget.plan.price,
+        amount: widget.plan.safeTotalPrice,
         planId: widget.plan.id,
         planCode: widget.plan.planCode,
         durationMonths: widget.plan.durationMonths,
@@ -87,7 +87,7 @@ class _SubscriptionCheckoutDialogState extends State<SubscriptionCheckoutDialog>
 
       // 2. Launch official Razorpay standard checkout
       final result = await launchOfficialRazorpay(
-        amount: widget.plan.price,
+        amount: widget.plan.safeTotalPrice,
         planName: '${widget.plan.name} (${widget.plan.billingCycle})',
         orderId: orderId,
       );
@@ -220,7 +220,7 @@ class _SubscriptionCheckoutDialogState extends State<SubscriptionCheckoutDialog>
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Text(
-                          '₹${plan.price.toStringAsFixed(0)}',
+                          '₹${plan.safeTotalPrice.toStringAsFixed(0)}',
                           style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900),
                         ),
                         Text(
@@ -277,7 +277,7 @@ class _SubscriptionCheckoutDialogState extends State<SubscriptionCheckoutDialog>
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Text('Base License Fee:', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                                const Text('Base License Fee (GST Excluded):', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
                                 Text('₹${plan.safeBasePrice.toStringAsFixed(2)}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                               ],
                             ),
@@ -294,7 +294,7 @@ class _SubscriptionCheckoutDialogState extends State<SubscriptionCheckoutDialog>
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 const Text('Total Payable (Gross):', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
-                                Text('₹${plan.price.toStringAsFixed(2)}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF10B981))),
+                                Text('₹${plan.safeTotalPrice.toStringAsFixed(2)}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF10B981))),
                               ],
                             ),
                           ],

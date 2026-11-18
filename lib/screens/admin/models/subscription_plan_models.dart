@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
 
+// ignore: unused_field
 class SubscriptionPlanItem {
   final String id;
   final String planCode;
   final String name;
   final String tag;
-  final double price;
+  final double price; // Base price from database
   final double? basePrice;
   final double? gstAmount;
+  final double? totalPrice;
+  final String gstNote;
+  final String? priceDisplay;
+  final String? totalDisplay;
   final String discountLabel;
   final String currency;
   final String billingCycle;
@@ -29,6 +34,10 @@ class SubscriptionPlanItem {
     required this.price,
     this.basePrice,
     this.gstAmount,
+    this.totalPrice,
+    this.gstNote = 'GST (18%) Excluded',
+    this.priceDisplay,
+    this.totalDisplay,
     this.discountLabel = '',
     this.currency = 'INR',
     this.billingCycle = '1 Month',
@@ -45,25 +54,31 @@ class SubscriptionPlanItem {
 
   double get safeBasePrice {
     if (basePrice != null && basePrice! > 0) return basePrice!;
-    if (price == 299) return 253.39;
-    if (price == 1058) return 896.61;
-    if (price == 2012) return 1705.08;
-    if (price == 3823) return 3239.83;
-    return double.parse((price / 1.18).toStringAsFixed(2));
+    return price;
   }
 
   double get safeGstAmount {
     if (gstAmount != null && gstAmount! > 0) return gstAmount!;
-    if (price == 299) return 45.61;
-    if (price == 1058) return 161.39;
-    if (price == 2012) return 306.92;
-    if (price == 3823) return 583.17;
-    return double.parse((price - safeBasePrice).toStringAsFixed(2));
+    return double.parse((safeBasePrice * 0.18).toStringAsFixed(2));
+  }
+
+  double get safeTotalPrice {
+    if (totalPrice != null && totalPrice! > 0) return totalPrice!;
+    return double.parse((safeBasePrice + safeGstAmount).toStringAsFixed(2));
   }
 
   factory SubscriptionPlanItem.fromJson(Map<String, dynamic> json) {
     final code = json['plan_code']?.toString() ?? json['id']?.toString() ?? 'RESTAURANT_PRO_299';
-    final priceVal = (json['price'] is num) ? (json['price'] as num).toDouble() : 299.0;
+    final rawBase = (json['base_price'] is num)
+        ? (json['base_price'] as num).toDouble()
+        : ((json['price'] is num) ? (json['price'] as num).toDouble() : 299.0);
+    final rawGst = (json['gst_amount'] is num)
+        ? (json['gst_amount'] as num).toDouble()
+        : double.parse((rawBase * 0.18).toStringAsFixed(2));
+    final rawTotal = (json['total_price'] is num)
+        ? (json['total_price'] as num).toDouble()
+        : double.parse((rawBase + rawGst).toStringAsFixed(2));
+
     final daysVal = (json['duration_days'] is num) ? (json['duration_days'] as num).toInt() : 30;
 
     int months = 1;
@@ -75,46 +90,31 @@ class SubscriptionPlanItem {
       months = 3;
     }
 
-    double base;
-    double gst;
     String discount;
     Color accent;
     IconData planIcon;
     String tagLabel;
 
     if (code.contains('12M') || months == 12) {
-      base = 3239.83;
-      gst = 583.17;
       discount = '10% OFF';
       accent = const Color(0xFF8B5CF6);
       planIcon = Icons.stars_rounded;
       tagLabel = 'Best Value • 10% OFF';
     } else if (code.contains('6M') || months == 6) {
-      base = 1705.08;
-      gst = 306.92;
       discount = '5% OFF';
       accent = const Color(0xFF6366F1);
       planIcon = Icons.trending_up_rounded;
       tagLabel = 'Save 5% • Semi-Annual';
     } else if (code.contains('3M') || months == 3) {
-      base = 896.61;
-      gst = 161.39;
       discount = 'Quarterly';
       accent = const Color(0xFF0EA5E9);
       planIcon = Icons.date_range_rounded;
       tagLabel = 'Popular • 3 Months';
     } else {
-      base = 253.39;
-      gst = 45.61;
       discount = 'Standard';
       accent = const Color(0xFF10B981);
       planIcon = Icons.workspace_premium_rounded;
       tagLabel = 'Standard Monthly';
-    }
-
-    if ((base + gst - priceVal).abs() > 1.0) {
-      base = double.parse((priceVal / 1.18).toStringAsFixed(2));
-      gst = double.parse((priceVal - base).toStringAsFixed(2));
     }
 
     return SubscriptionPlanItem(
@@ -122,9 +122,13 @@ class SubscriptionPlanItem {
       planCode: code,
       name: json['name']?.toString() ?? 'SirfBill Restaurant Pro',
       tag: json['tag']?.toString() ?? tagLabel,
-      price: priceVal,
-      basePrice: base,
-      gstAmount: gst,
+      price: rawBase,
+      basePrice: rawBase,
+      gstAmount: rawGst,
+      totalPrice: rawTotal,
+      gstNote: json['gst_note']?.toString() ?? 'GST (18%) Excluded',
+      priceDisplay: json['price_display']?.toString(),
+      totalDisplay: json['total_display']?.toString(),
       discountLabel: discount,
       currency: json['currency']?.toString() ?? 'INR',
       billingCycle: json['billing_cycle']?.toString() ?? '$months Month${months > 1 ? "s" : ""}',
@@ -143,15 +147,25 @@ class SubscriptionPlanItem {
     );
   }
 
-  SubscriptionPlanItem copyWith({bool? isCurrent}) {
+  SubscriptionPlanItem copyWith({
+    bool? isCurrent,
+    double? price,
+    double? basePrice,
+    double? gstAmount,
+    double? totalPrice,
+  }) {
     return SubscriptionPlanItem(
       id: id,
       planCode: planCode,
       name: name,
       tag: tag,
-      price: price,
-      basePrice: basePrice,
-      gstAmount: gstAmount,
+      price: price ?? this.price,
+      basePrice: basePrice ?? this.basePrice,
+      gstAmount: gstAmount ?? this.gstAmount,
+      totalPrice: totalPrice ?? this.totalPrice,
+      gstNote: gstNote,
+      priceDisplay: priceDisplay,
+      totalDisplay: totalDisplay,
       discountLabel: discountLabel,
       currency: currency,
       billingCycle: billingCycle,
@@ -332,15 +346,19 @@ const List<SubscriptionPlanItem> kMonthlySubscriptionPlans = [
     name: 'SirfBill Restaurant Pro (1 Month)',
     tag: 'Standard Monthly',
     price: 299.0,
-    basePrice: 253.39,
-    gstAmount: 45.61,
+    basePrice: 299.0,
+    gstAmount: 53.82,
+    totalPrice: 352.82,
+    gstNote: 'GST (18%) Excluded',
+    priceDisplay: '₹299 (GST Excluded)',
+    totalDisplay: '₹352.82 (Incl. 18% GST)',
     discountLabel: 'Standard',
     billingCycle: '1 Month',
     durationDays: 30,
     durationMonths: 1,
     isPopular: false,
     isCurrent: true,
-    description: 'Standard 1 Month plan (₹299/month incl. 18% GST). Complete POS, Recipe BOM, KDS & Inventory.',
+    description: 'Standard 1 Month plan: ₹299 base + 18% GST. Complete POS, Recipe BOM, KDS & Inventory.',
     accentColor: Color(0xFF10B981),
     icon: Icons.workspace_premium_rounded,
     features: kDefaultProFeatures,
@@ -350,16 +368,20 @@ const List<SubscriptionPlanItem> kMonthlySubscriptionPlans = [
     planCode: 'RESTAURANT_PRO_3M',
     name: 'SirfBill Restaurant Pro (3 Months)',
     tag: 'Popular • 3 Months',
-    price: 1058.0,
-    basePrice: 896.61,
-    gstAmount: 161.39,
+    price: 897.0,
+    basePrice: 897.0,
+    gstAmount: 161.46,
+    totalPrice: 1058.46,
+    gstNote: 'GST (18%) Excluded',
+    priceDisplay: '₹897 (GST Excluded)',
+    totalDisplay: '₹1058.46 (Incl. 18% GST)',
     discountLabel: 'Quarterly',
     billingCycle: '3 Months',
     durationDays: 90,
     durationMonths: 3,
     isPopular: true,
     isCurrent: false,
-    description: '3 Months plan: ₹299 x 3 = ₹897 + 18% GST = ₹1,058. Full POS & perpetual inventory for 90 days.',
+    description: '3 Months plan: ₹897 base + 18% GST (Total ₹1,058). Full POS & perpetual inventory for 90 days.',
     accentColor: Color(0xFF0EA5E9),
     icon: Icons.date_range_rounded,
     features: kDefaultProFeatures,
@@ -369,16 +391,20 @@ const List<SubscriptionPlanItem> kMonthlySubscriptionPlans = [
     planCode: 'RESTAURANT_PRO_6M',
     name: 'SirfBill Restaurant Pro (6 Months)',
     tag: 'Save 5% • Semi-Annual',
-    price: 2012.0,
-    basePrice: 1705.08,
-    gstAmount: 306.92,
+    price: 1704.30,
+    basePrice: 1704.30,
+    gstAmount: 306.77,
+    totalPrice: 2011.07,
+    gstNote: 'GST (18%) Excluded',
+    priceDisplay: '₹1704.30 (GST Excluded)',
+    totalDisplay: '₹2011.07 (Incl. 18% GST)',
     discountLabel: '5% OFF',
     billingCycle: '6 Months',
     durationDays: 180,
     durationMonths: 6,
     isPopular: false,
     isCurrent: false,
-    description: '6 Months plan: ₹299 x 6 = ₹1,794 with 5% discount (₹1,704.30) + 18% GST = ₹2,012.',
+    description: '6 Months plan: ₹1,704.30 base + 18% GST (Total ₹2,012). 5% discount applied.',
     accentColor: Color(0xFF6366F1),
     icon: Icons.trending_up_rounded,
     features: kDefaultProFeatures,
@@ -388,16 +414,20 @@ const List<SubscriptionPlanItem> kMonthlySubscriptionPlans = [
     planCode: 'RESTAURANT_PRO_12M',
     name: 'SirfBill Restaurant Pro (12 Months)',
     tag: 'Best Value • 10% OFF',
-    price: 3823.0,
-    basePrice: 3239.83,
-    gstAmount: 583.17,
+    price: 3229.20,
+    basePrice: 3229.20,
+    gstAmount: 581.26,
+    totalPrice: 3810.46,
+    gstNote: 'GST (18%) Excluded',
+    priceDisplay: '₹3229.20 (GST Excluded)',
+    totalDisplay: '₹3810.46 (Incl. 18% GST)',
     discountLabel: '10% OFF',
     billingCycle: '12 Months (1 Year)',
     durationDays: 365,
     durationMonths: 12,
     isPopular: false,
     isCurrent: false,
-    description: 'Annual 12 Months plan: ₹299 x 12 = ₹3,588 with 10% discount (₹3,229.20) + 18% GST = ₹3,823.',
+    description: 'Annual 12 Months plan: ₹3,229.20 base + 18% GST (Total ₹3,823). 10% discount applied.',
     accentColor: Color(0xFF8B5CF6),
     icon: Icons.stars_rounded,
     features: kDefaultProFeatures,
