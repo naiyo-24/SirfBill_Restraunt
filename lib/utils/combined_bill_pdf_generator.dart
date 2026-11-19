@@ -5,6 +5,7 @@ import 'package:pdf/widgets.dart' as pw;
 import '../../config/api_client.dart';
 import '../../config/api_constants.dart';
 import '../../models/restaurant_pos_models.dart';
+import 'thermal_logo_enhancer.dart';
 
 class CombinedBillPdfGenerator {
   /// Generates a single combined 72mm PDF containing Page 1 (KOT for Kitchen) and Page 2 (Final Customer Bill).
@@ -35,10 +36,11 @@ class CombinedBillPdfGenerator {
   }) async {
     final pdf = pw.Document();
 
-    // Resolve Logo Image for Bill
+    // Resolve & Enhance Logo Image for Monochrome Thermal Bill
     pw.ImageProvider? billLogo;
     if (logoBytes != null) {
-      billLogo = pw.MemoryImage(logoBytes);
+      final enhancedBytes = ThermalLogoEnhancer.enhanceForThermal(logoBytes);
+      billLogo = pw.MemoryImage(enhancedBytes);
     } else if (logoUrl != null && logoUrl.trim().isNotEmpty) {
       try {
         final fullLogoUrl = logoUrl.startsWith('http')
@@ -49,7 +51,9 @@ class CombinedBillPdfGenerator {
           options: Options(responseType: ResponseType.bytes),
         );
         if (res.statusCode == 200 && res.data != null) {
-          billLogo = pw.MemoryImage(Uint8List.fromList(res.data));
+          final rawBytes = Uint8List.fromList(res.data);
+          final enhancedBytes = ThermalLogoEnhancer.enhanceForThermal(rawBytes);
+          billLogo = pw.MemoryImage(enhancedBytes);
         }
       } catch (_) {}
     }
@@ -216,9 +220,9 @@ class CombinedBillPdfGenerator {
             children: [
               if (billLogo != null) ...[
                 pw.Container(
-                  width: 95,
-                  height: 52,
-                  margin: const pw.EdgeInsets.only(bottom: 4),
+                  width: 140,
+                  height: 65,
+                  margin: const pw.EdgeInsets.only(bottom: 3),
                   child: pw.Image(billLogo, fit: pw.BoxFit.contain),
                 ),
               ],

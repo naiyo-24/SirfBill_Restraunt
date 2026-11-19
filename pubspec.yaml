@@ -60,6 +60,7 @@ dependencies:
   pub_semver: ^2.1.4
   audioplayers: ^6.8.1
   image_picker: ^1.2.4
+  image: ^4.3.0
 
 dev_dependencies:
   flutter_test:

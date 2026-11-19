@@ -60,7 +60,12 @@ class PdfThermalGenerator {
             mainAxisSize: pw.MainAxisSize.min,
             children: [
               if (logoImage != null)
-                pw.Image(logoImage, width: 95, height: 52),
+                pw.Container(
+                  width: 140,
+                  height: 65,
+                  margin: const pw.EdgeInsets.only(bottom: 3),
+                  child: pw.Image(logoImage, fit: pw.BoxFit.contain),
+                ),
               pw.SizedBox(height: 5),
               pw.Text(
                 shopName,
