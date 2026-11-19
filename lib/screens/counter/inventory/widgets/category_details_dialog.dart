@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/inventory_models.dart';
 import '../services/inventory_api_service.dart';
-import 'inventory_status_badge.dart';
+import 'category_ingredient_row.dart';
 
 class CategoryDetailsDialog extends StatefulWidget {
   final IngredientCategory category;
@@ -45,6 +45,8 @@ class _CategoryDetailsDialogState extends State<CategoryDetailsDialog> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cat = widget.category;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 600;
     final totalValuation = _ingredients.fold<double>(
       0.0,
       (sum, item) => sum + item.totalStockValue,
@@ -54,13 +56,17 @@ class _CategoryDetailsDialogState extends State<CategoryDetailsDialog> {
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      insetPadding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 12 : 40,
+        vertical: isMobile ? 16 : 24,
+      ),
       child: Container(
         width: 720,
         constraints: BoxConstraints(
           maxWidth: 760,
           maxHeight: MediaQuery.of(context).size.height * 0.85,
         ),
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(isMobile ? 14 : 24),
         decoration: BoxDecoration(
           color: isDark ? const Color(0xFF1E293B) : Colors.white,
           borderRadius: BorderRadius.circular(16),
@@ -78,8 +84,11 @@ class _CategoryDetailsDialogState extends State<CategoryDetailsDialog> {
             const SizedBox(height: 20),
 
             // 3. Section Title
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 4,
               children: [
                 Text(
                   'Commodities in this Category (${_ingredients.length})',
@@ -174,6 +183,8 @@ class _CategoryDetailsDialogState extends State<CategoryDetailsDialog> {
                         fontWeight: FontWeight.w800,
                         color: isDark ? Colors.white : const Color(0xFF0F172A),
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   Container(
@@ -202,12 +213,16 @@ class _CategoryDetailsDialogState extends State<CategoryDetailsDialog> {
                     color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                   ),
                   const SizedBox(width: 4),
-                  Text(
-                    cat.storageZone,
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w500,
-                      color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                  Expanded(
+                    child: Text(
+                      cat.storageZone,
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w500,
+                        color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
@@ -232,40 +247,90 @@ class _CategoryDetailsDialogState extends State<CategoryDetailsDialog> {
   ) {
     final currencyFmt = NumberFormat('#,##,##0.00', 'en_IN');
 
-    return Row(
-      children: [
-        Expanded(
-          child: _kpiCard(
-            label: 'Total Items',
-            value: '${_ingredients.length}',
-            icon: Icons.inventory_2_outlined,
-            color: const Color(0xFF3B82F6),
-            isDark: isDark,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _kpiCard(
-            label: 'Stock Value',
-            value: '₹${currencyFmt.format(totalValuation)}',
-            icon: Icons.account_balance_wallet_outlined,
-            color: const Color(0xFF10B981),
-            isDark: isDark,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _kpiCard(
-            label: 'Stock Health',
-            value: lowStockCount > 0 ? '$lowStockCount Attention' : 'Healthy',
-            icon: lowStockCount > 0
-                ? Icons.warning_amber_rounded
-                : Icons.check_circle_outline_rounded,
-            color: lowStockCount > 0 ? const Color(0xFFF97316) : const Color(0xFF10B981),
-            isDark: isDark,
-          ),
-        ),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isNarrow = constraints.maxWidth < 520;
+
+        if (isNarrow) {
+          return Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: _kpiCard(
+                      label: 'Total Items',
+                      value: '${_ingredients.length}',
+                      icon: Icons.inventory_2_outlined,
+                      color: const Color(0xFF3B82F6),
+                      isDark: isDark,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _kpiCard(
+                      label: 'Stock Health',
+                      value: lowStockCount > 0 ? '$lowStockCount Need Par' : 'Healthy',
+                      icon: lowStockCount > 0
+                          ? Icons.warning_amber_rounded
+                          : Icons.check_circle_outline_rounded,
+                      color: lowStockCount > 0
+                          ? const Color(0xFFF97316)
+                          : const Color(0xFF10B981),
+                      isDark: isDark,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              _kpiCard(
+                label: 'Stock Value',
+                value: '₹${currencyFmt.format(totalValuation)}',
+                icon: Icons.account_balance_wallet_outlined,
+                color: const Color(0xFF10B981),
+                isDark: isDark,
+              ),
+            ],
+          );
+        }
+
+        return Row(
+          children: [
+            Expanded(
+              child: _kpiCard(
+                label: 'Total Items',
+                value: '${_ingredients.length}',
+                icon: Icons.inventory_2_outlined,
+                color: const Color(0xFF3B82F6),
+                isDark: isDark,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _kpiCard(
+                label: 'Stock Value',
+                value: '₹${currencyFmt.format(totalValuation)}',
+                icon: Icons.account_balance_wallet_outlined,
+                color: const Color(0xFF10B981),
+                isDark: isDark,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _kpiCard(
+                label: 'Stock Health',
+                value: lowStockCount > 0 ? '$lowStockCount Need Par' : 'Healthy',
+                icon: lowStockCount > 0
+                    ? Icons.warning_amber_rounded
+                    : Icons.check_circle_outline_rounded,
+                color: lowStockCount > 0
+                    ? const Color(0xFFF97316)
+                    : const Color(0xFF10B981),
+                isDark: isDark,
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -277,7 +342,7 @@ class _CategoryDetailsDialogState extends State<CategoryDetailsDialog> {
     required bool isDark,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(10),
@@ -286,6 +351,7 @@ class _CategoryDetailsDialogState extends State<CategoryDetailsDialog> {
         ),
       ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
             padding: const EdgeInsets.all(7),
@@ -295,10 +361,11 @@ class _CategoryDetailsDialogState extends State<CategoryDetailsDialog> {
             ),
             child: Icon(icon, size: 16, color: color),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   label,
@@ -306,17 +373,21 @@ class _CategoryDetailsDialogState extends State<CategoryDetailsDialog> {
                     fontSize: 11,
                     color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                   ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: isDark ? Colors.white : const Color(0xFF0F172A),
-                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -363,101 +434,9 @@ class _CategoryDetailsDialogState extends State<CategoryDetailsDialog> {
             color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
           ),
           itemBuilder: (context, index) {
-            final ing = _ingredients[index];
-
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              child: Row(
-                children: [
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF10B981).withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Center(
-                      child: Icon(Icons.egg_alt_outlined, size: 16, color: Color(0xFF10B981)),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    flex: 4,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          ing.name,
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: isDark ? Colors.white : const Color(0xFF0F172A),
-                          ),
-                        ),
-                        Text(
-                          ing.code,
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    flex: 3,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          ing.formattedStock,
-                          style: TextStyle(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w700,
-                            color: isDark ? Colors.white : const Color(0xFF0F172A),
-                          ),
-                        ),
-                        Text(
-                          '(${ing.currentStock.toStringAsFixed(0)} ${ing.recipeUom} total)',
-                          style: TextStyle(
-                            fontSize: 10.5,
-                            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    flex: 3,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          '₹${ing.costPerPurchaseUnit.toStringAsFixed(0)} / ${ing.purchaseUom}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                          ),
-                        ),
-                        Text(
-                          'Val: ₹${NumberFormat('#,##,##0.00', 'en_IN').format(ing.totalStockValue)}',
-                          style: const TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF10B981),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  InventoryStatusBadge.stockLevel(
-                    currentStock: ing.currentStock,
-                    minPar: ing.minParLevel,
-                  ),
-                ],
-              ),
+            return CategoryIngredientRow(
+              ingredient: _ingredients[index],
+              isDark: isDark,
             );
           },
         ),

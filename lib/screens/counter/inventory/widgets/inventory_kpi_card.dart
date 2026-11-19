@@ -50,6 +50,7 @@ class InventoryKpiCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -58,7 +59,7 @@ class InventoryKpiCard extends StatelessWidget {
                     child: Text(
                       title,
                       style: TextStyle(
-                        fontSize: 13,
+                        fontSize: 12.5,
                         fontWeight: FontWeight.w500,
                         color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                       ),
@@ -67,51 +68,55 @@ class InventoryKpiCard extends StatelessWidget {
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
                       color: accentColor.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Icon(icon, size: 18, color: accentColor),
+                    child: Icon(icon, size: 16, color: accentColor),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -0.5,
-                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+              const SizedBox(height: 8),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.5,
+                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                  ),
                 ),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 4),
               Row(
                 children: [
                   if (trendText != null && isPositiveTrend != null) ...[
                     Icon(
                       isPositiveTrend! ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
-                      size: 13,
+                      size: 12,
                       color: isPositiveTrend! ? const Color(0xFF10B981) : const Color(0xFFEF4444),
                     ),
                     const SizedBox(width: 3),
                     Text(
                       trendText!,
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: 10.5,
                         fontWeight: FontWeight.w600,
                         color: isPositiveTrend! ? const Color(0xFF10B981) : const Color(0xFFEF4444),
                       ),
                     ),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: 5),
                   ],
                   if (subtitle != null)
                     Expanded(
                       child: Text(
                         subtitle!,
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 10.5,
                           color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
                         ),
                         maxLines: 1,

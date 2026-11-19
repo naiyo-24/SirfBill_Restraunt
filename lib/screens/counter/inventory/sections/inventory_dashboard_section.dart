@@ -82,34 +82,51 @@ class _InventoryDashboardSectionState extends State<InventoryDashboardSection> {
         Expanded(
           child: _isLoading
               ? const Center(child: CircularProgressIndicator(color: Color(0xFF10B981)))
-              : ListView(
-                  padding: const EdgeInsets.all(24),
-                  children: [
-                    _buildKpiGrid(context, lowStockItems.length),
-                    const SizedBox(height: 24),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+              : LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isMobileOrTablet = constraints.maxWidth < 900;
+                    return ListView(
+                      padding: EdgeInsets.all(isMobileOrTablet ? 14 : 24),
                       children: [
-                        Expanded(
-                          flex: 6,
-                          child: DashboardLowStockCard(
+                        _buildKpiGrid(context, lowStockItems.length),
+                        const SizedBox(height: 20),
+                        if (isMobileOrTablet) ...[
+                          DashboardLowStockCard(
                             items: lowStockItems,
                             onViewAll: () => widget.onNavigateSection?.call(InventorySection.ingredients),
                           ),
-                        ),
-                        const SizedBox(width: 20),
-                        Expanded(
-                          flex: 5,
-                          child: DashboardPendingOrdersCard(
+                          const SizedBox(height: 16),
+                          DashboardPendingOrdersCard(
                             orders: pendingPOs,
                             onManage: () => widget.onNavigateSection?.call(InventorySection.purchaseOrders),
                           ),
-                        ),
+                        ] else ...[
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                flex: 6,
+                                child: DashboardLowStockCard(
+                                  items: lowStockItems,
+                                  onViewAll: () => widget.onNavigateSection?.call(InventorySection.ingredients),
+                                ),
+                              ),
+                              const SizedBox(width: 20),
+                              Expanded(
+                                flex: 5,
+                                child: DashboardPendingOrdersCard(
+                                  orders: pendingPOs,
+                                  onManage: () => widget.onNavigateSection?.call(InventorySection.purchaseOrders),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                        const SizedBox(height: 20),
+                        const DashboardRecentActivityCard(),
                       ],
-                    ),
-                    const SizedBox(height: 24),
-                    const DashboardRecentActivityCard(),
-                  ],
+                    );
+                  },
                 ),
         ),
       ],
@@ -124,14 +141,28 @@ class _InventoryDashboardSectionState extends State<InventoryDashboardSection> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final crossAxisCount = constraints.maxWidth > 900 ? 4 : 2;
+        final width = constraints.maxWidth;
+        final int crossAxisCount;
+        final double childAspectRatio;
+
+        if (width >= 1100) {
+          crossAxisCount = 4;
+          childAspectRatio = 1.95;
+        } else if (width >= 600) {
+          crossAxisCount = 2;
+          childAspectRatio = 2.1;
+        } else {
+          crossAxisCount = 1;
+          childAspectRatio = 3.2;
+        }
+
         return GridView.count(
           crossAxisCount: crossAxisCount,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-          childAspectRatio: 2.1,
+          crossAxisSpacing: 14,
+          mainAxisSpacing: 14,
+          childAspectRatio: childAspectRatio,
           children: [
             InventoryKpiCard(
               title: 'Total Stock Value',

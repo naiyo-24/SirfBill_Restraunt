@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:sirfbill_restaurant/config/api_constants.dart';
 import '../models/inventory_models.dart';
 import '../services/inventory_api_service.dart';
 import '../widgets/add_ingredient_dialog.dart';
+import '../widgets/ingredient_catalog_card.dart';
 import '../widgets/ingredient_details_dialog.dart';
 import '../widgets/inventory_header.dart';
-import '../widgets/inventory_status_badge.dart';
 
 class IngredientsSection extends StatefulWidget {
   final ValueChanged<List<Ingredient>>? onIngredientsLoaded;
@@ -211,174 +210,12 @@ class _IngredientsSectionState extends State<IngredientsSection> {
   }
 
   Widget _buildIngredientCard(BuildContext context, Ingredient item, bool isDark) {
-    final healthPercent = (item.stockHealthPercent / 100.0).clamp(0.0, 1.0);
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E293B) : Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-        ),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: () => _openIngredientDetails(context, item),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                _buildIngredientThumbnail(item, isDark),
-                const SizedBox(width: 16),
-                Expanded(
-                  flex: 3,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            item.name,
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: isDark ? Colors.white : const Color(0xFF0F172A),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              item.code,
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${item.categoryName.isNotEmpty ? item.categoryName : 'General'} • ${item.storageLocation}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Supplier: ${item.primarySupplierName.isNotEmpty ? item.primarySupplierName : 'Direct Kitchen'}',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Stock: ${item.formattedStock}',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: isDark ? Colors.white : const Color(0xFF0F172A),
-                            ),
-                          ),
-                          InventoryStatusBadge.stockLevel(
-                            currentStock: item.currentStock,
-                            minPar: item.minParLevel,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: LinearProgressIndicator(
-                          value: healthPercent,
-                          minHeight: 6,
-                          backgroundColor:
-                              isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            item.isOutOfStock
-                                ? const Color(0xFFEF4444)
-                                : (item.isLowStock
-                                    ? const Color(0xFFF59E0B)
-                                    : const Color(0xFF10B981)),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Par: ${(item.minParLevel / 1000).toStringAsFixed(1)} kg min / ${(item.idealParLevel / 1000).toStringAsFixed(1)} kg max',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 24),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      '₹${item.costPerPurchaseUnit.toStringAsFixed(0)} / ${item.purchaseUom}',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white : const Color(0xFF0F172A),
-                      ),
-                    ),
-                    Text(
-                      '≈ ₹${(item.costPerRecipeUnit * 100).toStringAsFixed(2)} / 100${item.recipeUom.toLowerCase()}',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.edit_outlined, size: 18),
-                          tooltip: 'Edit Ingredient',
-                          onPressed: () => _openAddIngredientDialog(context, item: item),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.delete_outline_rounded, size: 18, color: Colors.redAccent),
-                          tooltip: 'Delete Ingredient',
-                          onPressed: () => _confirmDeleteIngredient(item),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+    return IngredientCatalogCard(
+      item: item,
+      isDark: isDark,
+      onTap: () => _openIngredientDetails(context, item),
+      onEdit: () => _openAddIngredientDialog(context, item: item),
+      onDelete: () => _confirmDeleteIngredient(item),
     );
   }
 
@@ -417,45 +254,7 @@ class _IngredientsSectionState extends State<IngredientsSection> {
     }
   }
 
-  Widget _buildIngredientThumbnail(Ingredient item, bool isDark) {
-    final imgUrl = item.imageUrl?.trim() ?? '';
-    if (imgUrl.isNotEmpty) {
-      final base = ApiConstants.baseUrl.replaceAll(RegExp(r'/+$'), '');
-      final String fullUrl;
-      if (imgUrl.startsWith('http://') || imgUrl.startsWith('https://')) {
-        fullUrl = imgUrl.startsWith(base)
-            ? imgUrl
-            : '$base/api/restaurant/inventory/proxy-image?url=${Uri.encodeComponent(imgUrl)}';
-      } else {
-        fullUrl = '$base${imgUrl.startsWith('/') ? '' : '/'}$imgUrl';
-      }
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(10),
-        child: Image.network(
-          fullUrl,
-          width: 48,
-          height: 48,
-          fit: BoxFit.cover,
-          loadingBuilder: (ctx, child, progress) =>
-              progress == null ? child : _buildFallbackIcon(isDark),
-          errorBuilder: (_, __, ___) => _buildFallbackIcon(isDark),
-        ),
-      );
-    }
-    return _buildFallbackIcon(isDark);
-  }
 
-  Widget _buildFallbackIcon(bool isDark) {
-    return Container(
-      width: 48,
-      height: 48,
-      decoration: BoxDecoration(
-        color: const Color(0xFF10B981).withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: const Icon(Icons.grain, color: Color(0xFF10B981), size: 24),
-    );
-  }
 
   Widget _buildEmptyState(bool isDark) {
     return Center(
