@@ -13,7 +13,7 @@ jobs:
   build-windows:
     runs-on: windows-latest
     env:
-      RELEASE_TAG: v1.0.48
+      RELEASE_TAG: v1.0.49
 
     steps:
       - name: Checkout Code
@@ -128,7 +128,7 @@ jobs:
             "channel": "stable",
             "version": "$cleanVersion",
             "mandatory": false,
-            "release_notes": "• [THERMAL LOGO CONTRAST & AUTO-CROP] ThermalLogoEnhancer trims blank transparent padding and converts colored graphics to solid high-contrast monochrome for crisp thermal printing\n• [THERMAL RECEIPT UPDATES] Added Round Off line item, replaced Paid Amount with TOTAL INVOICE BILL, enlarged shop logo (95x52), and added 25px bottom feed margin before auto-cutter cut\n• [INVENTORY & PROCUREMENT MOBILE OVERHAUL] Responsive mobile layout for Create Purchase Order, Goods Received Notes (GRN) receiving, Suppliers Directory, and KPI cards with zero flex overflows\n• [STABILITY & CODEBASE POLISH] Fixed thermal generator compilation and horizontal table scrolling on mobile viewports",
+            "release_notes": "• [DIRECT THERMAL PRINTING SUITE] Direct USB OTG, LAN (Port 9100), and Bluetooth RFCOMM thermal receipt printing with intelligent blank-space trimming and 58mm/80mm roll support\n• [RECEIPT RENDERING OPTIMIZATION] ESC/POS rasterizer prevents trailing paper waste and eliminates right-margin clipping\n• [HARDWARE STORE & WHATSAPP] Official SirfBill store dialog with full product specs, one-tap WhatsApp ordering (+91 8100463128), and zero UI overflows on mobile\n• [BANNER & RESPONSIVE POLISH] Adaptive promo banner layout eliminating RenderFlex overflows across mobile and desktop viewports",
             "package_url": "https://github.com/${{ github.repository }}/releases/download/$tagName/app-update.zip",
             "sha256": "$env:SHA256"
           }
