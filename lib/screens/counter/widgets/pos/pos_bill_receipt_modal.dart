@@ -2,6 +2,9 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:pdf/pdf.dart';
 import 'package:printing/printing.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../../../utils/usb_thermal_printer_service.dart';
+import 'pos_bill_receipt_footer.dart';
 
 /// Modal dialog that immediately renders the generated 72mm thermal receipt on-screen
 /// for cashier verification and provides direct one-click printing, separate KOT printing,
@@ -54,6 +57,40 @@ class PosBillReceiptModal extends StatefulWidget {
 class _PosBillReceiptModalState extends State<PosBillReceiptModal> {
   int _selectedTab = 0; // 0 = Customer Bill, 1 = Kitchen KOT
   bool _isPrinting = false;
+  List<UsbPrinterDevice> _usbPrinters = [];
+  int _paperWidthMm = 80;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPaperWidthPref();
+    _checkUsbPrinters();
+  }
+
+  Future<void> _loadPaperWidthPref() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getInt('usb_thermal_paper_width_mm') ?? 80;
+      if (mounted) setState(() => _paperWidthMm = saved);
+    } catch (_) {}
+  }
+
+  Future<void> _setPaperWidthMm(int mm) async {
+    setState(() => _paperWidthMm = mm);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('usb_thermal_paper_width_mm', mm);
+    } catch (_) {}
+  }
+
+  Future<void> _checkUsbPrinters() async {
+    if (UsbThermalPrinterService.isSupported) {
+      final list = await UsbThermalPrinterService.getConnectedPrinters();
+      if (mounted) {
+        setState(() => _usbPrinters = list);
+      }
+    }
+  }
 
   Future<void> _printDocument({required Uint8List bytes, required String jobName}) async {
     const format = PdfPageFormat(
@@ -66,6 +103,76 @@ class _PosBillReceiptModalState extends State<PosBillReceiptModal> {
       format: format,
       onLayout: (PdfPageFormat f) async => bytes,
     );
+  }
+
+  Future<void> _printViaUsb({required Uint8List bytes}) async {
+    if (_isPrinting) return;
+    setState(() => _isPrinting = true);
+    try {
+      final success = await UsbThermalPrinterService.printPdfDocument(
+        pdfBytes: bytes,
+        paperWidthMm: _paperWidthMm,
+        cutPaper: true,
+      );
+      if (mounted) {
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Receipt printed via USB thermal printer!'),
+              backgroundColor: Color(0xFF10B981),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('USB Print failed. Check OTG cable & printer power.'),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('USB print error: $e');
+    } finally {
+      if (mounted) setState(() => _isPrinting = false);
+    }
+  }
+
+  Future<void> _printBothViaUsb() async {
+    if (_isPrinting) return;
+    if (widget.kotBytes == null) {
+      await _printViaUsb(bytes: widget.pdfBytes);
+      return;
+    }
+    setState(() => _isPrinting = true);
+    try {
+      final success = await UsbThermalPrinterService.printBothSequentially(
+        billPdfBytes: widget.pdfBytes,
+        kotPdfBytes: widget.kotBytes!,
+        paperWidthMm: _paperWidthMm,
+      );
+      if (mounted) {
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Both KOT and Bill printed via USB!'),
+              backgroundColor: Color(0xFF10B981),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('USB Print failed. Check connection.'),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('USB print both error: $e');
+    } finally {
+      if (mounted) setState(() => _isPrinting = false);
+    }
   }
 
   /// Option A: Prints KOT first (Job 1 -> printer auto-cuts paper), then Customer Bill (Job 2 -> printer auto-cuts paper)
@@ -155,12 +262,22 @@ class _PosBillReceiptModalState extends State<PosBillReceiptModal> {
                       ),
                     ],
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.close_rounded, size: 22),
-                    onPressed: () {
-                      Navigator.pop(context);
-                      widget.onDismiss?.call();
-                    },
+                  Row(
+                    children: [
+                      if (UsbThermalPrinterService.isSupported)
+                        IconButton(
+                          icon: const Icon(Icons.usb_rounded, size: 20, color: Color(0xFF0D9488)),
+                          tooltip: 'Scan USB Thermal Printers',
+                          onPressed: _checkUsbPrinters,
+                        ),
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded, size: 22),
+                        onPressed: () {
+                          Navigator.pop(context);
+                          widget.onDismiss?.call();
+                        },
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -262,92 +379,47 @@ class _PosBillReceiptModalState extends State<PosBillReceiptModal> {
             ),
 
             // Modal Footer Actions
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              decoration: BoxDecoration(
-                border: Border(
-                  top: BorderSide(
-                    color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-                  ),
-                ),
+            PosBillReceiptFooter(
+              isDark: isDark,
+              hasKot: hasKot,
+              isPrinting: _isPrinting,
+              usbPrinters: _usbPrinters,
+              paperWidthMm: _paperWidthMm,
+              onPaperWidthChanged: _setPaperWidthMm,
+              onClose: () {
+                Navigator.pop(context);
+                widget.onDismiss?.call();
+              },
+              onPrintKot: hasKot
+                  ? () => _printDocument(
+                        bytes: widget.kotBytes!,
+                        jobName: 'KOT_${widget.orderNumber.replaceAll("#", "")}',
+                      )
+                  : null,
+              onPrintBill: () => _printDocument(
+                bytes: widget.pdfBytes,
+                jobName: 'Bill_${widget.orderNumber.replaceAll("#", "")}',
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  OutlinedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      widget.onDismiss?.call();
-                    },
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
-                    child: const Text('Close', style: TextStyle(fontSize: 12)),
-                  ),
-                  const SizedBox(width: 8),
-                  if (hasKot) ...[
-                    OutlinedButton.icon(
-                      onPressed: _isPrinting
-                          ? null
-                          : () => _printDocument(
-                                bytes: widget.kotBytes!,
-                                jobName: 'KOT_${widget.orderNumber.replaceAll("#", "")}',
-                              ),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFFF97316),
-                        side: const BorderSide(color: Color(0xFFF97316)),
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              onPrintBoth: hasKot ? _printBothSequentially : null,
+              onUsbPrint: () async {
+                await _checkUsbPrinters();
+                if (_usbPrinters.isEmpty) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('No USB thermal printer detected. Please connect printer via OTG adapter.'),
+                        backgroundColor: Colors.orange,
                       ),
-                      icon: const Icon(Icons.soup_kitchen_rounded, size: 15),
-                      label: const Text('Print KOT', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                    ),
-                    const SizedBox(width: 8),
-                  ],
-                  ElevatedButton.icon(
-                    onPressed: _isPrinting
-                        ? null
-                        : () => _printDocument(
-                              bytes: widget.pdfBytes,
-                              jobName: 'Bill_${widget.orderNumber.replaceAll("#", "")}',
-                            ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF10B981),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      elevation: 0,
-                    ),
-                    icon: const Icon(Icons.print_rounded, size: 15),
-                    label: const Text('Print Bill', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                  ),
-                  if (hasKot) ...[
-                    const SizedBox(width: 8),
-                    ElevatedButton.icon(
-                      onPressed: _isPrinting ? null : _printBothSequentially,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF3B82F6),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                        elevation: 0,
-                      ),
-                      icon: _isPrinting
-                          ? const SizedBox(
-                              width: 14,
-                              height: 14,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                            )
-                          : const Icon(Icons.content_cut_rounded, size: 15),
-                      label: const Text(
-                        'Print Both (Cut)',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
+                    );
+                  }
+                  return;
+                }
+                if (hasKot) {
+                  await _printBothViaUsb();
+                } else {
+                  await _printViaUsb(bytes: widget.pdfBytes);
+                }
+              },
             ),
           ],
         ),
