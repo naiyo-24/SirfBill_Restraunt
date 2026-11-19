@@ -128,7 +128,7 @@ jobs:
             "channel": "stable",
             "version": "$cleanVersion",
             "mandatory": false,
-            "release_notes": "• [THERMAL RECEIPT UPDATES] Added Round Off line item, replaced Paid Amount with TOTAL INVOICE BILL, enlarged shop logo (95x52), and added 25px bottom feed margin before auto-cutter cut\n• [INVENTORY & PROCUREMENT MOBILE OVERHAUL] Responsive mobile layout for Create Purchase Order, Goods Received Notes (GRN) receiving, Suppliers Directory, and KPI cards with zero flex overflows\n• [STABILITY & CODEBASE POLISH] Fixed thermal generator compilation and horizontal table scrolling on mobile viewports",
+            "release_notes": "• [THERMAL LOGO CONTRAST & AUTO-CROP] ThermalLogoEnhancer trims blank transparent padding and converts colored graphics to solid high-contrast monochrome for crisp thermal printing\n• [THERMAL RECEIPT UPDATES] Added Round Off line item, replaced Paid Amount with TOTAL INVOICE BILL, enlarged shop logo (95x52), and added 25px bottom feed margin before auto-cutter cut\n• [INVENTORY & PROCUREMENT MOBILE OVERHAUL] Responsive mobile layout for Create Purchase Order, Goods Received Notes (GRN) receiving, Suppliers Directory, and KPI cards with zero flex overflows\n• [STABILITY & CODEBASE POLISH] Fixed thermal generator compilation and horizontal table scrolling on mobile viewports",
             "package_url": "https://github.com/${{ github.repository }}/releases/download/$tagName/app-update.zip",
             "sha256": "$env:SHA256"
           }
