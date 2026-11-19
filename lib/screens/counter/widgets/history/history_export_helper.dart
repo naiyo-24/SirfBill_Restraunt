@@ -267,8 +267,9 @@ class HistoryExportHelper {
                     pdfFileName: '${bill.invoiceNo}.pdf',
                     initialPageFormat: bill.format == 'Thermal'
                         ? const PdfPageFormat(
-                            80 * PdfPageFormat.mm,
+                            72 * PdfPageFormat.mm,
                             300 * PdfPageFormat.mm,
+                            marginAll: 2.5 * PdfPageFormat.mm,
                           )
                         : bill.format == 'A5'
                         ? PdfPageFormat.a5.landscape
