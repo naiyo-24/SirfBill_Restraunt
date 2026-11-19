@@ -13,6 +13,7 @@ import '../../../../services/inventory_service.dart';
 import '../../../../services/restaurant_pos_service.dart';
 import '../../../../services/shop_service.dart';
 import '../../../../utils/kot_printer_helper.dart';
+import '../../../../utils/restaurant_bill_pdf_generator.dart';
 import 'pos_bill_receipt_modal.dart';
 
 /// Handles the full settlement flow: Order creation/append -> Settle -> Sync Providers -> Thermal Print.
@@ -312,31 +313,31 @@ class PosSettlementService {
 
     // ── Generate PDF bytes ───────────────────────────────────────────────────
     Uint8List? printDocBytes;
-    try {
-      // Find matching table label and floor for Dine-in
-      String? tableLabel;
-      String? floor = state.selectedFloor;
-      if (state.orderType == OrderType.dineIn && state.selectedTableId != null) {
-        final matchingTable = tables.where((t) => t.id == state.selectedTableId).firstOrNull;
-        if (matchingTable != null) {
-          tableLabel = matchingTable.label;
-          if (matchingTable.floor.isNotEmpty) floor = matchingTable.floor;
-        } else {
-          tableLabel = state.selectedTableId;
-        }
+    String? tableLabel;
+    String? floor = state.selectedFloor;
+    if (state.orderType == OrderType.dineIn && state.selectedTableId != null) {
+      final matchingTable = tables.where((t) => t.id == state.selectedTableId).firstOrNull;
+      if (matchingTable != null) {
+        tableLabel = matchingTable.label;
+        if (matchingTable.floor.isNotEmpty) floor = matchingTable.floor;
+      } else {
+        tableLabel = state.selectedTableId;
       }
+    }
 
-      // Generate the exact same high-quality thermal bill template for both Takeaway & Dine-in
-      final kotNumber = 'KOT-${invoiceNo.replaceAll("#", "").replaceAll("ORD-", "")}';
-      printDocBytes = await KotPrinterHelper.generateCombinedTakeawayPdf(
-        kotNumber: kotNumber,
+    try {
+      // Option A: Generate distinct Customer Bill (72mm) & Kitchen KOT (72mm) for independent auto-cuts
+      'KOT-${invoiceNo.replaceAll("#", "").replaceAll("ORD-", "")}';
+      final orderTypeName = state.orderType == OrderType.dineIn
+          ? 'Dine-in'
+          : (state.orderType == OrderType.delivery ? 'Delivery' : 'Takeaway');
+
+      printDocBytes = await RestaurantBillPdfGenerator.generateBillPdf(
         orderNumber: invoiceNo,
-        orderType: state.orderType == OrderType.dineIn ? 'Dine-in' : (state.orderType == OrderType.delivery ? 'Delivery' : 'Takeaway'),
+        orderType: orderTypeName,
         tableLabel: tableLabel,
-        floor: floor,
         customerName: custName,
         customerPhone: custPhone,
-        orderNotes: state.orderNotes,
         items: posCartSnapshot,
         subtotal: subtotal,
         discount: discount,
@@ -363,11 +364,29 @@ class PosSettlementService {
           ? 'Takeaway Receipt & KOT'
           : (state.orderType == OrderType.dineIn ? 'Dine-in Receipt & KOT' : 'Tax Invoice Receipt');
 
+      final finalKotNumber = 'KOT-${invoiceNo.replaceAll("#", "").replaceAll("ORD-", "")}';
+      Uint8List? finalKotBytes;
+      try {
+        finalKotBytes = await KotPrinterHelper.generateKotPdf(
+          kotNumber: finalKotNumber,
+          orderNumber: invoiceNo,
+          orderType: state.orderType.name,
+          tableLabel: tableLabel,
+          floor: floor,
+          customerName: custName,
+          orderNotes: state.orderNotes,
+          items: posCartSnapshot,
+        );
+      } catch (_) {}
+
       await PosBillReceiptModal.show(
+        // ignore: use_build_context_synchronously
         context,
         orderNumber: invoiceNo,
         title: modalTitle,
         pdfBytes: printDocBytes,
+        kotBytes: finalKotBytes,
+        kotNumber: finalKotNumber,
         onDismiss: () {
           // Double safeguard: ensure cart & active order are cleared when receipt modal closes
           ref.read(restaurantPosProvider.notifier).clearCart(clearCustomer: true);
