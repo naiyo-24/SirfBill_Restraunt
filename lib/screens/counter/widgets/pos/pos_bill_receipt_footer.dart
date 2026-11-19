@@ -2,18 +2,21 @@ import 'package:flutter/material.dart';
 import '../../../../utils/usb_thermal_printer_service.dart';
 
 /// Footer action buttons bar for [PosBillReceiptModal].
+/// Supports one-click direct printing across USB (OTG), LAN (Wi-Fi / Ethernet), and Bluetooth (BT).
 class PosBillReceiptFooter extends StatelessWidget {
   final bool isDark;
   final bool hasKot;
   final bool isPrinting;
   final List<UsbPrinterDevice> usbPrinters;
   final int paperWidthMm;
+  final String printerMode; // 'usb', 'lan', 'bt'
   final ValueChanged<int>? onPaperWidthChanged;
+  final VoidCallback onOpenSettings;
   final VoidCallback onClose;
   final VoidCallback? onPrintKot;
   final VoidCallback onPrintBill;
   final VoidCallback? onPrintBoth;
-  final VoidCallback? onUsbPrint;
+  final VoidCallback? onDirectPrint;
 
   const PosBillReceiptFooter({
     super.key,
@@ -22,12 +25,14 @@ class PosBillReceiptFooter extends StatelessWidget {
     required this.isPrinting,
     required this.usbPrinters,
     this.paperWidthMm = 80,
+    this.printerMode = 'usb',
     this.onPaperWidthChanged,
+    required this.onOpenSettings,
     required this.onClose,
     this.onPrintKot,
     required this.onPrintBill,
     this.onPrintBoth,
-    this.onUsbPrint,
+    this.onDirectPrint,
   });
 
   Widget _buildPaperTab(String label, int mm) {
@@ -53,51 +58,84 @@ class PosBillReceiptFooter extends StatelessWidget {
     );
   }
 
+  String _getModeBannerTitle() {
+    if (printerMode == 'lan') return 'LAN (Wi-Fi) Printer Mode';
+    if (printerMode == 'bt') return 'Bluetooth (BT) Mode';
+    if (usbPrinters.isNotEmpty) return 'USB: ${usbPrinters.first.displayName}';
+    return 'USB (OTG) Mode';
+  }
+
+  IconData _getModeIcon() {
+    if (printerMode == 'lan') return Icons.wifi_rounded;
+    if (printerMode == 'bt') return Icons.bluetooth_rounded;
+    return Icons.usb_rounded;
+  }
+
+  String _getDirectButtonLabel() {
+    final prefix = printerMode == 'lan' ? 'LAN' : (printerMode == 'bt' ? 'BT' : 'USB');
+    return hasKot ? '$prefix Both' : '$prefix Print';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (UsbThermalPrinterService.isSupported)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-            color: const Color(0xFF0D9488).withValues(alpha: 0.1),
-            child: Row(
-              children: [
-                const Icon(Icons.usb_rounded, size: 16, color: Color(0xFF0D9488)),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    usbPrinters.isNotEmpty
-                        ? 'USB: ${usbPrinters.first.displayName}'
-                        : 'USB Thermal Mode',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF0D9488),
-                    ),
-                    overflow: TextOverflow.ellipsis,
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+          color: const Color(0xFF0D9488).withValues(alpha: 0.1),
+          child: Row(
+            children: [
+              Icon(_getModeIcon(), size: 16, color: const Color(0xFF0D9488)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  _getModeBannerTitle(),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF0D9488),
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              InkWell(
+                onTap: onOpenSettings,
+                borderRadius: BorderRadius.circular(4),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  child: Row(
+                    children: [
+                      Icon(Icons.tune_rounded, size: 13, color: Color(0xFF0D9488)),
+                      SizedBox(width: 3),
+                      Text(
+                        'Setup',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF0D9488)),
+                      ),
+                    ],
                   ),
                 ),
-                if (onPaperWidthChanged != null) ...[
-                  Container(
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF1E293B) : Colors.white,
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: const Color(0xFF0D9488).withValues(alpha: 0.3)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _buildPaperTab('58mm (2")', 58),
-                        _buildPaperTab('80mm (3")', 80),
-                      ],
-                    ),
+              ),
+              const SizedBox(width: 8),
+              if (onPaperWidthChanged != null) ...[
+                Container(
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: const Color(0xFF0D9488).withValues(alpha: 0.3)),
                   ),
-                ],
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildPaperTab('58mm', 58),
+                      _buildPaperTab('80mm', 80),
+                    ],
+                  ),
+                ),
               ],
-            ),
+            ],
           ),
+        ),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
@@ -172,10 +210,10 @@ class PosBillReceiptFooter extends StatelessWidget {
                     ),
                   ),
                 ],
-                if (UsbThermalPrinterService.isSupported && onUsbPrint != null) ...[
+                if (onDirectPrint != null) ...[
                   const SizedBox(width: 8),
                   ElevatedButton.icon(
-                    onPressed: isPrinting ? null : onUsbPrint,
+                    onPressed: isPrinting ? null : onDirectPrint,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF0D9488),
                       foregroundColor: Colors.white,
@@ -183,9 +221,9 @@ class PosBillReceiptFooter extends StatelessWidget {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       elevation: 0,
                     ),
-                    icon: const Icon(Icons.usb_rounded, size: 15),
+                    icon: Icon(_getModeIcon(), size: 15),
                     label: Text(
-                      hasKot ? 'USB Both' : 'USB Print',
+                      _getDirectButtonLabel(),
                       style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                     ),
                   ),

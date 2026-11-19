@@ -4,11 +4,12 @@ import 'package:pdf/pdf.dart';
 import 'package:printing/printing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../utils/usb_thermal_printer_service.dart';
+import 'controllers/thermal_print_dispatcher.dart';
 import 'pos_bill_receipt_footer.dart';
+import 'thermal_printer_settings_dialog.dart';
 
 /// Modal dialog that immediately renders the generated 72mm thermal receipt on-screen
-/// for cashier verification and provides direct one-click printing, separate KOT printing,
-/// or sequential "Print Both (Auto-Cut)" printing.
+/// for cashier verification and provides direct one-click printing across USB, LAN, and Bluetooth.
 class PosBillReceiptModal extends StatefulWidget {
   final String orderNumber;
   final String title;
@@ -59,19 +60,32 @@ class _PosBillReceiptModalState extends State<PosBillReceiptModal> {
   bool _isPrinting = false;
   List<UsbPrinterDevice> _usbPrinters = [];
   int _paperWidthMm = 80;
+  String _printerMode = 'usb'; // 'usb', 'lan', 'bt'
+  String _lanIp = '192.168.1.100';
+  String? _btAddress;
 
   @override
   void initState() {
     super.initState();
-    _loadPaperWidthPref();
+    _loadPrinterPreferences();
     _checkUsbPrinters();
   }
 
-  Future<void> _loadPaperWidthPref() async {
+  Future<void> _loadPrinterPreferences() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final saved = prefs.getInt('usb_thermal_paper_width_mm') ?? 80;
-      if (mounted) setState(() => _paperWidthMm = saved);
+      final mode = prefs.getString('thermal_printer_mode') ?? 'usb';
+      final savedWidth = prefs.getInt('usb_thermal_paper_width_mm') ?? 80;
+      final ip = prefs.getString('thermal_lan_printer_ip') ?? '192.168.1.100';
+      final bt = prefs.getString('thermal_bt_printer_address');
+      if (mounted) {
+        setState(() {
+          _printerMode = mode;
+          _paperWidthMm = savedWidth;
+          _lanIp = ip;
+          _btAddress = bt;
+        });
+      }
     } catch (_) {}
   }
 
@@ -92,103 +106,68 @@ class _PosBillReceiptModalState extends State<PosBillReceiptModal> {
     }
   }
 
-  Future<void> _printDocument({required Uint8List bytes, required String jobName}) async {
-    const format = PdfPageFormat(
-      72 * PdfPageFormat.mm,
-      280 * PdfPageFormat.mm,
-      marginAll: 2.5 * PdfPageFormat.mm,
-    );
-    await Printing.layoutPdf(
-      name: jobName,
-      format: format,
-      onLayout: (PdfPageFormat f) async => bytes,
-    );
+  Future<void> _openSettingsDialog() async {
+    await ThermalPrinterSettingsDialog.show(context);
+    await _loadPrinterPreferences();
+    await _checkUsbPrinters();
   }
 
-  Future<void> _printViaUsb({required Uint8List bytes}) async {
+  Future<void> _handleDirectPrint({required Uint8List bytes}) async {
     if (_isPrinting) return;
     setState(() => _isPrinting = true);
     try {
-      final success = await UsbThermalPrinterService.printPdfDocument(
-        pdfBytes: bytes,
-        paperWidthMm: _paperWidthMm,
-        cutPaper: true,
-      );
-      if (mounted) {
-        if (success) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Receipt printed via USB thermal printer!'),
-              backgroundColor: Color(0xFF10B981),
-            ),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('USB Print failed. Check OTG cable & printer power.'),
-              backgroundColor: Colors.redAccent,
-            ),
-          );
-        }
+      if (_printerMode == 'usb') {
+        await _checkUsbPrinters();
       }
-    } catch (e) {
-      debugPrint('USB print error: $e');
+      if (mounted) {
+        await ThermalPrintDispatcher.printDirect(
+          context: context,
+          bytes: bytes,
+          mode: _printerMode,
+          paperWidthMm: _paperWidthMm,
+          lanIp: _lanIp,
+          btAddress: _btAddress,
+          usbPrinters: _usbPrinters,
+        );
+      }
     } finally {
       if (mounted) setState(() => _isPrinting = false);
     }
   }
 
-  Future<void> _printBothViaUsb() async {
+  Future<void> _handleBothDirect() async {
     if (_isPrinting) return;
-    if (widget.kotBytes == null) {
-      await _printViaUsb(bytes: widget.pdfBytes);
-      return;
-    }
     setState(() => _isPrinting = true);
     try {
-      final success = await UsbThermalPrinterService.printBothSequentially(
-        billPdfBytes: widget.pdfBytes,
-        kotPdfBytes: widget.kotBytes!,
-        paperWidthMm: _paperWidthMm,
-      );
-      if (mounted) {
-        if (success) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Both KOT and Bill printed via USB!'),
-              backgroundColor: Color(0xFF10B981),
-            ),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('USB Print failed. Check connection.'),
-              backgroundColor: Colors.redAccent,
-            ),
-          );
-        }
+      if (_printerMode == 'usb') {
+        await _checkUsbPrinters();
       }
-    } catch (e) {
-      debugPrint('USB print both error: $e');
+      if (mounted) {
+        await ThermalPrintDispatcher.printBothDirect(
+          context: context,
+          billBytes: widget.pdfBytes,
+          kotBytes: widget.kotBytes,
+          mode: _printerMode,
+          paperWidthMm: _paperWidthMm,
+          lanIp: _lanIp,
+          btAddress: _btAddress,
+          usbPrinters: _usbPrinters,
+        );
+      }
     } finally {
       if (mounted) setState(() => _isPrinting = false);
     }
   }
 
-  /// Option A: Prints KOT first (Job 1 -> printer auto-cuts paper), then Customer Bill (Job 2 -> printer auto-cuts paper)
-  Future<void> _printBothSequentially() async {
+  Future<void> _handleBothSystemSpooler() async {
     if (_isPrinting) return;
     setState(() => _isPrinting = true);
     try {
-      if (widget.kotBytes != null) {
-        final kotJob = 'KOT_${widget.orderNumber.replaceAll("#", "")}';
-        await _printDocument(bytes: widget.kotBytes!, jobName: kotJob);
-        await Future.delayed(const Duration(milliseconds: 600));
-      }
-      final billJob = 'Bill_${widget.orderNumber.replaceAll("#", "")}';
-      await _printDocument(bytes: widget.pdfBytes, jobName: billJob);
-    } catch (e) {
-      debugPrint('Error printing both receipts: $e');
+      await ThermalPrintDispatcher.printBothViaSystemSpooler(
+        billBytes: widget.pdfBytes,
+        kotBytes: widget.kotBytes,
+        orderNumber: widget.orderNumber,
+      );
     } finally {
       if (mounted) setState(() => _isPrinting = false);
     }
@@ -264,12 +243,11 @@ class _PosBillReceiptModalState extends State<PosBillReceiptModal> {
                   ),
                   Row(
                     children: [
-                      if (UsbThermalPrinterService.isSupported)
-                        IconButton(
-                          icon: const Icon(Icons.usb_rounded, size: 20, color: Color(0xFF0D9488)),
-                          tooltip: 'Scan USB Thermal Printers',
-                          onPressed: _checkUsbPrinters,
-                        ),
+                      IconButton(
+                        icon: const Icon(Icons.tune_rounded, size: 20, color: Color(0xFF0D9488)),
+                        tooltip: 'Printer Setup (USB / LAN / BT)',
+                        onPressed: _openSettingsDialog,
+                      ),
                       IconButton(
                         icon: const Icon(Icons.close_rounded, size: 22),
                         onPressed: () {
@@ -385,41 +363,25 @@ class _PosBillReceiptModalState extends State<PosBillReceiptModal> {
               isPrinting: _isPrinting,
               usbPrinters: _usbPrinters,
               paperWidthMm: _paperWidthMm,
+              printerMode: _printerMode,
               onPaperWidthChanged: _setPaperWidthMm,
+              onOpenSettings: _openSettingsDialog,
               onClose: () {
                 Navigator.pop(context);
                 widget.onDismiss?.call();
               },
               onPrintKot: hasKot
-                  ? () => _printDocument(
+                  ? () => ThermalPrintDispatcher.printViaSystemSpooler(
                         bytes: widget.kotBytes!,
                         jobName: 'KOT_${widget.orderNumber.replaceAll("#", "")}',
                       )
                   : null,
-              onPrintBill: () => _printDocument(
+              onPrintBill: () => ThermalPrintDispatcher.printViaSystemSpooler(
                 bytes: widget.pdfBytes,
                 jobName: 'Bill_${widget.orderNumber.replaceAll("#", "")}',
               ),
-              onPrintBoth: hasKot ? _printBothSequentially : null,
-              onUsbPrint: () async {
-                await _checkUsbPrinters();
-                if (_usbPrinters.isEmpty) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('No USB thermal printer detected. Please connect printer via OTG adapter.'),
-                        backgroundColor: Colors.orange,
-                      ),
-                    );
-                  }
-                  return;
-                }
-                if (hasKot) {
-                  await _printBothViaUsb();
-                } else {
-                  await _printViaUsb(bytes: widget.pdfBytes);
-                }
-              },
+              onPrintBoth: hasKot ? _handleBothSystemSpooler : null,
+              onDirectPrint: hasKot ? _handleBothDirect : () => _handleDirectPrint(bytes: widget.pdfBytes),
             ),
           ],
         ),

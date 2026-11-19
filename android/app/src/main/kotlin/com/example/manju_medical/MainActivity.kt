@@ -20,9 +20,15 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity : FlutterActivity() {
     private val CHANNEL = "com.sirfbill.pos/usb_printer"
     private var permissionReceiver: BroadcastReceiver? = null
+    private var bluetoothPrinterManager: BluetoothPrinterManager? = null
 
     override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+
+        val btManager = BluetoothPrinterManager(this)
+        bluetoothPrinterManager = btManager
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, BluetoothPrinterManager.CHANNEL)
+            .setMethodCallHandler(btManager)
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
             val usbManager = getSystemService(Context.USB_SERVICE) as? UsbManager
@@ -270,6 +276,17 @@ class MainActivity : FlutterActivity() {
                 } catch (_: Exception) {}
             }
         }.start()
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        if (bluetoothPrinterManager?.handleRequestPermissionsResult(requestCode, permissions, grantResults) == true) {
+            return
+        }
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
     }
 
     override fun onDestroy() {
