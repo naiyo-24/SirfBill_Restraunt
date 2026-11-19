@@ -25,10 +25,7 @@ class CreatePurchaseOrderDialog extends StatefulWidget {
     return showDialog<PurchaseOrder>(
       context: context,
       barrierDismissible: false,
-      builder: (_) => CreatePurchaseOrderDialog(
-        initialIngredient: initialIngredient,
-        initialIngredients: initialIngredients,
-      ),
+      builder: (_) => CreatePurchaseOrderDialog(initialIngredient: initialIngredient, initialIngredients: initialIngredients),
     );
   }
 
@@ -82,41 +79,27 @@ class _CreatePurchaseOrderDialogState extends State<CreatePurchaseOrderDialog> {
 
           if (prefillList.isNotEmpty) {
             for (final ing in prefillList) {
-              final item = PoLineItemInput();
-              item.ingredientId = ing.id;
-              item.ingredientName = ing.name;
-              item.unit = ing.purchaseUom.isNotEmpty ? ing.purchaseUom : 'KG';
-              item.priceController.text = ing.costPerPurchaseUnit > 0
-                  ? (ing.costPerPurchaseUnit == ing.costPerPurchaseUnit.roundToDouble()
-                      ? ing.costPerPurchaseUnit.toInt().toString()
-                      : ing.costPerPurchaseUnit.toStringAsFixed(2))
-                  : '100';
-
+              final item = PoLineItemInput()
+                ..ingredientId = ing.id
+                ..ingredientName = ing.name
+                ..unit = ing.purchaseUom.isNotEmpty ? ing.purchaseUom : 'KG';
+              final cost = ing.costPerPurchaseUnit;
+              item.priceController.text = cost > 0 ? (cost == cost.roundToDouble() ? cost.toInt().toString() : cost.toStringAsFixed(2)) : '100';
               final factor = ing.uomConversionFactor > 0 ? ing.uomConversionFactor : 1.0;
-              final deficit = (ing.idealParLevel > ing.currentStock)
-                  ? ((ing.idealParLevel - ing.currentStock) / factor)
-                  : 1.0;
+              final deficit = (ing.idealParLevel > ing.currentStock) ? ((ing.idealParLevel - ing.currentStock) / factor) : 1.0;
               final reorderQty = deficit <= 0 ? 1.0 : deficit;
-              item.qtyController.text = reorderQty == reorderQty.roundToDouble()
-                  ? reorderQty.toInt().toString()
-                  : reorderQty.toStringAsFixed(1);
+              item.qtyController.text = reorderQty == reorderQty.roundToDouble() ? reorderQty.toInt().toString() : reorderQty.toStringAsFixed(1);
               _items.add(item);
             }
             final first = prefillList.first;
-            if (first.primarySupplierId.isNotEmpty && _suppliers.any((s) => s.id == first.primarySupplierId)) {
-              _selectedSupplierId = first.primarySupplierId;
-            } else if (_suppliers.isNotEmpty) {
-              _selectedSupplierId = _suppliers.first.id;
-            }
+            _selectedSupplierId = first.primarySupplierId.isNotEmpty && _suppliers.any((s) => s.id == first.primarySupplierId)
+                ? first.primarySupplierId
+                : (_suppliers.isNotEmpty ? _suppliers.first.id : null);
           } else {
-            String? prefSup;
-            if (_ingredients.isNotEmpty) {
-              final first = _ingredients.first;
-              if (first.primarySupplierId.isNotEmpty && _suppliers.any((s) => s.id == first.primarySupplierId)) {
-                prefSup = first.primarySupplierId;
-              }
-            }
-            _selectedSupplierId = prefSup ?? (_suppliers.isNotEmpty ? _suppliers.first.id : null);
+            final first = _ingredients.isNotEmpty ? _ingredients.first : null;
+            _selectedSupplierId = (first != null && first.primarySupplierId.isNotEmpty && _suppliers.any((s) => s.id == first.primarySupplierId))
+                ? first.primarySupplierId
+                : (_suppliers.isNotEmpty ? _suppliers.first.id : null);
             _addItem();
           }
           _isLoading = false;
@@ -192,28 +175,23 @@ class _CreatePurchaseOrderDialogState extends State<CreatePurchaseOrderDialog> {
 
     // Prevent ordering in excess of max capacity (ideal par level)
     for (final it in _items) {
-      final matching = _ingredients.where((i) => i.id == it.ingredientId).toList();
-      if (matching.isNotEmpty) {
+      final matching = _ingredients.where((i) => i.id == it.ingredientId);
+      if (matching.isNotEmpty && matching.first.idealParLevel > 0) {
         final ing = matching.first;
-        if (ing.idealParLevel > 0) {
-          final factor = ing.uomConversionFactor > 0 ? ing.uomConversionFactor : 1.0;
-          final isPurchase = it.unit.toUpperCase() == ing.purchaseUom.toUpperCase();
-          final stockInUnit = isPurchase ? (ing.currentStock / factor) : ing.currentStock;
-          final idealParInUnit = isPurchase ? (ing.idealParLevel / factor) : ing.idealParLevel;
-          final availSpace = (idealParInUnit - stockInUnit).clamp(0.0, double.infinity);
+        final factor = ing.uomConversionFactor > 0 ? ing.uomConversionFactor : 1.0;
+        final isPurchase = it.unit.toUpperCase() == ing.purchaseUom.toUpperCase();
+        final stockInUnit = isPurchase ? (ing.currentStock / factor) : ing.currentStock;
+        final idealParInUnit = isPurchase ? (ing.idealParLevel / factor) : ing.idealParLevel;
+        final availSpace = (idealParInUnit - stockInUnit).clamp(0.0, double.infinity);
 
-          if (it.quantity > availSpace) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  'Order quantity (${it.quantity.toStringAsFixed(1)} ${it.unit}) for "${ing.name}" exceeds max capacity! Available space is ${availSpace.toStringAsFixed(1)} ${it.unit} (Ideal Par: ${idealParInUnit.toStringAsFixed(1)} ${it.unit}).',
-                ),
-                backgroundColor: Colors.red,
-                duration: const Duration(seconds: 4),
-              ),
-            );
-            return;
-          }
+        if (it.quantity > availSpace) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Order quantity (${it.quantity.toStringAsFixed(1)} ${it.unit}) for "${ing.name}" exceeds max capacity! Available: ${availSpace.toStringAsFixed(1)} ${it.unit}.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
         }
       }
     }
@@ -251,11 +229,7 @@ class _CreatePurchaseOrderDialogState extends State<CreatePurchaseOrderDialog> {
         );
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed: $e'), backgroundColor: Colors.red),
-        );
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e'), backgroundColor: Colors.red));
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -264,11 +238,17 @@ class _CreatePurchaseOrderDialogState extends State<CreatePurchaseOrderDialog> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 650;
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       backgroundColor: Colors.transparent,
       elevation: 0,
+      insetPadding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 10 : 40,
+        vertical: isMobile ? 12 : 24,
+      ),
       child: Container(
         width: 880,
         constraints: BoxConstraints(maxWidth: 880, maxHeight: MediaQuery.of(context).size.height * 0.92),
@@ -284,7 +264,7 @@ class _CreatePurchaseOrderDialogState extends State<CreatePurchaseOrderDialog> {
             ),
           ],
         ),
-        padding: const EdgeInsets.all(26),
+        padding: EdgeInsets.all(isMobile ? 14 : 26),
         child: _isLoading
             ? const Center(child: CircularProgressIndicator(color: Color(0xFF10B981)))
             : Form(
@@ -293,14 +273,14 @@ class _CreatePurchaseOrderDialogState extends State<CreatePurchaseOrderDialog> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildHeader(isDark),
+                    _buildHeader(isDark, isMobile),
                     const SizedBox(height: 18),
                     Flexible(
                       child: SingleChildScrollView(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _buildSupplierAndDateRow(isDark),
+                            _buildSupplierAndDateRow(isDark, isMobile),
                             const SizedBox(height: 20),
                             PoLineItemsTable(
                               items: _items,
@@ -324,8 +304,8 @@ class _CreatePurchaseOrderDialogState extends State<CreatePurchaseOrderDialog> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 20),
-                    _buildActions(isDark),
+                    const SizedBox(height: 16),
+                    _buildActions(isDark, isMobile),
                   ],
                 ),
               ),
@@ -333,65 +313,75 @@ class _CreatePurchaseOrderDialogState extends State<CreatePurchaseOrderDialog> {
     );
   }
 
-  Widget _buildHeader(bool isDark) {
+  Widget _buildHeader(bool isDark, bool isMobile) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF10B981), Color(0xFF059669)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+        Expanded(
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF10B981), Color(0xFF059669)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(color: const Color(0xFF10B981).withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4)),
-                ],
+                child: const Icon(Icons.receipt_long_rounded, color: Colors.white, size: 20),
               ),
-              child: const Icon(Icons.receipt_long_rounded, color: Colors.white, size: 22),
-            ),
-            const SizedBox(width: 14),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Create Purchase Order (PO)',
-                      style: TextStyle(
-                        fontSize: 19,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.3,
-                        color: isDark ? Colors.white : const Color(0xFF0F172A),
-                      ),
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            'Create Purchase Order (PO)',
+                            style: TextStyle(
+                              fontSize: isMobile ? 15 : 18,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.3,
+                              color: isDark ? Colors.white : const Color(0xFF0F172A),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (!isMobile) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Text(
+                              'PO-REQUISITION',
+                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF10B981)),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
-                    const SizedBox(width: 10),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF10B981).withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: const Text(
-                        'PO-REQUISITION',
-                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF10B981)),
-                      ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Procure commodities & replenish kitchen inventory',
+                      style: TextStyle(fontSize: 11, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  'Procure commodities & replenish kitchen storage inventory',
-                  style: TextStyle(fontSize: 12, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
-                ),
-              ],
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
+        const SizedBox(width: 8),
         InkWell(
           onTap: () => Navigator.of(context).pop(),
           borderRadius: BorderRadius.circular(50),
@@ -408,87 +398,92 @@ class _CreatePurchaseOrderDialogState extends State<CreatePurchaseOrderDialog> {
     );
   }
 
-  Widget _buildSupplierAndDateRow(bool isDark) {
-    return Row(
+  Widget _buildSupplierAndDateRow(bool isDark, bool isMobile) {
+    final border = OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)));
+    final supplierWidget = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          flex: 6,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('TARGET SUPPLIER / VENDOR', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.5, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569))),
-              const SizedBox(height: 6),
-              DropdownButtonFormField<String>(
-                initialValue: _suppliers.any((s) => s.id == _selectedSupplierId) ? _selectedSupplierId : null,
-                isExpanded: true,
-                style: TextStyle(fontSize: 13, color: isDark ? Colors.white : const Color(0xFF0F172A), fontWeight: FontWeight.w600),
-                decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.storefront_rounded, size: 18, color: Color(0xFF10B981)),
-                  filled: true,
-                  fillColor: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0))),
-                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0))),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                ),
-                items: _suppliers.map((s) => DropdownMenuItem(value: s.id, child: Text('${s.name} ${s.phone.isNotEmpty ? "(${s.phone})" : ""}', overflow: TextOverflow.ellipsis))).toList(),
-                onChanged: (v) => setState(() => _selectedSupplierId = v),
-              ),
-            ],
+        Text('TARGET SUPPLIER / VENDOR', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.5, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569))),
+        const SizedBox(height: 6),
+        DropdownButtonFormField<String>(
+          initialValue: _suppliers.any((s) => s.id == _selectedSupplierId) ? _selectedSupplierId : null,
+          isExpanded: true,
+          style: TextStyle(fontSize: 13, color: isDark ? Colors.white : const Color(0xFF0F172A), fontWeight: FontWeight.w600),
+          decoration: InputDecoration(
+            prefixIcon: const Icon(Icons.storefront_rounded, size: 18, color: Color(0xFF10B981)),
+            filled: true,
+            fillColor: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+            border: border,
+            enabledBorder: border,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           ),
+          items: _suppliers.map((s) => DropdownMenuItem(value: s.id, child: Text('${s.name} ${s.phone.isNotEmpty ? "(${s.phone})" : ""}', overflow: TextOverflow.ellipsis))).toList(),
+          onChanged: (v) => setState(() => _selectedSupplierId = v),
         ),
-        const SizedBox(width: 16),
-        Expanded(
-          flex: 4,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('EXPECTED DELIVERY DATE', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.5, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569))),
-              const SizedBox(height: 6),
-              InkWell(
-                onTap: () async {
-                  final picked = await showDatePicker(context: context, initialDate: _expectedDeliveryDate, firstDate: DateTime.now(), lastDate: DateTime.now().add(const Duration(days: 90)));
-                  if (picked != null) setState(() => _expectedDeliveryDate = picked);
-                },
-                borderRadius: BorderRadius.circular(10),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-                  decoration: BoxDecoration(color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(10), border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0))),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.event_available_rounded, size: 18, color: Color(0xFF10B981)),
-                      const SizedBox(width: 10),
-                      Text(_displayFormat.format(_expectedDeliveryDate), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: isDark ? Colors.white : const Color(0xFF0F172A))),
-                      const Spacer(),
-                      const Icon(Icons.arrow_drop_down, color: Colors.grey),
-                    ],
-                  ),
+      ],
+    );
+
+    final dateWidget = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('EXPECTED DELIVERY DATE', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.5, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569))),
+        const SizedBox(height: 6),
+        InkWell(
+          onTap: () async {
+            final picked = await showDatePicker(context: context, initialDate: _expectedDeliveryDate, firstDate: DateTime.now(), lastDate: DateTime.now().add(const Duration(days: 90)));
+            if (picked != null) setState(() => _expectedDeliveryDate = picked);
+          },
+          borderRadius: BorderRadius.circular(10),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+            decoration: BoxDecoration(color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(10), border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0))),
+            child: Row(
+              children: [
+                const Icon(Icons.event_available_rounded, size: 18, color: Color(0xFF10B981)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(_displayFormat.format(_expectedDeliveryDate), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: isDark ? Colors.white : const Color(0xFF0F172A)), maxLines: 1, overflow: TextOverflow.ellipsis),
                 ),
-              ),
-            ],
+                const Icon(Icons.arrow_drop_down, color: Colors.grey),
+              ],
+            ),
           ),
         ),
       ],
     );
+
+    if (isMobile) {
+      return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [supplierWidget, const SizedBox(height: 12), dateWidget]);
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [Expanded(flex: 6, child: supplierWidget), const SizedBox(width: 16), Expanded(flex: 4, child: dateWidget)],
+    );
   }
 
-  Widget _buildActions(bool isDark) {
+  Widget _buildActions(bool isDark, bool isMobile) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
         OutlinedButton(
           onPressed: () => Navigator.of(context).pop(),
-          style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+          style: OutlinedButton.styleFrom(
+            padding: EdgeInsets.symmetric(horizontal: isMobile ? 14 : 20, vertical: isMobile ? 10 : 13),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
           child: const Text('Cancel'),
         ),
-        const SizedBox(width: 14),
-        ElevatedButton.icon(
-          onPressed: _isSaving ? null : _submitPO,
-          icon: _isSaving
-              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-              : Icon(_sendImmediately ? Icons.send_rounded : Icons.save_rounded, size: 16),
-          label: Text(_sendImmediately ? 'Create & Dispatch PO' : 'Save as Draft', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
-          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981), foregroundColor: Colors.white, elevation: 3, padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 13), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+        const SizedBox(width: 10),
+        Flexible(
+          child: ElevatedButton.icon(
+            onPressed: _isSaving ? null : _submitPO,
+            icon: _isSaving
+                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                : Icon(_sendImmediately ? Icons.send_rounded : Icons.save_rounded, size: 16),
+            label: Text(_sendImmediately ? 'Create & Dispatch PO' : 'Save as Draft', style: TextStyle(fontSize: isMobile ? 12 : 13, fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981), foregroundColor: Colors.white, elevation: 3, padding: EdgeInsets.symmetric(horizontal: isMobile ? 16 : 24, vertical: isMobile ? 10 : 13), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+          ),
         ),
       ],
     );

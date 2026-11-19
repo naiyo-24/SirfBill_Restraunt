@@ -13,7 +13,7 @@ jobs:
   build-windows:
     runs-on: windows-latest
     env:
-      RELEASE_TAG: v1.0.45
+      RELEASE_TAG: v1.0.46
 
     steps:
       - name: Checkout Code
@@ -128,7 +128,7 @@ jobs:
             "channel": "stable",
             "version": "$cleanVersion",
             "mandatory": false,
-            "release_notes": "• [THERMAL PRINTER MARGIN FIX] Adjusted thermal print width to 72mm printable width with 2.5mm margins, preventing right-edge text and totals cutting on standard 80mm rolls\n• [SEPARATE KOT & CUSTOMER BILL] Standalone KOT and Tax Invoice generation for independent printer auto-cuts\n• [PRINT BOTH WITH AUTO-CUT] Sequential printing trigger: KOT prints first (auto-cuts), followed by Customer Tax Invoice (auto-cuts)\n• [RAZORPAY CHECKOUT FIX] Official hosted payment links (rzp.io) to eliminate localhost domain verification blocks with active background polling",
+            "release_notes": "• [THERMAL RECEIPT UPDATES] Added Round Off line item, replaced Paid Amount with TOTAL INVOICE BILL, enlarged shop logo (95x52), and added 25px bottom feed margin before auto-cutter cut\n• [INVENTORY & PROCUREMENT MOBILE OVERHAUL] Responsive mobile layout for Create Purchase Order, Goods Received Notes (GRN) receiving, Suppliers Directory, and KPI cards with zero flex overflows\n• [STABILITY & CODEBASE POLISH] Fixed thermal generator compilation and horizontal table scrolling on mobile viewports",
             "package_url": "https://github.com/${{ github.repository }}/releases/download/$tagName/app-update.zip",
             "sha256": "$env:SHA256"
           }

@@ -56,13 +56,9 @@ class _SupplierDetailsDialogState extends State<SupplierDetailsDialog> {
 
   @override
   void dispose() {
-    _nameCtrl.dispose();
-    _contactCtrl.dispose();
-    _phoneCtrl.dispose();
-    _emailCtrl.dispose();
-    _gstinCtrl.dispose();
-    _addressCtrl.dispose();
-    _termsCtrl.dispose();
+    for (final c in [_nameCtrl, _contactCtrl, _phoneCtrl, _emailCtrl, _gstinCtrl, _addressCtrl, _termsCtrl]) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -150,14 +146,16 @@ class _SupplierDetailsDialogState extends State<SupplierDetailsDialog> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isMobile = MediaQuery.of(context).size.width < 600;
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+      insetPadding: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 40, vertical: isMobile ? 16 : 24),
       child: Container(
         width: 560,
         constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.85),
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(isMobile ? 14 : 24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -202,6 +200,8 @@ class _SupplierDetailsDialogState extends State<SupplierDetailsDialog> {
                   fontWeight: FontWeight.bold,
                   color: isDark ? Colors.white : const Color(0xFF0F172A),
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 2),
               Container(
@@ -352,7 +352,7 @@ class _SupplierDetailsDialogState extends State<SupplierDetailsDialog> {
 
   Widget _buildMetricCard(String label, String value, IconData icon, bool isDark) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(8),
@@ -365,11 +365,22 @@ class _SupplierDetailsDialogState extends State<SupplierDetailsDialog> {
             children: [
               Icon(icon, size: 14, color: const Color(0xFF10B981)),
               const SizedBox(width: 4),
-              Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(fontSize: 10, color: Colors.grey),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 6),
-          Text(value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+          ),
         ],
       ),
     );
@@ -453,31 +464,18 @@ class _SupplierDetailsDialogState extends State<SupplierDetailsDialog> {
           children: [
             if (_isEditing)
               TextButton(
-                onPressed: () {
-                  setState(() {
-                    _isEditing = false;
-                    _initControllers();
-                  });
-                },
+                onPressed: () => setState(() {
+                  _isEditing = false;
+                  _initControllers();
+                }),
                 child: const Text('Cancel'),
               ),
             const SizedBox(width: 8),
             ElevatedButton.icon(
-              onPressed: _isSaving
-                  ? null
-                  : () {
-                      if (_isEditing) {
-                        _saveChanges();
-                      } else {
-                        setState(() => _isEditing = true);
-                      }
-                    },
+              onPressed: _isSaving ? null : () => _isEditing ? _saveChanges() : setState(() => _isEditing = true),
               icon: Icon(_isEditing ? Icons.save : Icons.edit_outlined, size: 16),
               label: Text(_isEditing ? 'Save Changes' : 'Edit Vendor'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF10B981),
-                foregroundColor: Colors.white,
-              ),
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981), foregroundColor: Colors.white),
             ),
           ],
         ),

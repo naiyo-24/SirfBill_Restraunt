@@ -50,6 +50,7 @@ class _PurchaseOrdersSectionState extends State<PurchaseOrdersSection> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isMobile = MediaQuery.of(context).size.width < 650;
 
     final filtered = _orders.where((po) {
       final q = _searchQuery.toLowerCase();
@@ -89,11 +90,14 @@ class _PurchaseOrdersSectionState extends State<PurchaseOrdersSection> {
               : filtered.isEmpty
                   ? _buildEmptyState()
                   : ListView.builder(
-                      padding: const EdgeInsets.all(24),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isMobile ? 12 : 24,
+                        vertical: isMobile ? 12 : 24,
+                      ),
                       itemCount: filtered.length,
                       itemBuilder: (context, index) {
                         final po = filtered[index];
-                        return _buildPOCard(context, po, isDark);
+                        return _buildPOCard(context, po, isDark, isMobile);
                       },
                     ),
         ),
@@ -154,8 +158,134 @@ class _PurchaseOrdersSectionState extends State<PurchaseOrdersSection> {
     );
   }
 
-  Widget _buildPOCard(BuildContext context, PurchaseOrder po, bool isDark) {
+  Widget _buildPOCard(BuildContext context, PurchaseOrder po, bool isDark, bool isMobile) {
     final dateFormat = DateFormat('dd MMM yyyy');
+
+    if (isMobile) {
+      return Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1E293B) : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => _openPODetailsDialog(context, po),
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(7),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF3B82F6).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(Icons.receipt_long, color: Color(0xFF3B82F6), size: 18),
+                      ),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          po.poNumber,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? Colors.white : const Color(0xFF0F172A),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      InventoryStatusBadge.status(po.status.label, color: po.status.color),
+                      const Spacer(),
+                      Text(
+                        '₹${po.totalAmount.toStringAsFixed(0)}',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.chevron_right, size: 18, color: Colors.grey),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Vendor: ${po.supplierName}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '${po.items.length} item${po.items.length == 1 ? '' : 's'} • Expected: ${dateFormat.format(po.expectedDeliveryDate)}',
+                          style: TextStyle(fontSize: 11, color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8)),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          InkWell(
+                            onTap: () async {
+                              final sent = await showDialog<bool>(
+                                context: context,
+                                builder: (ctx) => PoEmailDispatchDialog(po: po),
+                              );
+                              if (sent == true) _loadOrders();
+                            },
+                            borderRadius: BorderRadius.circular(6),
+                            child: const Padding(
+                              padding: EdgeInsets.all(4),
+                              child: Icon(Icons.email_outlined, size: 17, color: Color(0xFF3B82F6)),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          InkWell(
+                            onTap: () => PurchaseOrderPdfHelper.printOrDownloadPo(context, po),
+                            borderRadius: BorderRadius.circular(6),
+                            child: const Padding(
+                              padding: EdgeInsets.all(4),
+                              child: Icon(Icons.print_outlined, size: 17, color: Color(0xFF10B981)),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          InkWell(
+                            onTap: () => PurchaseOrderPdfHelper.openBackendPrintView(po.id),
+                            borderRadius: BorderRadius.circular(6),
+                            child: const Padding(
+                              padding: EdgeInsets.all(4),
+                              child: Icon(Icons.open_in_new_rounded, size: 16, color: Color(0xFF64748B)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -189,15 +319,19 @@ class _PurchaseOrdersSectionState extends State<PurchaseOrdersSection> {
                     children: [
                       Row(
                         children: [
-                          Text(
-                            po.poNumber,
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                              color: isDark ? Colors.white : const Color(0xFF0F172A),
+                          Flexible(
+                            child: Text(
+                              po.poNumber,
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                color: isDark ? Colors.white : const Color(0xFF0F172A),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          const SizedBox(width: 10),
+                          const SizedBox(width: 8),
                           InventoryStatusBadge.status(po.status.label, color: po.status.color),
                         ],
                       ),
@@ -209,11 +343,15 @@ class _PurchaseOrdersSectionState extends State<PurchaseOrdersSection> {
                           fontWeight: FontWeight.w600,
                           color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 2),
                       Text(
                         'Created: ${dateFormat.format(po.orderDate)} • Expected: ${dateFormat.format(po.expectedDeliveryDate)}',
                         style: TextStyle(fontSize: 11, color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8)),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),

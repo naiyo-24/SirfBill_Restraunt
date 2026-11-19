@@ -73,6 +73,7 @@ class _SuppliersSectionState extends State<SuppliersSection> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isMobile = MediaQuery.of(context).size.width < 600;
 
     final filtered = _suppliers.where((s) {
       final q = _searchQuery.toLowerCase();
@@ -113,11 +114,14 @@ class _SuppliersSectionState extends State<SuppliersSection> {
               : filtered.isEmpty
                   ? _buildEmptyState(isDark)
                   : ListView.builder(
-                      padding: const EdgeInsets.all(24),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isMobile ? 12 : 24,
+                        vertical: isMobile ? 12 : 24,
+                      ),
                       itemCount: filtered.length,
                       itemBuilder: (context, index) {
                         final supplier = filtered[index];
-                        return _buildSupplierTile(context, supplier, isDark);
+                        return _buildSupplierTile(context, supplier, isDark, isMobile);
                       },
                     ),
         ),
@@ -141,8 +145,16 @@ class _SuppliersSectionState extends State<SuppliersSection> {
     );
   }
 
-  Widget _buildSupplierTile(BuildContext context, Supplier s, bool isDark) {
+  Widget _buildSupplierTile(
+    BuildContext context,
+    Supplier s,
+    bool isDark,
+    bool isMobile,
+  ) {
     final initialChar = s.name.isNotEmpty ? s.name.substring(0, 1).toUpperCase() : 'V';
+    final matchingOrders = _getSupplierOrders(s);
+    final orderCount = matchingOrders.length;
+    final totalSpend = matchingOrders.fold(0.0, (sum, po) => sum + po.totalAmount);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -160,39 +172,42 @@ class _SuppliersSectionState extends State<SuppliersSection> {
           hoverColor: const Color(0xFF10B981).withValues(alpha: 0.05),
           onTap: () => _openSupplierDetails(context, s),
           child: Padding(
-            padding: const EdgeInsets.all(18),
+            padding: EdgeInsets.all(isMobile ? 12 : 18),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 CircleAvatar(
-                  radius: 22,
+                  radius: isMobile ? 18 : 22,
                   backgroundColor: const Color(0xFF10B981).withValues(alpha: 0.12),
                   child: Text(
                     initialChar,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF10B981),
-                      fontSize: 16,
+                      color: const Color(0xFF10B981),
+                      fontSize: isMobile ? 14 : 16,
                     ),
                   ),
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: isMobile ? 10 : 16),
                 Expanded(
-                  flex: 3,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
-                          Text(
-                            s.name,
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                              color: isDark ? Colors.white : const Color(0xFF0F172A),
+                          Flexible(
+                            child: Text(
+                              s.name,
+                              style: TextStyle(
+                                fontSize: isMobile ? 14 : 15,
+                                fontWeight: FontWeight.bold,
+                                color: isDark ? Colors.white : const Color(0xFF0F172A),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 6),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
@@ -217,6 +232,8 @@ class _SuppliersSectionState extends State<SuppliersSection> {
                           fontSize: 12,
                           color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
                       Text(
@@ -225,6 +242,8 @@ class _SuppliersSectionState extends State<SuppliersSection> {
                           fontSize: 11,
                           color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       if (s.email.isNotEmpty || s.address.isNotEmpty) ...[
                         const SizedBox(height: 4),
@@ -244,60 +263,47 @@ class _SuppliersSectionState extends State<SuppliersSection> {
                     ],
                   ),
                 ),
-                Expanded(
-                  flex: 2,
-                  child: Builder(
-                    builder: (_) {
-                      final matchingOrders = _getSupplierOrders(s);
-                      final orderCount = matchingOrders.length;
-                      final totalSpend = matchingOrders.fold(0.0, (sum, po) => sum + po.totalAmount);
-
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                            decoration: BoxDecoration(
-                              color: orderCount > 0
-                                  ? const Color(0xFF10B981).withValues(alpha: 0.12)
-                                  : (isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9)),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  '$orderCount ${orderCount == 1 ? 'Purchase' : 'Purchases'}',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: orderCount > 0 ? const Color(0xFF10B981) : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
-                                  ),
-                                ),
-                                if (totalSpend > 0) ...[
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    '₹${totalSpend.toStringAsFixed(0)}',
-                                    style: TextStyle(
-                                      fontSize: 10.5,
-                                      fontWeight: FontWeight.w600,
-                                      color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
+                const SizedBox(width: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: orderCount > 0
+                        ? const Color(0xFF10B981).withValues(alpha: 0.12)
+                        : (isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9)),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '$orderCount ${orderCount == 1 ? 'Purchase' : 'Purchases'}',
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.bold,
+                          color: orderCount > 0
+                              ? const Color(0xFF10B981)
+                              : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                        ),
+                      ),
+                      if (totalSpend > 0) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          '₹${totalSpend.toStringAsFixed(0)}',
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w600,
+                            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                           ),
-                        ],
-                      );
-                    },
+                        ),
+                      ],
+                    ],
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 8),
                 Icon(
                   Icons.arrow_forward_ios_rounded,
-                  size: 14,
+                  size: 13,
                   color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
                 ),
               ],

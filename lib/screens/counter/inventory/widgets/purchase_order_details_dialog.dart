@@ -4,6 +4,8 @@ import '../models/inventory_ops_models.dart';
 import '../services/procurement_api_service.dart';
 import '../utils/purchase_order_pdf_helper.dart';
 import 'inventory_status_badge.dart';
+import 'po_details_actions.dart';
+import 'po_details_items_table.dart';
 import 'po_email_dispatch_dialog.dart';
 import 'record_grn_dialog.dart';
 
@@ -124,13 +126,19 @@ class _PurchaseOrderDetailsDialogState extends State<PurchaseOrderDetailsDialog>
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 600;
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      insetPadding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 12 : 40,
+        vertical: isMobile ? 16 : 24,
+      ),
       child: Container(
         width: 800,
         constraints: BoxConstraints(maxWidth: 820, maxHeight: MediaQuery.of(context).size.height * 0.90),
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(isMobile ? 14 : 24),
         decoration: BoxDecoration(color: isDark ? const Color(0xFF1E293B) : Colors.white, borderRadius: BorderRadius.circular(16)),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -139,28 +147,48 @@ class _PurchaseOrderDetailsDialogState extends State<PurchaseOrderDetailsDialog>
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(color: const Color(0xFF3B82F6).withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
-                      child: const Icon(Icons.receipt_long, color: Color(0xFF3B82F6), size: 22),
-                    ),
-                    const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(_currentPo.poNumber, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDark ? Colors.white : const Color(0xFF0F172A))),
-                        const SizedBox(height: 2),
-                        Text('Vendor: ${_currentPo.supplierName}', style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-                      ],
-                    ),
-                  ],
+                Expanded(
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(color: const Color(0xFF3B82F6).withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
+                        child: const Icon(Icons.receipt_long, color: Color(0xFF3B82F6), size: 22),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _currentPo.poNumber,
+                              style: TextStyle(
+                                fontSize: isMobile ? 16 : 18,
+                                fontWeight: FontWeight.bold,
+                                color: isDark ? Colors.white : const Color(0xFF0F172A),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Vendor: ${_currentPo.supplierName}',
+                              style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
+                const SizedBox(width: 8),
                 Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     InventoryStatusBadge.status(_currentPo.status.label, color: _currentPo.status.color),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 4),
                     IconButton(onPressed: () => Navigator.of(context).pop(_currentPo), icon: const Icon(Icons.close, size: 20)),
                   ],
                 ),
@@ -174,9 +202,9 @@ class _PurchaseOrderDetailsDialogState extends State<PurchaseOrderDetailsDialog>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildMetaCards(isDark),
+                          _buildMetaCards(isDark, isMobile),
                           const SizedBox(height: 16),
-                          _buildItemsTable(isDark),
+                          PoDetailsItemsTable(items: _currentPo.items, isDark: isDark),
                           if (_currentPo.notes.isNotEmpty) ...[
                             const SizedBox(height: 12),
                             Container(
@@ -191,14 +219,56 @@ class _PurchaseOrderDetailsDialogState extends State<PurchaseOrderDetailsDialog>
                     ),
             ),
             const SizedBox(height: 16),
-            _buildActions(),
+            PoDetailsActions(
+              po: _currentPo,
+              isProcessing: _isProcessing,
+              isMobile: isMobile,
+              onDelete: _deletePO,
+              onCancel: _cancelPO,
+              onEmail: _openEmailDialog,
+              onIssue: _issuePO,
+              onReceive: () async {
+                final res = await showDialog(
+                  context: context,
+                  builder: (ctx) => RecordGrnDialog(initialPo: _currentPo),
+                );
+                if (res != null) {
+                  _fetchFullDetails();
+                }
+              },
+              onPrintPdf: _printOrDownloadPo,
+              onOpenHtml: _openHtmlPrintView,
+              onClose: () => Navigator.of(context).pop(_currentPo),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildMetaCards(bool isDark) {
+  Widget _buildMetaCards(bool isDark, bool isMobile) {
+    if (isMobile) {
+      return Column(
+        children: [
+          Row(
+            children: [
+              Expanded(child: _buildInfoCard('Order Date', _dateFormat.format(_currentPo.orderDate), Icons.event_note, isDark)),
+              const SizedBox(width: 8),
+              Expanded(child: _buildInfoCard('Expected Delivery', _dateFormat.format(_currentPo.expectedDeliveryDate), Icons.local_shipping_outlined, isDark)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(child: _buildInfoCard('GST Total', '₹${_currentPo.taxAmount.toStringAsFixed(2)}', Icons.account_balance_outlined, isDark)),
+              const SizedBox(width: 8),
+              Expanded(child: _buildInfoCard('Total Amount', '₹${_currentPo.totalAmount.toStringAsFixed(2)}', Icons.payments_outlined, isDark, highlight: true)),
+            ],
+          ),
+        ],
+      );
+    }
+
     return Row(
       children: [
         Expanded(child: _buildInfoCard('Order Date', _dateFormat.format(_currentPo.orderDate), Icons.event_note, isDark)),
@@ -214,7 +284,7 @@ class _PurchaseOrderDetailsDialogState extends State<PurchaseOrderDetailsDialog>
 
   Widget _buildInfoCard(String label, String value, IconData icon, bool isDark, {bool highlight = false}) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(10),
@@ -223,69 +293,33 @@ class _PurchaseOrderDetailsDialogState extends State<PurchaseOrderDetailsDialog>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(children: [Icon(icon, size: 14, color: highlight ? const Color(0xFF10B981) : Colors.grey), const SizedBox(width: 6), Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey))]),
+          Row(
+            children: [
+              Icon(icon, size: 14, color: highlight ? const Color(0xFF10B981) : Colors.grey),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(fontSize: 10.5, color: Colors.grey),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 4),
-          Text(value, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: highlight ? const Color(0xFF10B981) : null)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildItemsTable(bool isDark) {
-    return Container(
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF0F172A) : Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
-      ),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(9)),
-            ),
-            child: const Row(
-              children: [
-                Expanded(flex: 3, child: Text('Ingredient Item', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold))),
-                Expanded(flex: 2, child: Text('Ordered Qty', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold), textAlign: TextAlign.center)),
-                Expanded(flex: 2, child: Text('Unit Price', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold), textAlign: TextAlign.right)),
-                Expanded(flex: 2, child: Text('GST %', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold), textAlign: TextAlign.center)),
-                Expanded(flex: 2, child: Text('Line Total', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold), textAlign: TextAlign.right)),
-              ],
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: highlight ? const Color(0xFF10B981) : (isDark ? Colors.white : const Color(0xFF0F172A)),
+              ),
             ),
           ),
-          ..._currentPo.items.map((it) => Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            child: Row(
-              children: [
-                Expanded(flex: 3, child: Text(it.ingredientName, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
-                Expanded(
-                  flex: 2,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text('${it.orderedQty.toStringAsFixed(1)} ${it.uom}', style: const TextStyle(fontSize: 12), textAlign: TextAlign.center),
-                      if (it.receivedQty > 0)
-                        Text(
-                          'Rec: ${it.receivedQty.toStringAsFixed(1)} ${it.uom}',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: it.receivedQty >= it.orderedQty ? const Color(0xFF10B981) : Colors.orange,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                    ],
-                  ),
-                ),
-                Expanded(flex: 2, child: Text('₹${it.unitPrice.toStringAsFixed(2)}', style: const TextStyle(fontSize: 12), textAlign: TextAlign.right)),
-                Expanded(flex: 2, child: Text('${it.taxRate.toStringAsFixed(0)}%', style: const TextStyle(fontSize: 12, color: Color(0xFFF59E0B), fontWeight: FontWeight.w600), textAlign: TextAlign.center)),
-                Expanded(flex: 2, child: Text('₹${it.totalPrice.toStringAsFixed(2)}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF10B981)), textAlign: TextAlign.right)),
-              ],
-            ),
-          )),
         ],
       ),
     );
@@ -323,163 +357,5 @@ class _PurchaseOrderDetailsDialogState extends State<PurchaseOrderDetailsDialog>
         );
       }
     }
-  }
-
-  Widget _buildPrintSplitButton() {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFF475569),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          InkWell(
-            onTap: _printOrDownloadPo,
-            borderRadius: const BorderRadius.horizontal(left: Radius.circular(8)),
-            child: const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 11, vertical: 8),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.print_rounded, size: 15, color: Colors.white),
-                  SizedBox(width: 6),
-                  Text('Print / Download', style: TextStyle(fontSize: 13, color: Colors.white, fontWeight: FontWeight.w500)),
-                ],
-              ),
-            ),
-          ),
-          Container(width: 1, height: 18, color: Colors.white24),
-          PopupMenuButton<String>(
-            tooltip: 'More Print Options',
-            padding: EdgeInsets.zero,
-            icon: const Icon(Icons.arrow_drop_down, size: 18, color: Colors.white),
-            onSelected: (val) {
-              if (val == 'pdf') _printOrDownloadPo();
-              if (val == 'html') _openHtmlPrintView();
-            },
-            itemBuilder: (ctx) => [
-              const PopupMenuItem(
-                value: 'pdf',
-                child: Row(
-                  children: [
-                    Icon(Icons.picture_as_pdf_outlined, size: 16, color: Color(0xFF10B981)),
-                    SizedBox(width: 8),
-                    Text('Print / Save PDF (A4)', style: TextStyle(fontSize: 13)),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'html',
-                child: Row(
-                  children: [
-                    Icon(Icons.open_in_browser_rounded, size: 16, color: Color(0xFF3B82F6)),
-                    SizedBox(width: 8),
-                    Text('Open Backend HTML Bill', style: TextStyle(fontSize: 13)),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActions() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        // Left side: Cancel PO (isolated to prevent misclicks)
-        if (_currentPo.status == POStatus.draft)
-          OutlinedButton.icon(
-            onPressed: _isProcessing ? null : _deletePO,
-            icon: const Icon(Icons.delete_outline, size: 16, color: Colors.red),
-            label: const Text('Delete Draft', style: TextStyle(color: Colors.red)),
-            style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: Colors.red),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-          )
-        else if (_currentPo.status == POStatus.sent)
-          OutlinedButton.icon(
-            onPressed: _isProcessing ? null : _cancelPO,
-            icon: const Icon(Icons.cancel_outlined, size: 16, color: Colors.orange),
-            label: const Text('Cancel PO', style: TextStyle(color: Colors.orange)),
-            style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: Colors.orange),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-          )
-        else
-          const SizedBox.shrink(),
-
-        // Right side: Operational actions, Dismissal, and Primary Call-To-Action
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            OutlinedButton.icon(
-              onPressed: _openEmailDialog,
-              icon: const Icon(Icons.email_outlined, size: 15, color: Color(0xFF3B82F6)),
-              label: const Text('Email PO', style: TextStyle(color: Color(0xFF3B82F6), fontSize: 13)),
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: Color(0xFF3B82F6)),
-                padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              ),
-            ),
-            const SizedBox(width: 8),
-            _buildPrintSplitButton(),
-            const SizedBox(width: 8),
-            OutlinedButton(
-              onPressed: () => Navigator.of(context).pop(_currentPo),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              ),
-              child: const Text('Close', style: TextStyle(fontSize: 13)),
-            ),
-            if (_currentPo.status == POStatus.draft) ...[
-              const SizedBox(width: 8),
-              ElevatedButton.icon(
-                onPressed: _isProcessing ? null : _issuePO,
-                icon: const Icon(Icons.send, size: 15),
-                label: const Text('Send to Vendor', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF10B981),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-              ),
-            ] else if (_currentPo.status == POStatus.sent || _currentPo.status == POStatus.partiallyReceived) ...[
-              const SizedBox(width: 8),
-              ElevatedButton.icon(
-                onPressed: () async {
-                  final res = await showDialog(
-                    context: context,
-                    builder: (ctx) => RecordGrnDialog(initialPo: _currentPo),
-                  );
-                  if (res != null) {
-                    _fetchFullDetails();
-                  }
-                },
-                icon: const Icon(Icons.inventory_2_rounded, size: 15),
-                label: const Text('Receive Goods (GRN)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF10B981),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ],
-    );
   }
 }
