@@ -34,7 +34,7 @@ NAIYO24 PVT. LTD. regularly issues software updates for performance, security, a
 4. Support & Service
 Customer assistance is provided through official support channels:
 - Email: services.naiyo@gmail.com
-- Hotline: +91 6289171798
+- Hotline: +91 8100463128
 - Website: www.naiyo24.com
 ''';
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/hardware_item_model.dart';
+import 'hardware_store_product_card.dart';
 
 class HardwareStoreDialog extends StatefulWidget {
   const HardwareStoreDialog({super.key});
@@ -19,21 +20,48 @@ class HardwareStoreDialog extends StatefulWidget {
 class _HardwareStoreDialogState extends State<HardwareStoreDialog> {
   int _selectedCategoryIndex = 0;
 
-  static const String supportPhone = '+916289171798';
-  static const String supportPhoneDisplay = '+91 6289171798';
+  static const String supportPhone = '+918100463128';
+  static const String supportPhoneDisplay = '+91 8100463128';
 
-  Future<void> _launchUrl(String url) async {
-    final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
+  Future<void> _openWhatsApp(String message) async {
+    final encoded = Uri.encodeComponent(message);
+    final nativeUri = Uri.parse('whatsapp://send?phone=918100463128&text=$encoded');
+    final webUri = Uri.parse('https://wa.me/918100463128?text=$encoded');
+
+    try {
+      final launchedNative = await launchUrl(nativeUri, mode: LaunchMode.externalApplication);
+      if (launchedNative) return;
+    } catch (_) {}
+
+    try {
+      final launchedWeb = await launchUrl(webUri, mode: LaunchMode.externalApplication);
+      if (launchedWeb) return;
+    } catch (_) {}
+
+    try {
+      await launchUrl(webUri);
+    } catch (e) {
+      debugPrint('Could not launch WhatsApp: $e');
+    }
+  }
+
+  Future<void> _launchCall(String phone) async {
+    final uri = Uri.parse('tel:$phone');
+    try {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      try {
+        await launchUrl(uri);
+      } catch (e) {
+        debugPrint('Could not launch call: $e');
+      }
     }
   }
 
   void _inquireProduct(HardwareProductItem item) {
-    final message = Uri.encodeComponent(
+    _openWhatsApp(
       'Hello SirfBill Team, I want to inquire about purchasing: ${item.title} (${item.category}) for my restaurant.',
     );
-    _launchUrl('https://wa.me/916289171798?text=$message');
   }
 
   @override
@@ -54,14 +82,14 @@ class _HardwareStoreDialogState extends State<HardwareStoreDialog> {
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       backgroundColor: dialogBg,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 960, maxHeight: 720),
         child: Column(
           children: [
-            // 1. Dialog Header
+            // 1. Dialog Header with SirfBill Official Brand Logo
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
               decoration: BoxDecoration(
                 color: cardBg,
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
@@ -70,50 +98,59 @@ class _HardwareStoreDialogState extends State<HardwareStoreDialog> {
               child: Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(10),
+                    width: 44,
+                    height: 44,
+                    padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF10B981).withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(10),
+                      color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: borderColor),
                     ),
-                    child: const Icon(Icons.storefront_rounded, color: Color(0xFF10B981), size: 24),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: Image.asset(
+                        'assets/icon.png',
+                        fit: BoxFit.contain,
+                      ),
+                    ),
                   ),
-                  const SizedBox(width: 14),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
+                        Wrap(
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 8,
+                          runSpacing: 4,
                           children: [
-                            Text(
-                              'SirfBill Certified Hardware Store',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
-                                color: textColor,
-                              ),
+                            Image.asset(
+                              isDark ? 'assets/LOGO_DM.png' : 'assets/LOGO.png',
+                              height: 22,
+                              fit: BoxFit.contain,
                             ),
-                            const SizedBox(width: 8),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                               decoration: BoxDecoration(
                                 color: const Color(0xFF10B981).withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: const Text(
-                                'OFFICIAL',
+                                'HARDWARE STORE',
                                 style: TextStyle(
                                   color: Color(0xFF10B981),
                                   fontSize: 10,
                                   fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.5,
                                 ),
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 2),
+                        const SizedBox(height: 3),
                         Text(
-                          'Tested & pre-configured hardware guaranteed to work out-of-the-box with SirfBill Restaurant POS',
-                          style: TextStyle(fontSize: 12, color: subtitleColor),
+                          'Tested & pre-configured hardware guaranteed to work out-of-the-box with SirfBill',
+                          style: TextStyle(fontSize: 11.5, color: subtitleColor),
                         ),
                       ],
                     ),
@@ -160,23 +197,50 @@ class _HardwareStoreDialogState extends State<HardwareStoreDialog> {
               ),
             ),
 
-            // 3. Products Grid View
+            // 3. Products List / Grid View (Adaptive to mobile & desktop)
             Expanded(
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  final crossAxisCount = constraints.maxWidth > 700 ? 2 : 1;
+                  final isWide = constraints.maxWidth > 700;
+                  if (!isWide) {
+                    return ListView.separated(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      itemCount: filteredProducts.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 14),
+                      itemBuilder: (context, index) {
+                        final item = filteredProducts[index];
+                        return HardwareStoreProductCard(
+                          item: item,
+                          isDark: isDark,
+                          cardBg: cardBg,
+                          textColor: textColor,
+                          subtitleColor: subtitleColor,
+                          borderColor: borderColor,
+                          onInquire: _inquireProduct,
+                        );
+                      },
+                    );
+                  }
                   return GridView.builder(
                     padding: const EdgeInsets.all(20),
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: crossAxisCount,
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
                       crossAxisSpacing: 16,
                       mainAxisSpacing: 16,
-                      childAspectRatio: constraints.maxWidth > 700 ? 1.7 : 1.9,
+                      mainAxisExtent: 265,
                     ),
                     itemCount: filteredProducts.length,
                     itemBuilder: (context, index) {
                       final item = filteredProducts[index];
-                      return _buildProductCard(item, isDark, cardBg, textColor, subtitleColor, borderColor);
+                      return HardwareStoreProductCard(
+                        item: item,
+                        isDark: isDark,
+                        cardBg: cardBg,
+                        textColor: textColor,
+                        subtitleColor: subtitleColor,
+                        borderColor: borderColor,
+                        onInquire: _inquireProduct,
+                      );
                     },
                   );
                 },
@@ -191,196 +255,113 @@ class _HardwareStoreDialogState extends State<HardwareStoreDialog> {
                 borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
                 border: Border(top: BorderSide(color: borderColor)),
               ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Row(
+              child: LayoutBuilder(
+                builder: (context, footerConstraints) {
+                  final isCompact = footerConstraints.maxWidth < 620;
+                  if (isCompact) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.verified_outlined, size: 18, color: Color(0xFF10B981)),
-                        const SizedBox(width: 8),
-                        Text(
-                          '1 Year Warranty • Free Setup Assistance • Express Pan-India Delivery',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: subtitleColor),
+                        Row(
+                          children: [
+                            const Icon(Icons.verified_outlined, size: 16, color: Color(0xFF10B981)),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                '1 Year Warranty • Free Setup • Express Delivery',
+                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: subtitleColor),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: () => _launchCall(supportPhone),
+                                icon: const Icon(Icons.phone_rounded, size: 14),
+                                label: const Text('Call Support', style: TextStyle(fontSize: 11)),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: textColor,
+                                  side: BorderSide(color: borderColor),
+                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () => _openWhatsApp(
+                                  'Hello SirfBill Hardware Team, I would like to order POS Hardware for my restaurant.',
+                                ),
+                                icon: const Icon(Icons.chat_rounded, size: 15),
+                                label: const Text('WhatsApp Order', style: TextStyle(fontSize: 11)),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF10B981),
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                  elevation: 0,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
-                    ),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: () => _launchUrl('tel:$supportPhone'),
-                    icon: const Icon(Icons.phone_rounded, size: 15),
-                    label: const Text('Call $supportPhoneDisplay'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: textColor,
-                      side: BorderSide(color: borderColor),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      final message = Uri.encodeComponent(
-                        'Hello SirfBill Hardware Team, I would like to order POS Hardware for my restaurant.',
-                      );
-                      _launchUrl('https://wa.me/916289171798?text=$message');
-                    },
-                    icon: const Icon(Icons.chat_rounded, size: 16),
-                    label: const Text('Order on WhatsApp'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF10B981),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      elevation: 0,
-                    ),
-                  ),
-                ],
+                    );
+                  }
+
+                  return Row(
+                    children: [
+                      Expanded(
+                        child: Row(
+                          children: [
+                            const Icon(Icons.verified_outlined, size: 18, color: Color(0xFF10B981)),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                '1 Year Warranty • Free Setup Assistance • Express Pan-India Delivery',
+                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: subtitleColor),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: () => _launchCall(supportPhone),
+                        icon: const Icon(Icons.phone_rounded, size: 15),
+                        label: const Text('Call $supportPhoneDisplay'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: textColor,
+                          side: BorderSide(color: borderColor),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      ElevatedButton.icon(
+                        onPressed: () => _openWhatsApp(
+                          'Hello SirfBill Hardware Team, I would like to order POS Hardware for my restaurant.',
+                        ),
+                        icon: const Icon(Icons.chat_rounded, size: 16),
+                        label: const Text('Order on WhatsApp'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF10B981),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          elevation: 0,
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildProductCard(
-    HardwareProductItem item,
-    bool isDark,
-    Color cardBg,
-    Color textColor,
-    Color subtitleColor,
-    Color borderColor,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: cardBg,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: borderColor),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: item.accentColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(item.icon, color: item.accentColor, size: 24),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            item.title,
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: textColor,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: item.accentColor.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            item.tag,
-                            style: TextStyle(
-                              color: item.accentColor,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      item.description,
-                      style: TextStyle(fontSize: 11.5, color: subtitleColor),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          const Divider(height: 1),
-          const SizedBox(height: 8),
-          Expanded(
-            child: ListView.builder(
-              physics: const NeverScrollableScrollPhysics(),
-              padding: EdgeInsets.zero,
-              itemCount: item.specs.length,
-              itemBuilder: (context, i) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 2),
-                  child: Row(
-                    children: [
-                      Icon(Icons.check_circle_rounded, size: 13, color: item.accentColor),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          item.specs[i],
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                            color: isDark ? Colors.white70 : const Color(0xFF334155),
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Pre-configured for SirfBill',
-                style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFF10B981)),
-              ),
-              TextButton.icon(
-                onPressed: () => _inquireProduct(item),
-                icon: const Icon(Icons.shopping_cart_outlined, size: 14),
-                label: const Text('Buy / Inquire'),
-                style: TextButton.styleFrom(
-                  foregroundColor: item.accentColor,
-                  textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-              ),
-            ],
-          ),
-        ],
       ),
     );
   }

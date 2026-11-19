@@ -18,10 +18,22 @@ class HardwarePromoBanner extends StatelessWidget {
     final message = Uri.encodeComponent(
       'Hello SirfBill Hardware Team, I am interested in purchasing restaurant hardware (Printers/POS/Cash Drawers). Please share catalog and pricing.',
     );
-    final uri = Uri.parse('https://wa.me/916289171798?text=$message');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
+    final nativeUri = Uri.parse('whatsapp://send?phone=918100463128&text=$message');
+    final webUri = Uri.parse('https://wa.me/918100463128?text=$message');
+
+    try {
+      final launchedNative = await launchUrl(nativeUri, mode: LaunchMode.externalApplication);
+      if (launchedNative) return;
+    } catch (_) {}
+
+    try {
+      final launchedWeb = await launchUrl(webUri, mode: LaunchMode.externalApplication);
+      if (launchedWeb) return;
+    } catch (_) {}
+
+    try {
+      await launchUrl(webUri);
+    } catch (_) {}
   }
 
   @override
@@ -31,26 +43,34 @@ class HardwarePromoBanner extends StatelessWidget {
     final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
     final subtitleColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
 
-    return Container(
-      constraints: const BoxConstraints(maxWidth: 1560),
-      margin: EdgeInsets.symmetric(horizontal: isMobile ? 8 : 12),
-      padding: EdgeInsets.symmetric(
-        horizontal: isMobile ? 14 : 20,
-        vertical: isMobile ? 10 : (isCompactHeight ? 10 : 14),
-      ),
-      decoration: BoxDecoration(
-        color: cardBg,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: borderColor),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final useMobileLayout = isMobile || constraints.maxWidth < 820;
+
+        return Container(
+          constraints: const BoxConstraints(maxWidth: 1560),
+          margin: EdgeInsets.symmetric(horizontal: useMobileLayout ? 8 : 12),
+          padding: EdgeInsets.symmetric(
+            horizontal: useMobileLayout ? 14 : 20,
+            vertical: useMobileLayout ? 10 : (isCompactHeight ? 10 : 14),
           ),
-        ],
-      ),
-      child: isMobile ? _buildMobileLayout(context, textColor, subtitleColor, borderColor) : _buildDesktopLayout(context, textColor, subtitleColor, borderColor),
+          decoration: BoxDecoration(
+            color: cardBg,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: borderColor),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 16,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: useMobileLayout
+              ? _buildMobileLayout(context, textColor, subtitleColor, borderColor)
+              : _buildDesktopLayout(context, textColor, subtitleColor, borderColor),
+        );
+      },
     );
   }
 
@@ -76,7 +96,10 @@ class HardwarePromoBanner extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Row(
+              Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 8,
+                runSpacing: 4,
                 children: [
                   Text(
                     'Need Restaurant POS Hardware?',
@@ -86,7 +109,6 @@ class HardwarePromoBanner extends StatelessWidget {
                       color: textColor,
                     ),
                   ),
-                  const SizedBox(width: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                     decoration: BoxDecoration(
@@ -175,10 +197,14 @@ class HardwarePromoBanner extends StatelessWidget {
                       fontWeight: FontWeight.w800,
                       color: textColor,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   Text(
                     'Printers, Touch Terminals & Cash Drawers',
                     style: TextStyle(fontSize: 10.5, color: subtitleColor),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
