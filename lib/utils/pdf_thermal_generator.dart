@@ -49,12 +49,18 @@ class PdfThermalGenerator {
         ),
         margin: const pw.EdgeInsets.symmetric(horizontal: 2.5 * PdfPageFormat.mm, vertical: 4 * PdfPageFormat.mm),
         build: (pw.Context context) {
+          final double calculatedSub = subtotal - discount + tax;
+          final double roVal = (roundedTotal - calculatedSub).abs() < 0.005 ? 0.0 : (roundedTotal - calculatedSub);
+          final String roStr = roVal == 0.0
+              ? '0.00'
+              : (roVal > 0 ? '+${roVal.toStringAsFixed(2)}' : '-${(-roVal).toStringAsFixed(2)}');
+
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.center,
             mainAxisSize: pw.MainAxisSize.min,
             children: [
               if (logoImage != null)
-                pw.Image(logoImage, width: 50, height: 50),
+                pw.Image(logoImage, width: 95, height: 52),
               pw.SizedBox(height: 5),
               pw.Text(
                 shopName,
@@ -388,7 +394,22 @@ class PdfThermalGenerator {
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
                   pw.Text(
-                    'Grand Total:',
+                    'Round Off:',
+                    style: const pw.TextStyle(fontSize: 8),
+                  ),
+                  pw.Text(
+                    roStr,
+                    style: const pw.TextStyle(fontSize: 8),
+                  ),
+                ],
+              ),
+              pw.SizedBox(height: 2),
+              pw.Divider(thickness: 1.0),
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text(
+                    'TOTAL INVOICE BILL:',
                     style: pw.TextStyle(
                       fontSize: 10,
                       fontWeight: pw.FontWeight.bold,
@@ -403,7 +424,8 @@ class PdfThermalGenerator {
                   ),
                 ],
               ),
-              pw.SizedBox(height: 10),
+              pw.Divider(thickness: 1.0),
+              pw.SizedBox(height: 8),
               pw.Text(
                 'Thank you! Visit Again.',
                 style: pw.TextStyle(
@@ -418,17 +440,21 @@ class PdfThermalGenerator {
                 style: pw.TextStyle(
                   fontSize: 8,
                   fontWeight: pw.FontWeight.bold,
+                  color: PdfColors.black,
                 ),
                 textAlign: pw.TextAlign.center,
               ),
+              pw.SizedBox(height: 1),
               pw.Text(
                 'Powered By Naiyo24 Pvt. Ltd.',
-                style: const pw.TextStyle(
-                  fontSize: 7,
-                  color: PdfColors.grey700,
+                style: pw.TextStyle(
+                  fontSize: 7.5,
+                  fontWeight: pw.FontWeight.bold,
+                  color: PdfColors.black,
                 ),
                 textAlign: pw.TextAlign.center,
               ),
+              pw.SizedBox(height: 25), // Space in bottom before thermal paper cut
             ],
           );
         },

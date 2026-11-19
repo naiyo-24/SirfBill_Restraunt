@@ -198,7 +198,12 @@ class CombinedBillPdfGenerator {
     final double cgstVal = tax > 0 ? (tax / 2) : 0.0;
     final double sgstVal = tax > 0 ? (tax / 2) : 0.0;
     final int totalBillQty = consolidatedItems.fold<int>(0, (sum, ci) => sum + ci.quantity);
-    final billHeightMm = (135.0 + (consolidatedItems.length * 8.5) + (upiId.isNotEmpty ? 35.0 : 0.0)).clamp(150.0, 390.0);
+    final double rawTotal = subtotal - discount + tax;
+    final double roundOffVal = (grandTotal - rawTotal).abs() < 0.005 ? 0.0 : (grandTotal - rawTotal);
+    final String roundOffStr = roundOffVal == 0.0
+        ? 'Rs. 0.00'
+        : (roundOffVal > 0 ? '+Rs. ${roundOffVal.toStringAsFixed(2)}' : '-Rs. ${(-roundOffVal).toStringAsFixed(2)}');
+    final billHeightMm = (160.0 + (consolidatedItems.length * 8.5) + (upiId.isNotEmpty ? 35.0 : 0.0)).clamp(175.0, 420.0);
     // 72mm width with 2.5mm margins to prevent cutting on right edge
     final billPageFormat = PdfPageFormat(72 * PdfPageFormat.mm, billHeightMm * PdfPageFormat.mm, marginAll: 2.5 * PdfPageFormat.mm);
 
@@ -211,9 +216,9 @@ class CombinedBillPdfGenerator {
             children: [
               if (billLogo != null) ...[
                 pw.Container(
-                  width: 44,
-                  height: 44,
-                  margin: const pw.EdgeInsets.only(bottom: 3),
+                  width: 95,
+                  height: 52,
+                  margin: const pw.EdgeInsets.only(bottom: 4),
                   child: pw.Image(billLogo, fit: pw.BoxFit.contain),
                 ),
               ],
@@ -396,16 +401,16 @@ class CombinedBillPdfGenerator {
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
-                  pw.Text('GRAND TOTAL:', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-                  pw.Text('Rs. ${grandTotal.toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 9.5, fontWeight: pw.FontWeight.bold)),
+                  pw.Text('Round Off:', style: const pw.TextStyle(fontSize: 8)),
+                  pw.Text(roundOffStr, style: const pw.TextStyle(fontSize: 8)),
                 ],
               ),
-              pw.SizedBox(height: 1),
+              pw.SizedBox(height: 1.5),
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
-                  pw.Text('PAID AMOUNT:', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-                  pw.Text('Rs. ${grandTotal.toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 9.5, fontWeight: pw.FontWeight.bold)),
+                  pw.Text('TOTAL INVOICE BILL:', style: pw.TextStyle(fontSize: 9.5, fontWeight: pw.FontWeight.bold)),
+                  pw.Text('Rs. ${grandTotal.toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
                 ],
               ),
               pw.Divider(thickness: 1.0),
@@ -426,15 +431,16 @@ class CombinedBillPdfGenerator {
               pw.SizedBox(height: 4),
               pw.Text(
                 'Sirfbill',
-                style: pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold),
+                style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: PdfColors.black),
                 textAlign: pw.TextAlign.center,
               ),
+              pw.SizedBox(height: 1),
               pw.Text(
                 'Powered By Naiyo24 Pvt. Ltd.',
-                style: const pw.TextStyle(fontSize: 6, color: PdfColors.grey700),
+                style: pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold, color: PdfColors.black),
                 textAlign: pw.TextAlign.center,
               ),
-              pw.SizedBox(height: 3),
+              pw.SizedBox(height: 25), // Space in the bottom before thermal cutter cut
             ],
           );
         },
