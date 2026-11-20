@@ -165,7 +165,7 @@ class _CrmKhataSettleDialogState extends State<CrmKhataSettleDialog> {
             const SizedBox(height: 6),
             TextField(
               controller: _amountController,
-              keyboardType: const TextInputTextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
               decoration: InputDecoration(
                 prefixText: '₹ ',
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
