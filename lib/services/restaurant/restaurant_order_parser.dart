@@ -131,11 +131,21 @@ class RestaurantOrderParser {
     DateTime createdAt = DateTime.now();
     if (createdAtStr != null) {
       try {
-        String s = createdAtStr.toString().trim();
-        if (!s.endsWith('Z') && !s.contains('+') && !RegExp(r'-\d{2}:\d{2}$').hasMatch(s)) {
-          s = '${s}Z';
+        final s = createdAtStr.toString().trim();
+        DateTime parsed;
+        if (s.endsWith('Z') || s.contains('+') || RegExp(r'-\d{2}:\d{2}$').hasMatch(s)) {
+          parsed = DateTime.parse(s).toLocal();
+        } else {
+          parsed = DateTime.parse(s.replaceFirst(' ', 'T'));
         }
-        createdAt = DateTime.parse(s).toLocal();
+        final now = DateTime.now();
+        if (parsed.isAfter(now)) {
+          final skew = parsed.difference(now).inSeconds;
+          if (skew > 18000 && skew < 21600) {
+            parsed = parsed.subtract(const Duration(hours: 5, minutes: 30));
+          }
+        }
+        createdAt = parsed;
       } catch (_) {}
     }
 

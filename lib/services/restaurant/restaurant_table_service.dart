@@ -99,14 +99,27 @@ class RestaurantTableService {
           if (status == TableStatus.occupied && orderCreatedAtStr != null) {
             try {
               final rawStr = orderCreatedAtStr.toString().trim();
-              final isoUtc = (rawStr.endsWith('Z') || rawStr.contains('+'))
-                  ? rawStr
-                  : '${rawStr}Z';
-              orderStartTime = DateTime.parse(isoUtc).toLocal();
-              final diff = DateTime.now().difference(orderStartTime);
-              final hours = diff.inHours.toString().padLeft(2, '0');
-              final mins = (diff.inMinutes % 60).toString().padLeft(2, '0');
-              final secs = (diff.inSeconds % 60).toString().padLeft(2, '0');
+              DateTime parsed;
+              if (rawStr.endsWith('Z') || rawStr.contains('+') || RegExp(r'-\d{2}:\d{2}$').hasMatch(rawStr)) {
+                parsed = DateTime.parse(rawStr).toLocal();
+              } else {
+                parsed = DateTime.parse(rawStr.replaceFirst(' ', 'T'));
+              }
+              final now = DateTime.now();
+              if (parsed.isAfter(now)) {
+                final forwardSecs = parsed.difference(now).inSeconds;
+                if (forwardSecs > 18000 && forwardSecs < 21600) {
+                  parsed = parsed.subtract(const Duration(hours: 5, minutes: 30));
+                } else {
+                  parsed = now;
+                }
+              }
+              orderStartTime = parsed;
+              final diff = now.difference(orderStartTime);
+              final totalSecs = diff.inSeconds < 0 ? 0 : diff.inSeconds;
+              final hours = (totalSecs ~/ 3600).toString().padLeft(2, '0');
+              final mins = ((totalSecs % 3600) ~/ 60).toString().padLeft(2, '0');
+              final secs = (totalSecs % 60).toString().padLeft(2, '0');
               durationStr = '$hours:$mins:$secs';
             } catch (_) {
               orderStartTime = DateTime.now();

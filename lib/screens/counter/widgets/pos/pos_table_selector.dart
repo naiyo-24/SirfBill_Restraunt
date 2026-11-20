@@ -326,13 +326,27 @@ class _TableLiveDurationBadgeState extends State<TableLiveDurationBadge> {
 
   String _formatDuration() {
     if (widget.table.occupiedSince != null) {
-      final diff = DateTime.now().difference(widget.table.occupiedSince!);
-      final h = diff.inHours.toString().padLeft(2, '0');
-      final m = (diff.inMinutes % 60).toString().padLeft(2, '0');
-      final s = (diff.inSeconds % 60).toString().padLeft(2, '0');
+      final now = DateTime.now();
+      var since = widget.table.occupiedSince!;
+      if (since.isAfter(now)) {
+        final skew = since.difference(now).inSeconds;
+        if (skew > 18000 && skew < 21600) {
+          since = since.subtract(const Duration(hours: 5, minutes: 30));
+        } else {
+          since = now;
+        }
+      }
+      final diff = now.difference(since);
+      final totalSeconds = diff.inSeconds < 0 ? 0 : diff.inSeconds;
+      final h = (totalSeconds ~/ 3600).toString().padLeft(2, '0');
+      final m = ((totalSeconds % 3600) ~/ 60).toString().padLeft(2, '0');
+      final s = (totalSeconds % 60).toString().padLeft(2, '0');
       return '$h:$m:$s';
     }
     final raw = widget.table.occupiedDuration ?? '00:00:00';
+    if (raw.startsWith('-')) {
+      return '00:00:01';
+    }
     if (raw.split(':').length == 2) {
       return '$raw:00';
     }
