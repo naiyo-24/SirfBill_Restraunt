@@ -43,6 +43,7 @@ class AuthService {
         if (data['name'] != null) {
           await prefs.setString(_userNameKey, data['name']);
         }
+        await prefs.setString('role_login_name', moduleTitle);
         
         try {
           final assignedId = data['assigned_outlet_id']?.toString() ??
@@ -138,21 +139,23 @@ class AuthService {
     final isPosUser = u.contains('pos') || u.contains('cashier') || n.contains('pos') || n.contains('cashier');
     final isKitchenUser = u.contains('kitchen') || u.contains('chef') || u.contains('kds') || n.contains('kitchen') || n.contains('chef');
     final isWaiterUser = u.contains('waiter') || u.contains('captain') || n.contains('waiter') || n.contains('captain');
+    final isCrmUser = u.contains('crm') || u.contains('report') || n.contains('crm') || n.contains('report');
 
     if (m.contains('inventory') || m.contains('stock') || m.contains('purchase')) {
-      if (isPosUser || isKitchenUser || isWaiterUser) return false;
-      return r == 'INVENTORY' || r == 'STOCK' || r == 'MANAGER' || isInventoryUser;
+      if (isPosUser || isKitchenUser || isWaiterUser || isCrmUser) return false;
+      return r == 'INVENTORY' || r == 'STOCK' || (r == 'MANAGER' && isInventoryUser);
     } else if (m.contains('pos') || m.contains('billing')) {
-      if (isInventoryUser || isKitchenUser || isWaiterUser) return false;
-      return r == 'CASHIER' || r == 'POS' || (r == 'MANAGER' && !isInventoryUser);
+      if (isInventoryUser || isKitchenUser || isWaiterUser || isCrmUser) return false;
+      return r == 'CASHIER' || r == 'POS' || (r == 'MANAGER' && !isInventoryUser && !isCrmUser);
     } else if (m.contains('kitchen') || m.contains('chef') || m.contains('kds')) {
-      if (isInventoryUser || isPosUser || isWaiterUser) return false;
+      if (isInventoryUser || isPosUser || isWaiterUser || isCrmUser) return false;
       return r == 'CHEF' || r == 'KITCHEN' || r == 'KDS';
     } else if (m.contains('waiter') || m.contains('captain') || m.contains('server')) {
-      if (isInventoryUser || isPosUser || isKitchenUser) return false;
+      if (isInventoryUser || isPosUser || isKitchenUser || isCrmUser) return false;
       return r == 'WAITER' || r == 'CAPTAIN' || r == 'SERVER';
     } else if (m.contains('crm') || m.contains('report')) {
-      return r == 'MANAGER';
+      if (isInventoryUser || isKitchenUser || isWaiterUser) return false;
+      return r == 'MANAGER' || r == 'CRM' || isCrmUser;
     } else if (m.contains('admin')) {
       return r == 'ADMIN' || r == 'OWNER' || r == 'SUPER_ADMIN';
     }
@@ -190,6 +193,8 @@ class AuthService {
           await prefs.setString(_userIdKey, cleanEmail);
           await prefs.setString(_roleKey, role.toUpperCase());
           await prefs.setString(_userNameKey, cleanEmail.split('@').first.replaceAll('_', ' ').toUpperCase());
+          await prefs.setString('role_login_name', moduleTitle);
+          await prefs.setString('station_module_key', moduleKey);
           if (outletId.isNotEmpty) {
             await prefs.setString('assigned_outlet_id', outletId);
             await InventoryService.setShopId(outletId);
@@ -219,6 +224,7 @@ class AuthService {
             await prefs.setString(_userIdKey, cleanEmail);
             await prefs.setString(_roleKey, role);
             await prefs.setString(_userNameKey, (item['name'] ?? cleanEmail).toString());
+            await prefs.setString('role_login_name', moduleTitle);
             final branchId = item['outlet_id'] ?? item['branch_id'];
             if (branchId != null && branchId.toString().isNotEmpty) {
               await prefs.setString('assigned_outlet_id', branchId.toString());
@@ -258,6 +264,8 @@ class AuthService {
         await prefs.setString(_userIdKey, cleanEmail);
         await prefs.setString(_roleKey, role.toUpperCase());
         await prefs.setString(_userNameKey, cleanEmail.split('@').first.replaceAll('_', ' ').toUpperCase());
+        await prefs.setString('role_login_name', moduleTitle);
+        await prefs.setString('station_module_key', detectedModuleKey);
         return true;
       }
     }

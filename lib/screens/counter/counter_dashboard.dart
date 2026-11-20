@@ -43,6 +43,30 @@ class _CounterDashboardState extends ConsumerState<CounterDashboard> {
     HardwareKeyboard.instance.addHandler(_handleKeyEvent);
     _fetchShopName();
     _checkWindowsUpdates();
+    _checkCrmStationRedirect();
+  }
+
+  Future<void> _checkCrmStationRedirect() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final role = (prefs.getString('user_role') ?? '').trim().toUpperCase();
+      final loginModule = (prefs.getString('role_login_name') ?? '').trim().toLowerCase();
+      final stationKey = (prefs.getString('station_module_key') ?? '').trim().toLowerCase();
+      final userName = (prefs.getString('user_name') ?? '').trim().toLowerCase();
+      final userId = (prefs.getString('user_id') ?? '').trim().toLowerCase();
+
+      final isCrm = role == 'CRM' ||
+          role == 'REPORTS' ||
+          stationKey == 'crm' ||
+          loginModule.contains('crm') ||
+          loginModule.contains('report') ||
+          userName.contains('crm') ||
+          userId.contains('crm');
+
+      if (isCrm && widget.navigationShell.currentIndex == 0 && mounted) {
+        widget.navigationShell.goBranch(5);
+      }
+    } catch (_) {}
   }
 
   Future<void> _checkWindowsUpdates() async {
