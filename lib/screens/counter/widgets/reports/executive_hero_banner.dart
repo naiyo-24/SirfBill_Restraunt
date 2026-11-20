@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../../../models/restaurant_report_models.dart';
 
 /// Ultra-premium executive hero banner displaying gross sales, GST, and average ticket.
@@ -118,7 +119,7 @@ class ExecutiveHeroBanner extends StatelessWidget {
                           ),
                           const SizedBox(height: 10),
                           Text(
-                            '₹${summary.grossSales.toStringAsFixed(2)}',
+                            NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 2).format(summary.grossSales),
                             style: const TextStyle(
                               fontSize: 34,
                               fontWeight: FontWeight.w900,
@@ -150,13 +151,13 @@ class ExecutiveHeroBanner extends StatelessWidget {
                             _buildStat(
                               icon: Icons.account_balance_rounded,
                               label: 'GST Collected',
-                              value: '₹${summary.totalGst.toStringAsFixed(2)}',
+                              value: NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 2).format(summary.totalGst),
                               color: const Color(0xFF38BDF8),
                             ),
                             _buildStat(
                               icon: Icons.receipt_long_rounded,
                               label: 'Avg Ticket',
-                              value: '₹${summary.averageOrderValue.toStringAsFixed(1)}',
+                              value: NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 2).format(summary.averageOrderValue),
                               color: const Color(0xFFFBBF24),
                             ),
                           ],

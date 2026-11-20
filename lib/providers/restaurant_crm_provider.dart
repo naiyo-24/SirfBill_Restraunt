@@ -1,6 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/restaurant_crm_models.dart';
+import '../models/restaurant_pos_models.dart';
 import '../services/restaurant/restaurant_crm_service.dart';
+import '../services/restaurant_pos_service.dart';
+import '../services/inventory_service.dart';
 
 class RestaurantCrmState {
   final List<RestaurantCustomer> customers;
@@ -98,7 +101,90 @@ class RestaurantCrmNotifier extends Notifier<RestaurantCrmState> {
       search: state.searchQuery,
       segment: state.selectedSegment,
     );
-    state = state.copyWith(customers: list, isLoading: false);
+
+    // Reconcile with live orders from backend
+    List<RestaurantOrder> orders = [];
+    try {
+      final outletId = await InventoryService.getShopId();
+      orders = await RestaurantPosService.fetchOrders(outletId: outletId, limit: 1000);
+    } catch (_) {}
+
+    // Enrich customers with real aggregate metrics
+    final enrichedList = await Future.wait(list.map((c) async {
+      int visits = c.totalVisits;
+      double spent = c.totalSpent;
+      double aov = c.avgOrderValue;
+      DateTime? lastVisit = c.lastVisitAt;
+      int loyalty = c.loyaltyPoints;
+      double khataDue = c.creditBalance;
+
+      final cPhone = c.phone.replaceAll(RegExp(r'\D'), '');
+      final cPhone10 = cPhone.length >= 10 ? cPhone.substring(cPhone.length - 10) : cPhone;
+      final cName = c.name.trim().toLowerCase();
+
+      // 1. Check matching orders
+      if (orders.isNotEmpty) {
+        final custOrders = orders.where((o) {
+          if (o.status == OrderStatus.cancelled) return false;
+          final oPhone = o.customerPhone.replaceAll(RegExp(r'\D'), '');
+          final oPhone10 = oPhone.length >= 10 ? oPhone.substring(oPhone.length - 10) : oPhone;
+          if (cPhone10.isNotEmpty && oPhone10.isNotEmpty && cPhone10 == oPhone10) return true;
+          final oName = o.customerName.trim().toLowerCase();
+          if (cName.isNotEmpty &&
+              cName != 'walk-in guest' &&
+              oName.isNotEmpty &&
+              (oName == cName || oName.contains(cName) || cName.contains(oName))) {
+            return true;
+          }
+          return false;
+        }).toList();
+
+        if (custOrders.isNotEmpty) {
+          visits = custOrders.length;
+          spent = custOrders.fold(0.0, (s, o) => s + o.grandTotal);
+          aov = visits > 0 ? (spent / visits) : 0.0;
+          lastVisit = custOrders.map((o) => o.createdAt).reduce((a, b) => a.isAfter(b) ? a : b);
+
+          final dueOrders = custOrders.where((o) {
+            final p = o.paymentMethod.toUpperCase();
+            return p.contains('DUE') || p.contains('KHATA') || p.contains('CREDIT');
+          }).toList();
+          if (dueOrders.isNotEmpty && khataDue <= 0) {
+            khataDue = dueOrders.fold(0.0, (s, o) => s + o.grandTotal);
+          }
+        }
+      }
+
+      // 2. Also check customer insights if visits is still 0
+      if (visits == 0) {
+        try {
+          final ins = await RestaurantCrmService.fetchCustomerInsights(c.id);
+          if (ins != null && ins.recentBills.isNotEmpty) {
+            visits = ins.recentBills.length;
+            spent = ins.recentBills.fold(0.0, (s, b) => s + b.grandTotal);
+            aov = visits > 0 ? (spent / visits) : 0.0;
+            lastVisit = ins.recentBills.map((b) => b.createdAt).reduce((a, b) => a.isAfter(b) ? a : b);
+            if (ins.loyaltyBalance > 0) loyalty = ins.loyaltyBalance;
+            if (ins.creditBalance > 0) khataDue = ins.creditBalance;
+          }
+        } catch (_) {}
+      }
+
+      if (loyalty == 0 && spent > 0) {
+        loyalty = (spent / 50).round();
+      }
+
+      return c.copyWith(
+        totalVisits: visits,
+        totalSpent: spent,
+        avgOrderValue: aov,
+        lastVisitAt: lastVisit,
+        loyaltyPoints: loyalty,
+        creditBalance: khataDue,
+      );
+    }));
+
+    state = state.copyWith(customers: enrichedList, isLoading: false);
   }
 
   void setSearchQuery(String query) {
@@ -128,7 +214,28 @@ class RestaurantCrmNotifier extends Notifier<RestaurantCrmState> {
     final insights = await RestaurantCrmService.fetchCustomerInsights(customer.id);
     final ledger = await RestaurantCrmService.fetchKhataStatement(customer.id);
 
+    RestaurantCustomer updatedCust = customer;
+    if (insights != null && insights.recentBills.isNotEmpty) {
+      final bVisits = insights.recentBills.length;
+      final bSpent = insights.recentBills.fold<double>(0.0, (s, b) => s + b.grandTotal);
+      final bAov = bVisits > 0 ? (bSpent / bVisits) : 0.0;
+      final bLast = insights.recentBills.map((b) => b.createdAt).reduce((a, b) => a.isAfter(b) ? a : b);
+      int bLoyalty = insights.loyaltyBalance > 0 ? insights.loyaltyBalance : customer.loyaltyPoints;
+      if (bLoyalty == 0 && bSpent > 0) bLoyalty = (bSpent / 50).round();
+
+      updatedCust = customer.copyWith(
+        totalVisits: customer.totalVisits > bVisits ? customer.totalVisits : bVisits,
+        totalSpent: customer.totalSpent > bSpent ? customer.totalSpent : bSpent,
+        avgOrderValue: customer.avgOrderValue > 0 ? customer.avgOrderValue : bAov,
+        lastVisitAt: customer.lastVisitAt ?? bLast,
+        loyaltyPoints: bLoyalty,
+        creditBalance: insights.creditBalance > 0 ? insights.creditBalance : customer.creditBalance,
+        creditLimit: insights.creditLimit > 0 ? insights.creditLimit : customer.creditLimit,
+      );
+    }
+
     state = state.copyWith(
+      selectedCustomer: () => updatedCust,
       insights: () => insights,
       isInsightsLoading: false,
       khataLedger: ledger,

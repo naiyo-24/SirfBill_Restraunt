@@ -1,34 +1,64 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../../models/restaurant_crm_models.dart';
+import '../../../../services/restaurant_pos_service.dart';
+import '../../../../services/shop_settings_service.dart';
+import '../../../../services/auth_service.dart';
+import '../../../../utils/pdf_thermal_generator.dart';
+import '../pos/pos_bill_receipt_modal.dart';
 
 class CrmOverviewTabView extends StatelessWidget {
   final RestaurantCustomer customer;
+  final CustomerInsights? insights;
   final bool isDark;
 
-  const CrmOverviewTabView({super.key, required this.customer, required this.isDark});
+  const CrmOverviewTabView({
+    super.key,
+    required this.customer,
+    this.insights,
+    required this.isDark,
+  });
 
   @override
   Widget build(BuildContext context) {
     final c = customer;
+    final inFormat = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 2);
     final df = DateFormat('dd MMM yyyy');
+
+    int visits = c.totalVisits;
+    double spent = c.totalSpent;
+    double aov = c.avgOrderValue;
+    DateTime? lastVisit = c.lastVisitAt;
+    int loyalty = c.loyaltyPoints;
+
+    if (visits == 0 && insights != null && insights!.recentBills.isNotEmpty) {
+      visits = insights!.recentBills.length;
+      spent = insights!.recentBills.fold(0.0, (s, b) => s + b.grandTotal);
+      aov = visits > 0 ? (spent / visits) : 0.0;
+      lastVisit = insights!.recentBills.map((b) => b.createdAt).reduce((a, b) => a.isAfter(b) ? a : b);
+      if (insights!.loyaltyBalance > 0) loyalty = insights!.loyaltyBalance;
+    }
+    if (loyalty == 0 && spent > 0) {
+      loyalty = (spent / 50).round();
+    }
 
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
         Row(
           children: [
-            Expanded(child: _buildMetric('Total Visits', '${c.totalVisits}', Icons.calendar_month_rounded, isDark)),
+            Expanded(child: _buildMetric('Total Visits', '$visits', Icons.calendar_month_rounded, isDark)),
             const SizedBox(width: 8),
-            Expanded(child: _buildMetric('Total Spent', '₹${c.totalSpent.toStringAsFixed(0)}', Icons.currency_rupee_rounded, isDark)),
+            Expanded(child: _buildMetric('Total Spent', inFormat.format(spent), Icons.currency_rupee_rounded, isDark)),
           ],
         ),
         const SizedBox(height: 8),
         Row(
           children: [
-            Expanded(child: _buildMetric('Avg Ticket (AOV)', '₹${c.avgOrderValue.toStringAsFixed(0)}', Icons.shopping_bag_outlined, isDark)),
+            Expanded(child: _buildMetric('Avg Ticket (AOV)', inFormat.format(aov), Icons.shopping_bag_outlined, isDark)),
             const SizedBox(width: 8),
-            Expanded(child: _buildMetric('Reward Points', '${c.loyaltyPoints} pts', Icons.stars_rounded, isDark, color: const Color(0xFF10B981))),
+            Expanded(child: _buildMetric('Reward Points', '$loyalty pts', Icons.stars_rounded, isDark, color: const Color(0xFF10B981))),
           ],
         ),
         const SizedBox(height: 16),
@@ -42,11 +72,11 @@ class CrmOverviewTabView extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        _buildDetailRow('Last Visit', c.lastVisitAt != null ? df.format(c.lastVisitAt!) : 'Never'),
+        _buildDetailRow('Last Visit', lastVisit != null ? df.format(lastVisit) : 'Never'),
         if (c.dob != null) _buildDetailRow('Birthday', df.format(c.dob!)),
         if (c.anniversary != null) _buildDetailRow('Anniversary', df.format(c.anniversary!)),
         if (c.gstNumber != null && c.gstNumber!.isNotEmpty) _buildDetailRow('Corporate GSTIN', c.gstNumber!),
-        _buildDetailRow('Store Credit Limit', '₹${c.creditLimit.toStringAsFixed(0)}'),
+        _buildDetailRow('Store Credit Limit', inFormat.format(c.creditLimit)),
         if (c.notes.isNotEmpty) _buildDetailRow('Special Notes', c.notes),
       ],
     );
@@ -159,6 +189,83 @@ class CrmRecentBillsTabView extends StatelessWidget {
 
   const CrmRecentBillsTabView({super.key, required this.recentBills, required this.isDark});
 
+  static Future<void> _openBillDetails(BuildContext context, CustomerRecentBill bill) async {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Opening receipt for ${bill.orderNumber}...'),
+        duration: const Duration(milliseconds: 900),
+      ),
+    );
+
+    Uint8List? thermalPdfBytes;
+    if (bill.orderId.isNotEmpty) {
+      try {
+        thermalPdfBytes = await RestaurantPosService.fetchBackendBillPdfBytes(bill.orderId);
+      } catch (e) {
+        debugPrint('Error fetching backend bill: $e');
+      }
+    }
+
+    if (thermalPdfBytes == null) {
+      Map<String, dynamic>? shopSettings;
+      try {
+        shopSettings = await ShopSettingsService.getSettings();
+      } catch (_) {}
+
+      final authName = await AuthService.getUserName();
+      final shopName = (shopSettings?['shop_name']?.toString().trim().isNotEmpty ?? false)
+          ? shopSettings!['shop_name'].toString()
+          : ((authName != null && authName.trim().isNotEmpty) ? authName : 'SirfBill Restaurant');
+      final address = shopSettings?['address']?.toString() ?? 'Restaurant Counter';
+      final phone = shopSettings?['phone']?.toString() ?? shopSettings?['mobile']?.toString() ?? '';
+      final shopGstNo = shopSettings?['gst_number']?.toString() ?? shopSettings?['gstin']?.toString() ?? '';
+      final upiId = shopSettings?['upi_id']?.toString() ?? '';
+
+      final subtotal = bill.grandTotal / 1.05;
+      final gst = bill.grandTotal - subtotal;
+
+      try {
+        thermalPdfBytes = await PdfThermalGenerator.generateThermalBill(
+          items: [
+            {
+              'name': 'Culinary Dining Ticket',
+              'quantity': bill.itemsCount > 0 ? bill.itemsCount : 1,
+              'price': subtotal,
+              'total': subtotal,
+              'gst': 5.0,
+              'discount': 0.0,
+            }
+          ],
+          subtotal: subtotal,
+          discount: 0.0,
+          tax: gst,
+          grandTotal: bill.grandTotal,
+          roundedTotal: bill.grandTotal.roundToDouble(),
+          invoiceNumber: bill.orderNumber,
+          customerName: 'Valued Guest',
+          customerPhone: '',
+          shopName: shopName,
+          address: address,
+          phone: phone,
+          shopGstNo: shopGstNo,
+          upiId: upiId,
+          billingDate: bill.createdAt,
+        );
+      } catch (genErr) {
+        debugPrint('Local thermal bill generator error: $genErr');
+      }
+    }
+
+    if (context.mounted && thermalPdfBytes != null) {
+      await PosBillReceiptModal.show(
+        context,
+        orderNumber: bill.orderNumber,
+        title: 'Tax Invoice Receipt',
+        pdfBytes: thermalPdfBytes,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (recentBills.isEmpty) {
@@ -173,33 +280,55 @@ class CrmRecentBillsTabView extends StatelessWidget {
       separatorBuilder: (_, __) => const SizedBox(height: 8),
       itemBuilder: (ctx, i) {
         final b = recentBills[i];
-        return Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => _openBillDetails(ctx, b),
             borderRadius: BorderRadius.circular(10),
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.receipt_long_rounded, color: Color(0xFF3B82F6), size: 20),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(b.orderNumber, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
-                    Text(df.format(b.createdAt), style: TextStyle(fontSize: 10, color: Colors.grey.shade500)),
-                  ],
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: isDark ? const Color(0xFF334155).withValues(alpha: 0.6) : const Color(0xFFE2E8F0),
                 ),
               ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
+              child: Row(
                 children: [
-                  Text('₹${b.grandTotal.toStringAsFixed(2)}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800)),
-                  Text('${b.paymentMethod} • ${b.status}', style: TextStyle(fontSize: 10, color: Colors.grey.shade500)),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF3B82F6).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.receipt_long_rounded, color: Color(0xFF3B82F6), size: 18),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(b.orderNumber, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                        Text(df.format(b.createdAt), style: TextStyle(fontSize: 10.5, color: Colors.grey.shade500)),
+                      ],
+                    ),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 2).format(b.grandTotal),
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
+                      ),
+                      Text('${b.paymentMethod.toUpperCase()} • ${b.status.toUpperCase()}', style: TextStyle(fontSize: 10, color: Colors.grey.shade500)),
+                    ],
+                  ),
+                  const SizedBox(width: 8),
+                  const Icon(Icons.chevron_right_rounded, size: 18, color: Color(0xFF94A3B8)),
                 ],
               ),
-            ],
+            ),
           ),
         );
       },
@@ -267,11 +396,7 @@ class CrmKhataTabView extends StatelessWidget {
               if (hasDue)
                 ElevatedButton(
                   onPressed: onSettleKhata,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFEF4444),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
                   child: const Text('Settle Dues'),
                 ),
             ],
@@ -280,11 +405,7 @@ class CrmKhataTabView extends StatelessWidget {
         const SizedBox(height: 16),
         Container(
           padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF59E0B).withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFF59E0B)),
-          ),
+          decoration: BoxDecoration(color: const Color(0xFFF59E0B).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFF59E0B))),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -298,11 +419,7 @@ class CrmKhataTabView extends StatelessWidget {
               ),
               OutlinedButton(
                 onPressed: onAdjustLoyalty,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFFF59E0B),
-                  side: const BorderSide(color: Color(0xFFF59E0B)),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
+                style: OutlinedButton.styleFrom(foregroundColor: const Color(0xFFF59E0B), side: const BorderSide(color: Color(0xFFF59E0B)), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
                 child: const Text('Adjust Points'),
               ),
             ],

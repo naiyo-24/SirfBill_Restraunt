@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../about/about_us_dialog.dart';
+import '../../../../screens/home/widgets/hardware_store_dialog.dart';
 
 class CounterDashboardHeader extends StatelessWidget {
   final bool isDesktop;
@@ -59,15 +60,6 @@ class CounterDashboardHeader extends StatelessWidget {
         break;
       case 'menu':
         onTap = () => context.go('/counter/menu');
-        break;
-      case 'customers':
-        onTap = () => context.go('/counter/customers');
-        break;
-      case 'reports':
-        onTap = () => context.go('/counter/reports');
-        break;
-      case 'expenses':
-        onTap = () => context.go('/counter/expenses');
         break;
       case 'settings':
         onTap = () => context.go('/counter/settings');
@@ -163,235 +155,305 @@ class CounterDashboardHeader extends StatelessWidget {
             cacheHeight: 225,
           ),
 
-          if (isDesktop) const Spacer(),
-
           if (isDesktop)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: Wrap(
-                spacing: 12,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  const Icon(
-                    Icons.keyboard,
-                    size: 16,
-                    color: Color(0xFF1E293B),
+            Expanded(
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
                   ),
-                  _buildShortcutChip(context, 'F1', 'Billing'),
-                  _buildShortcutChip(context, 'F2', 'Tables'),
-                  _buildShortcutChip(context, 'F3', 'Orders'),
-                  _buildShortcutChip(context, 'F4', 'Kitchen'),
-                  _buildShortcutChip(context, 'F5', 'Menu'),
-                  _buildShortcutChip(context, 'F6', 'Customers'),
-                  _buildShortcutChip(context, 'F7', 'Reports'),
-                  // _buildShortcutChip(context, 'F8', 'Expenses'),
-                  _buildShortcutChip(context, 'F8', 'Settings'),
-                ],
+                  child: Wrap(
+                    spacing: 12,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.keyboard,
+                        size: 16,
+                        color: Color(0xFF1E293B),
+                      ),
+                      _buildShortcutChip(context, 'F1', 'Billing'),
+                      _buildShortcutChip(context, 'F2', 'Tables'),
+                      _buildShortcutChip(context, 'F3', 'Orders'),
+                      _buildShortcutChip(context, 'F4', 'Kitchen'),
+                      _buildShortcutChip(context, 'F5', 'Menu'),
+                      _buildShortcutChip(context, 'F6', 'Settings'),
+                    ],
+                  ),
+                ),
               ),
-            ),
+            )
+          else
+            const Spacer(),
 
-          if (isDesktop) const Spacer(),
-
-          // Right side Profile and Date Pills
-          Expanded(
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerRight,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  // Date & Time Pill
-                  InkWell(
-                    onTap: () async {
-                      await showDatePicker(
-                        context: context,
-                        initialDate: currentTime,
-                        firstDate: DateTime(2000),
-                        lastDate: DateTime(2100),
-                        builder: (context, child) {
-                          return Theme(
-                            data: ThemeData.light().copyWith(
-                              colorScheme: const ColorScheme.light(
-                                primary: Color(0xFF166534),
-                                onPrimary: Colors.white,
-                                onSurface: Color(0xFF1E293B),
-                                surface: Colors.white,
-                              ),
-                              textButtonTheme: TextButtonThemeData(
-                                style: TextButton.styleFrom(
-                                  foregroundColor: const Color(0xFF166534),
-                                ),
-                              ),
-                              dialogTheme: const DialogThemeData(backgroundColor: Colors.white),
+          // Right side Date Pill, Buy Hardware, and Profile Pill (Crisp 100% scale)
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Date & Time Pill
+              InkWell(
+                onTap: () async {
+                  await showDatePicker(
+                    context: context,
+                    initialDate: currentTime,
+                    firstDate: DateTime(2000),
+                    lastDate: DateTime(2100),
+                    builder: (context, child) {
+                      return Theme(
+                        data: ThemeData.light().copyWith(
+                          colorScheme: const ColorScheme.light(
+                            primary: Color(0xFF166534),
+                            onPrimary: Colors.white,
+                            onSurface: Color(0xFF1E293B),
+                            surface: Colors.white,
+                          ),
+                          textButtonTheme: TextButtonThemeData(
+                            style: TextButton.styleFrom(
+                              foregroundColor: const Color(0xFF166534),
                             ),
-                            child: child!,
-                          );
-                        },
+                          ),
+                          dialogTheme: const DialogThemeData(backgroundColor: Colors.white),
+                        ),
+                        child: child!,
                       );
                     },
-                    borderRadius: BorderRadius.circular(8),
-                    child: Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: isDesktop ? 12 : 8,
-                        vertical: isDesktop ? 6 : 4,
+                  );
+                },
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  height: 38,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isDesktop ? 12 : 8,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F8F5),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: const Color(0xFF22C55E).withValues(alpha: 0.35),
+                    ),
+                  ),
+                  alignment: Alignment.center,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (isDesktop) ...[
+                        const Icon(
+                          Icons.calendar_today,
+                          color: Color(0xFF166534),
+                          size: 15,
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            isDesktop
+                                ? _formatDate(currentTime)
+                                : DateFormat('d MMM yyyy').format(currentTime),
+                            style: TextStyle(
+                              color: const Color(0xFF166534),
+                              fontSize: isDesktop ? 12 : 10,
+                              fontWeight: FontWeight.bold,
+                              height: 1.1,
+                            ),
+                          ),
+                          Text(
+                            _formatTime(currentTime),
+                            style: TextStyle(
+                              color: const Color(0xFF1E293B),
+                              fontSize: isDesktop ? 11 : 9,
+                              height: 1.1,
+                            ),
+                          ),
+                        ],
                       ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF1F8F5),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: const Color(0xFF22C55E).withValues(alpha: 0.3),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+
+              // Buy Hardware Top Bar Pill
+              Tooltip(
+                message: 'Buy Certified POS Thermal Printers, Cash Drawers & KOT Displays',
+                child: InkWell(
+                  onTap: () => HardwareStoreDialog.show(context),
+                  borderRadius: BorderRadius.circular(10),
+                  child: Container(
+                    height: 38,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isDesktop ? 12 : 8,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: const Color(0xFF10B981),
+                        width: 1.2,
+                      ),
+                    ),
+                    alignment: Alignment.center,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.storefront_rounded,
+                          color: Color(0xFF059669),
+                          size: 17,
+                        ),
+                        if (isDesktop) ...[
+                          const SizedBox(width: 6),
+                          const Text(
+                            'Buy Hardware',
+                            style: TextStyle(
+                              color: Color(0xFF065F46),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+
+              // Profile Pill
+              PopupMenuButton<String>(
+                offset: const Offset(0, 45),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                onSelected: (value) {
+                  if (value == 'hardware') {
+                    HardwareStoreDialog.show(context);
+                  } else if (value == 'about') {
+                    AboutUsDialog.show(context);
+                  } else if (value == 'logout') {
+                    onLogout();
+                  }
+                },
+                itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: 'hardware',
+                    child: Row(
+                      children: [
+                        Icon(Icons.storefront_rounded, size: 18, color: Color(0xFF10B981)),
+                        SizedBox(width: 8),
+                        Text(
+                          'Buy Hardware',
+                          style: TextStyle(fontSize: 14, color: Color(0xFF1E293B)),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuDivider(height: 1),
+                  const PopupMenuItem(
+                    value: 'about',
+                    child: Row(
+                      children: [
+                        Icon(Icons.info_outline_rounded, size: 18, color: Color(0xFF166534)),
+                        SizedBox(width: 8),
+                        Text(
+                          'About SirfBill',
+                          style: TextStyle(fontSize: 14, color: Color(0xFF1E293B)),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuDivider(height: 1),
+                  const PopupMenuItem(
+                    value: 'logout',
+                    child: Row(
+                      children: [
+                        Icon(Icons.logout, size: 18, color: Colors.red),
+                        SizedBox(width: 8),
+                        Text(
+                          'Logout',
+                          style: TextStyle(fontSize: 14, color: Colors.red),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                child: Container(
+                  height: 38,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isDesktop ? 10 : 8,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  alignment: Alignment.center,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const CircleAvatar(
+                        radius: 13,
+                        backgroundColor: Color(0xFFF1F5F9),
+                        child: Icon(
+                          Icons.person,
+                          size: 16,
+                          color: Color(0xFF1E293B),
                         ),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (isDesktop) ...[
-                            const Icon(
-                              Icons.calendar_today,
-                              color: Color(0xFF166534),
-                              size: 16,
-                            ),
-                            const SizedBox(width: 8),
-                          ],
-                          Column(
+                      if (isDesktop) ...[
+                        const SizedBox(width: 8),
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 160),
+                          child: Column(
                             mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                isDesktop
-                                    ? _formatDate(currentTime)
-                                    : DateFormat('d MMM yyyy').format(currentTime),
-                                style: TextStyle(
-                                  color: const Color(0xFF166534),
-                                  fontSize: isDesktop ? 12 : 10,
+                                shopName.isEmpty ? 'Print Shop' : shopName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
                                   fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                  color: Color(0xFF1E293B),
+                                  height: 1.1,
                                 ),
                               ),
-                              Text(
-                                _formatTime(currentTime),
+                              const Text(
+                                'Counter',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  color: const Color(0xFF1E293B),
-                                  fontSize: isDesktop ? 12 : 10,
+                                  fontSize: 10,
+                                  color: Color(0xFF1E293B),
+                                  height: 1.1,
                                 ),
                               ),
                             ],
                           ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-
-                  // Profile Pill
-                  PopupMenuButton<String>(
-                    offset: const Offset(0, 45),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    onSelected: (value) {
-                      if (value == 'about') {
-                        AboutUsDialog.show(context);
-                      } else if (value == 'logout') {
-                        onLogout();
-                      }
-                    },
-                    itemBuilder: (context) => [
-                      const PopupMenuItem(
-                        value: 'about',
-                        child: Row(
-                          children: [
-                            Icon(Icons.info_outline_rounded, size: 18, color: Color(0xFF166534)),
-                            SizedBox(width: 8),
-                            Text(
-                              'About SirfBill',
-                              style: TextStyle(fontSize: 14, color: Color(0xFF1E293B)),
-                            ),
-                          ],
                         ),
-                      ),
-                      const PopupMenuDivider(height: 1),
-                      const PopupMenuItem(
-                        value: 'logout',
-                        child: Row(
-                          children: [
-                            Icon(Icons.logout, size: 18, color: Colors.red),
-                            SizedBox(width: 8),
-                            Text(
-                              'Logout',
-                              style: TextStyle(fontSize: 14, color: Colors.red),
-                            ),
-                          ],
+                        const SizedBox(width: 6),
+                        const Icon(
+                          Icons.keyboard_arrow_down,
+                          color: Color(0xFF1E293B),
+                          size: 16,
                         ),
-                      ),
+                      ],
                     ],
-                    child: Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: isDesktop ? 12 : 8,
-                        vertical: isDesktop ? 6 : 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                        borderRadius: isDesktop
-                            ? BorderRadius.circular(12)
-                            : BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const CircleAvatar(
-                            radius: 14,
-                            backgroundColor: Color(0xFFF1F5F9),
-                            child: Icon(
-                              Icons.person,
-                              size: 18,
-                              color: Color(0xFF1E293B),
-                            ),
-                          ),
-                          if (isDesktop) ...[
-                            const SizedBox(width: 8),
-                            Column(
-                              mainAxisSize: MainAxisSize.min,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  shopName.isEmpty ? 'Print Shop' : shopName,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12,
-                                    color: Color(0xFF1E293B),
-                                  ),
-                                ),
-                                const Text(
-                                  'Counter',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: Color(0xFF1E293B),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(width: 8),
-                            const Icon(
-                              Icons.keyboard_arrow_down,
-                              color: Color(0xFF1E293B),
-                              size: 16,
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
                   ),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
         ],
       ),

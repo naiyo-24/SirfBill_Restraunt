@@ -6,6 +6,8 @@ import '../models/restaurant_pos_models.dart';
 import '../services/restaurant_pos_service.dart';
 import '../services/inventory_service.dart';
 import '../services/billing_service.dart';
+import '../services/restaurant/restaurant_crm_service.dart';
+import '../models/restaurant_crm_models.dart';
 import '../widgets/common_filter_pills.dart';
 
 class RestaurantReportState {
@@ -89,6 +91,7 @@ class RestaurantReportState {
 
 class RestaurantReportNotifier extends Notifier<RestaurantReportState> {
   List<RestaurantOrder> _allOrders = [];
+  List<RestaurantCustomer> _crmCustomers = [];
 
   @override
   RestaurantReportState build() {
@@ -192,6 +195,9 @@ class RestaurantReportNotifier extends Notifier<RestaurantReportState> {
     try {
       final outletId = await InventoryService.getShopId();
       _allOrders = await RestaurantPosService.fetchOrders(outletId: outletId);
+      try {
+        _crmCustomers = await RestaurantCrmService.fetchCustomers();
+      } catch (_) {}
 
       // Cross-reference with POS transactions history where payment_mode and items_detail are recorded
       try {
@@ -578,6 +584,21 @@ class RestaurantReportNotifier extends Notifier<RestaurantReportState> {
     // Sort audit logs chronologically newest first
     generatedAuditLogs.sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
+    int resolvedUniqueCustomers = customersSet.length;
+    if (_crmCustomers.isNotEmpty) {
+      final crmPhones = _crmCustomers.map((c) => c.phone.replaceAll(RegExp(r'\D'), '')).where((p) => p.isNotEmpty).toSet();
+      final crmNames = _crmCustomers.map((c) => c.name.trim().toLowerCase()).toSet();
+      int activeCrmCount = 0;
+      for (final p in customersSet) {
+        if (crmPhones.contains(p) || crmNames.contains(p.toLowerCase())) {
+          activeCrmCount++;
+        }
+      }
+      resolvedUniqueCustomers = activeCrmCount > 0
+          ? activeCrmCount
+          : (customersSet.isEmpty ? 0 : customersSet.length.clamp(0, _crmCustomers.length));
+    }
+
     state = state.copyWith(
       summary: SalesReportSummary(
         grossSales: grossSales,
@@ -587,7 +608,7 @@ class RestaurantReportNotifier extends Notifier<RestaurantReportState> {
         totalOrders: totalOrdersCount,
         averageOrderValue: averageOrderValue,
         totalItemsSold: totalItemsSold,
-        uniqueCustomers: customersSet.length,
+        uniqueCustomers: resolvedUniqueCustomers,
         upiSales: upiSales,
         cashSales: cashSales,
         cardSales: cardSales,

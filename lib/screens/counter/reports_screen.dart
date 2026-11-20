@@ -11,7 +11,8 @@ import 'widgets/reports/stock_movement_tab.dart';
 import 'widgets/reports/menu_engineering_bcg_tab.dart';
 import 'widgets/reports/procurement_gst_tab.dart';
 import 'widgets/reports/shrinkage_leakage_tab.dart';
-import 'widgets/reports/restaurant_report_export_helper.dart';
+import 'widgets/reports/restaurant_executive_export_helper.dart';
+import '../../providers/restaurant_crm_provider.dart';
 
 class ReportsScreen extends ConsumerWidget {
   const ReportsScreen({super.key});
@@ -22,6 +23,7 @@ class ReportsScreen extends ConsumerWidget {
     final reportNotifier = ref.read(restaurantReportProvider.notifier);
     final execState = ref.watch(executiveReportProvider);
     final execNotifier = ref.read(executiveReportProvider.notifier);
+    final crmState = ref.watch(restaurantCrmProvider);
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final screenBg = isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC);
@@ -113,7 +115,7 @@ class ReportsScreen extends ConsumerWidget {
               execNotifier.loadActiveReport();
             },
             onExportPdf: () {
-              RestaurantReportExportHelper.showExportOptions(
+              RestaurantExecutiveExportHelper.showExportSheet(
                 context: context,
                 periodLabel: reportState.dateRangeLabel,
                 summary: reportState.summary,
@@ -121,6 +123,12 @@ class ReportsScreen extends ConsumerWidget {
                 orders: reportState.orders,
                 auditLogs: reportState.auditLogs,
                 activeTab: reportState.activeTab,
+                foodCostReport: execState.foodCostReport,
+                stockReport: execState.stockReport,
+                menuEngineeringReport: execState.menuEngineeringReport,
+                procurementReport: execState.procurementReport,
+                shrinkageReport: execState.shrinkageReport,
+                customers: crmState.customers,
               );
             },
           ),

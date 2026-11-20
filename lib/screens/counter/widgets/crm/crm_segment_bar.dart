@@ -8,6 +8,7 @@ class CrmSegmentBar extends StatelessWidget {
   final ValueChanged<String> onSearchChanged;
   final VoidCallback onAddCustomer;
   final VoidCallback onRefresh;
+  final VoidCallback? onExport;
   final Map<CustomerSegment, int> segmentCounts;
   final bool isMobile;
 
@@ -19,6 +20,7 @@ class CrmSegmentBar extends StatelessWidget {
     required this.onSearchChanged,
     required this.onAddCustomer,
     required this.onRefresh,
+    this.onExport,
     required this.segmentCounts,
     this.isMobile = false,
   });
@@ -102,6 +104,20 @@ class CrmSegmentBar extends StatelessWidget {
                   elevation: 0,
                 ),
               ),
+              if (onExport != null) ...[
+                const SizedBox(width: 8),
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.file_download_outlined, size: 16),
+                  label: Text(isMobile ? 'Export' : 'Export Guests'),
+                  onPressed: onExport,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF8B5CF6),
+                    side: const BorderSide(color: Color(0xFF8B5CF6)),
+                    padding: EdgeInsets.symmetric(horizontal: isMobile ? 10 : 14, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ],
             ],
           ),
           const SizedBox(height: 12),

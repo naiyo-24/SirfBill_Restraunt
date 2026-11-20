@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 class CrmKpiCards extends StatelessWidget {
   final int totalGuests;
@@ -44,7 +45,7 @@ class CrmKpiCards extends StatelessWidget {
       _buildCard(
         context: context,
         title: 'Khata Outstanding',
-        value: '₹${totalKhataOutstanding.toStringAsFixed(0)}',
+        value: NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 2).format(totalKhataOutstanding),
         subtitle: 'Store credit receivables',
         icon: Icons.account_balance_wallet_rounded,
         color: const Color(0xFFEF4444),

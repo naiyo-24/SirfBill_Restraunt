@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 class ChannelItemData {
   final String title;
@@ -162,7 +163,7 @@ class ChannelBreakdownCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    '₹${item.amount.toStringAsFixed(0)}',
+                    NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 2).format(item.amount),
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w800,

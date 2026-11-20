@@ -184,7 +184,7 @@ class _Crm360InsightsModalState extends State<Crm360InsightsModal> with SingleTi
                 : TabBarView(
                     controller: _tabController,
                     children: [
-                      CrmOverviewTabView(customer: c, isDark: isDark),
+                      CrmOverviewTabView(customer: c, insights: widget.insights, isDark: isDark),
                       CrmTopDishesTabView(topDishes: widget.insights?.topDishes ?? [], isDark: isDark),
                       CrmRecentBillsTabView(recentBills: widget.insights?.recentBills ?? [], isDark: isDark),
                       CrmKhataTabView(

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../models/restaurant_crm_models.dart';
 
 class CrmCustomerTable extends StatelessWidget {
@@ -26,6 +28,32 @@ class CrmCustomerTable extends StatelessWidget {
     required this.totalRecords,
     required this.onPageChanged,
   });
+
+  static Future<void> _handleQuickNotify(BuildContext context, RestaurantCustomer c) async {
+    final phone = c.phone.replaceAll(RegExp(r'\D'), '');
+    final cleanPhone = phone.length == 10 ? '91$phone' : phone;
+    final due = c.creditBalance;
+    final points = c.loyaltyPoints;
+
+    String msg;
+    if (due > 0) {
+      msg = 'Hello ${c.name}, gentle reminder from SirfBill Restaurant regarding pending Khata dues of ₹${due.toStringAsFixed(2)}. Thank you!';
+    } else if (points > 0) {
+      msg = 'Hello ${c.name}, you have $points loyalty reward points at SirfBill Restaurant! Visit us today to unlock special treats.';
+    } else {
+      msg = 'Hello ${c.name}, greetings from SirfBill Restaurant! We look forward to serving you again soon.';
+    }
+
+    final url = Uri.parse('https://wa.me/$cleanPhone?text=${Uri.encodeComponent(msg)}');
+    try {
+      final launched = await launchUrl(url, mode: LaunchMode.externalApplication);
+      if (!launched) await launchUrl(url);
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not open WhatsApp for ${c.phone}')));
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -80,16 +108,16 @@ class CrmCustomerTable extends StatelessWidget {
               borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
               border: Border(bottom: BorderSide(color: borderColor)),
             ),
-            child: Row(
+            child: const Row(
               children: [
-                const Expanded(flex: 3, child: _HeaderText('GUEST & CONTACT')),
-                const Expanded(flex: 2, child: _HeaderText('SEGMENT')),
-                const Expanded(flex: 2, child: _HeaderText('VISITS')),
-                const Expanded(flex: 2, child: _HeaderText('TOTAL SPENT')),
-                const Expanded(flex: 2, child: _HeaderText('AOV')),
-                const Expanded(flex: 2, child: _HeaderText('KHATA DUE')),
-                const Expanded(flex: 2, child: _HeaderText('LOYALTY')),
-                const SizedBox(width: 90, child: _HeaderText('ACTIONS', align: TextAlign.end)),
+                Expanded(flex: 3, child: _HeaderText('GUEST & CONTACT')),
+                Expanded(flex: 2, child: _HeaderText('SEGMENT')),
+                Expanded(flex: 2, child: _HeaderText('VISITS')),
+                Expanded(flex: 2, child: _HeaderText('TOTAL SPENT')),
+                Expanded(flex: 2, child: _HeaderText('AOV')),
+                Expanded(flex: 2, child: _HeaderText('KHATA DUE')),
+                Expanded(flex: 2, child: _HeaderText('LOYALTY')),
+                SizedBox(width: 124, child: _HeaderText('ACTIONS', align: TextAlign.end)),
               ],
             ),
           ),
@@ -187,7 +215,7 @@ class CrmCustomerTable extends StatelessWidget {
                       Expanded(
                         flex: 2,
                         child: Text(
-                          '₹${c.totalSpent.toStringAsFixed(0)}',
+                          NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 2).format(c.totalSpent),
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
@@ -200,7 +228,7 @@ class CrmCustomerTable extends StatelessWidget {
                       Expanded(
                         flex: 2,
                         child: Text(
-                          '₹${c.avgOrderValue.toStringAsFixed(0)}',
+                          NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 2).format(c.avgOrderValue),
                           style: TextStyle(
                             fontSize: 12,
                             color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
@@ -221,7 +249,7 @@ class CrmCustomerTable extends StatelessWidget {
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                   child: Text(
-                                    '₹${c.creditBalance.toStringAsFixed(0)} Due',
+                                    '${NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 2).format(c.creditBalance)} Due',
                                     style: const TextStyle(
                                       fontSize: 11,
                                       fontWeight: FontWeight.w800,
@@ -260,10 +288,19 @@ class CrmCustomerTable extends StatelessWidget {
 
                       // 8. Actions
                       SizedBox(
-                        width: 90,
+                        width: 124,
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
+                            IconButton(
+                              icon: const Icon(Icons.chat_outlined, size: 16),
+                              tooltip: 'WhatsApp / Send Message',
+                              color: const Color(0xFF25D366),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              onPressed: () => _handleQuickNotify(context, c),
+                            ),
+                            const SizedBox(width: 8),
                             IconButton(
                               icon: const Icon(Icons.insights_rounded, size: 16),
                               tooltip: '360° Insights',
@@ -272,7 +309,7 @@ class CrmCustomerTable extends StatelessWidget {
                               constraints: const BoxConstraints(),
                               onPressed: () => onSelectCustomer(c),
                             ),
-                            const SizedBox(width: 10),
+                            const SizedBox(width: 8),
                             IconButton(
                               icon: const Icon(Icons.edit_rounded, size: 16),
                               tooltip: 'Edit Profile',
@@ -281,7 +318,7 @@ class CrmCustomerTable extends StatelessWidget {
                               constraints: const BoxConstraints(),
                               onPressed: () => onEdit(c),
                             ),
-                            const SizedBox(width: 10),
+                            const SizedBox(width: 8),
                             IconButton(
                               icon: const Icon(Icons.delete_outline_rounded, size: 16),
                               tooltip: 'Delete',
@@ -405,6 +442,8 @@ class _HeaderText extends StatelessWidget {
   final String text;
   final TextAlign align;
   const _HeaderText(this.text, {this.align = TextAlign.start});
+
+
 
   @override
   Widget build(BuildContext context) {

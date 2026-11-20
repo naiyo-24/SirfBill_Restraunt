@@ -6,17 +6,15 @@ import '../screens/home/dashboard_screen.dart';
 import '../screens/auth/role_login_screen.dart';
 import '../screens/counter/counter_dashboard.dart';
 import '../screens/counter/billing_screen.dart';
-import '../screens/counter/customers_screen.dart';
-// import '../screens/counter/accounts_screen.dart';
 import '../screens/counter/bill_customization_screen.dart';
 import '../screens/counter/table_management_screen.dart';
 import '../screens/counter/order_management_screen.dart';
 import '../screens/counter/kitchen_display_screen.dart';
 import '../screens/counter/menu_management_screen.dart';
-import '../screens/counter/reports_screen.dart';
 import '../screens/counter/inventory/inventory_screen.dart';
 import '../screens/admin/restaurant_admin_panel_screen.dart';
 import '../screens/waiter/waiter_order_screen.dart';
+import '../screens/crm/restaurant_crm_reports_screen.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -71,7 +69,7 @@ final goRouter = GoRouter(
         } else if (role == 'INVENTORY' || role == 'STOCK' || loginModule.contains('INVENTORY')) {
           return '/inventory';
         } else if (isCrm) {
-          return '/counter/customers';
+          return '/crm';
         }
         return '/counter/billing';
       }
@@ -95,13 +93,17 @@ final goRouter = GoRouter(
           userId.contains('crm');
 
       if (isCrm) {
-        return '/counter/customers';
+        return '/crm';
       }
     }
 
     return null;
   },
   routes: [
+    GoRoute(
+      path: '/',
+      redirect: (context, state) => '/dashboard',
+    ),
     GoRoute(path: '/splash', builder: (context, state) => const SplashScreen()),
     GoRoute(
       path: '/dashboard',
@@ -126,6 +128,18 @@ final goRouter = GoRouter(
     GoRoute(
       path: '/counter/inventory',
       redirect: (context, state) => '/inventory',
+    ),
+    GoRoute(
+      path: '/crm',
+      builder: (context, state) => const RestaurantCrmReportsScreen(),
+    ),
+    GoRoute(
+      path: '/counter/customers',
+      redirect: (context, state) => '/crm',
+    ),
+    GoRoute(
+      path: '/counter/reports',
+      redirect: (context, state) => '/crm',
     ),
     GoRoute(
       path: '/role_login',
@@ -161,7 +175,7 @@ final goRouter = GoRouter(
           } else if (roleName.contains('Admin')) {
             nextRoute = '/admin';
           } else if (roleName.contains('CRM')) {
-            nextRoute = '/counter/customers';
+            nextRoute = '/crm';
           } else {
             nextRoute = '/counter/billing';
           }
@@ -224,34 +238,7 @@ final goRouter = GoRouter(
             ),
           ],
         ),
-        // 5: Customers (CRM)
-        StatefulShellBranch(
-          routes: [
-            GoRoute(
-              path: '/counter/customers',
-              builder: (context, state) => const CustomersScreen(),
-            ),
-          ],
-        ),
-        // 6: Reports
-        StatefulShellBranch(
-          routes: [
-            GoRoute(
-              path: '/counter/reports',
-              builder: (context, state) => const ReportsScreen(),
-            ),
-          ],
-        ),
-        // 7: Expenses (Commented out)
-        // StatefulShellBranch(
-        //   routes: [
-        //     GoRoute(
-        //       path: '/counter/expenses',
-        //       builder: (context, state) => const AccountsScreen(),
-        //     ),
-        //   ],
-        // ),
-        // 8: Settings
+        // 5: Settings
         StatefulShellBranch(
           routes: [
             GoRoute(

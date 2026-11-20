@@ -72,7 +72,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       description: 'Customers, loyalty and sales performance.',
       icon: Icons.groups_rounded,
       primaryColor: Color(0xFF8B5CF6), // Royal purple
-      nextRoute: '/counter/customers',
+      nextRoute: '/crm',
     ),
     ModuleCardData(
       indexText: '05',

@@ -73,6 +73,54 @@ class RestaurantCustomer {
     this.createdAt,
   });
 
+  RestaurantCustomer copyWith({
+    String? id,
+    String? outletId,
+    String? name,
+    String? phone,
+    String? email,
+    DateTime? dob,
+    DateTime? anniversary,
+    String? gstNumber,
+    Map<String, dynamic>? preferences,
+    List<String>? tags,
+    double? creditLimit,
+    double? creditBalance,
+    int? loyaltyPoints,
+    int? totalVisits,
+    double? totalSpent,
+    double? avgOrderValue,
+    DateTime? lastVisitAt,
+    bool? optInMarketing,
+    String? notes,
+    bool? isActive,
+    DateTime? createdAt,
+  }) {
+    return RestaurantCustomer(
+      id: id ?? this.id,
+      outletId: outletId ?? this.outletId,
+      name: name ?? this.name,
+      phone: phone ?? this.phone,
+      email: email ?? this.email,
+      dob: dob ?? this.dob,
+      anniversary: anniversary ?? this.anniversary,
+      gstNumber: gstNumber ?? this.gstNumber,
+      preferences: preferences ?? this.preferences,
+      tags: tags ?? this.tags,
+      creditLimit: creditLimit ?? this.creditLimit,
+      creditBalance: creditBalance ?? this.creditBalance,
+      loyaltyPoints: loyaltyPoints ?? this.loyaltyPoints,
+      totalVisits: totalVisits ?? this.totalVisits,
+      totalSpent: totalSpent ?? this.totalSpent,
+      avgOrderValue: avgOrderValue ?? this.avgOrderValue,
+      lastVisitAt: lastVisitAt ?? this.lastVisitAt,
+      optInMarketing: optInMarketing ?? this.optInMarketing,
+      notes: notes ?? this.notes,
+      isActive: isActive ?? this.isActive,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
   CustomerSegment get segment {
     if (creditBalance > 0) {
       // Has store credit outstanding

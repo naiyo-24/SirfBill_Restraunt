@@ -30,6 +30,26 @@ class SalesReportSummary {
     required this.takeawaySales,
     required this.deliverySales,
   });
+
+  double get totalTax => totalGst;
+  double get creditSales => (grossSales - (upiSales + cashSales + cardSales)).clamp(0.0, double.infinity);
+
+  static const emptyInstance = SalesReportSummary(
+    grossSales: 0,
+    netSales: 0,
+    totalDiscount: 0,
+    totalGst: 0,
+    totalOrders: 0,
+    averageOrderValue: 0,
+    upiSales: 0,
+    cashSales: 0,
+    cardSales: 0,
+    dineInSales: 0,
+    takeawaySales: 0,
+    deliverySales: 0,
+  );
+
+  factory SalesReportSummary.empty() => emptyInstance;
 }
 
 class TopSellingDish {

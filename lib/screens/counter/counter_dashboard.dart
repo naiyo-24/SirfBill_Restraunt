@@ -64,8 +64,8 @@ class _CounterDashboardState extends ConsumerState<CounterDashboard> {
           userName.contains('crm') ||
           userId.contains('crm');
 
-      if (isCrm && widget.navigationShell.currentIndex == 0 && mounted) {
-        widget.navigationShell.goBranch(5);
+      if (isCrm && mounted) {
+        context.go('/crm');
       }
     } catch (_) {}
   }

@@ -9,6 +9,8 @@ import 'widgets/crm/crm_customer_table.dart';
 import 'widgets/crm/crm_360_insights_modal.dart';
 import 'widgets/crm/crm_khata_settle_dialog.dart';
 import 'widgets/crm/crm_add_edit_customer_dialog.dart';
+import 'widgets/reports/restaurant_executive_export_helper.dart';
+import '../../models/restaurant_report_models.dart';
 
 class CustomersScreen extends ConsumerStatefulWidget {
   const CustomersScreen({super.key});
@@ -26,6 +28,19 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
   void dispose() {
     _searchCtrl.dispose();
     super.dispose();
+  }
+
+  void _handleExportCustomers() {
+    final state = ref.read(restaurantCrmProvider);
+    RestaurantExecutiveExportHelper.exportMasterWorkbookExcel(
+      context: context,
+      periodLabel: 'Customer Master',
+      summary: SalesReportSummary.empty(),
+      topDishes: const [],
+      orders: const [],
+      auditLogs: const [],
+      customers: state.customers,
+    );
   }
 
   void _openAddEditDialog([RestaurantCustomer? customer]) {
@@ -231,6 +246,7 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
                   },
                   onAddCustomer: () => _openAddEditDialog(),
                   onRefresh: () => notifier.loadCustomers(),
+                  onExport: _handleExportCustomers,
                   segmentCounts: segmentCounts,
                   isMobile: isMobile,
                 ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../../../models/restaurant_report_models.dart';
 
 class KpiSpec {
@@ -40,10 +41,12 @@ class ExecutiveKpiGrid extends StatelessWidget {
         final cols = w < 650 ? 2 : (w < 1100 ? 3 : 6);
         final aspect = w < 650 ? 1.6 : (w < 1100 ? 1.85 : 1.65);
 
+        final inrFmt = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 2);
+
         final metrics = [
           KpiSpec(
             title: 'Net Revenue',
-            value: '₹${summary.netSales.toStringAsFixed(0)}',
+            value: inrFmt.format(summary.netSales),
             subtext: 'Excl. GST & discounts',
             badge: 'Base Revenue',
             icon: Icons.account_balance_wallet_rounded,
@@ -61,7 +64,7 @@ class ExecutiveKpiGrid extends StatelessWidget {
           ),
           KpiSpec(
             title: 'Avg Order Value',
-            value: '₹${summary.averageOrderValue.toStringAsFixed(1)}',
+            value: inrFmt.format(summary.averageOrderValue),
             subtext: 'Per guest check',
             badge: 'AOV Metric',
             icon: Icons.insights_rounded,
@@ -88,7 +91,7 @@ class ExecutiveKpiGrid extends StatelessWidget {
           ),
           KpiSpec(
             title: 'Discounts Given',
-            value: '₹${summary.totalDiscount.toStringAsFixed(0)}',
+            value: inrFmt.format(summary.totalDiscount),
             subtext: 'Promos & coupons',
             badge: 'Price Deductions',
             icon: Icons.local_offer_rounded,

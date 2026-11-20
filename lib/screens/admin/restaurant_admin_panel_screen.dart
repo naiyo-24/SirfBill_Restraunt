@@ -1,11 +1,15 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../utils/responsive.dart';
 import '../../services/auth_service.dart';
 import '../../services/app_session_manager.dart';
 import '../../services/shop_service.dart';
 import '../../services/inventory_service.dart';
 import '../../services/admin_staff_service.dart';
+import '../../providers/theme_provider.dart';
 import 'models/subscription_plan_models.dart';
 import 'services/subscription_api_service.dart';
 import 'widgets/admin_sidebar.dart';
@@ -26,7 +30,9 @@ class RestaurantAdminPanelScreen extends ConsumerStatefulWidget {
 class _RestaurantAdminPanelScreenState extends ConsumerState<RestaurantAdminPanelScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   int _selectedIndex = 0;
-  bool _isSidebarCollapsed = false;
+  bool _isSidebarExpanded = true;
+  DateTime _currentTime = DateTime.now();
+  Timer? _timer;
 
   List<Shop> _branches = [];
   List<RestaurantStaffUser> _staffUsers = [];
@@ -39,7 +45,43 @@ class _RestaurantAdminPanelScreenState extends ConsumerState<RestaurantAdminPane
   @override
   void initState() {
     super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() => _currentTime = DateTime.now());
+    });
+    HardwareKeyboard.instance.addHandler(_handleKeyEvent);
     _loadAdminData();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
+    super.dispose();
+  }
+
+  bool _handleKeyEvent(KeyEvent event) {
+    if (event is KeyDownEvent) {
+      if (event.logicalKey == LogicalKeyboardKey.f1) {
+        setState(() => _selectedIndex = 0);
+        return true;
+      } else if (event.logicalKey == LogicalKeyboardKey.f2) {
+        setState(() => _selectedIndex = 1);
+        return true;
+      } else if (event.logicalKey == LogicalKeyboardKey.f3) {
+        setState(() => _selectedIndex = 2);
+        return true;
+      } else if (event.logicalKey == LogicalKeyboardKey.f4) {
+        setState(() => _selectedIndex = 3);
+        return true;
+      } else if (event.logicalKey == LogicalKeyboardKey.f5) {
+        context.go('/counter/billing');
+        return true;
+      } else if (event.logicalKey == LogicalKeyboardKey.f6) {
+        context.go('/dashboard');
+        return true;
+      }
+    }
+    return false;
   }
 
   Future<void> _loadAdminData() async {
@@ -280,160 +322,134 @@ class _RestaurantAdminPanelScreenState extends ConsumerState<RestaurantAdminPane
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isMobile = screenWidth < 768;
-    final isTablet = screenWidth >= 768 && screenWidth < 1024;
-
+    final bool isDesktop = Responsive.isDesktop(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bg = isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC);
-    final sidebarBg = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final scaffoldBg = isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC);
     final cardBg = isDark ? const Color(0xFF1E293B) : Colors.white;
     final borderColor = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
     final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
     final subtitleColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
 
-    final workspaceContent = Column(
-      children: [
-        // TOP HEADER COMPONENT
-        AdminTopHeader(
-          selectedIndex: _selectedIndex,
-          onRefresh: _loadAdminData,
-          onLaunchPos: () => context.go('/counter/billing'),
+    Widget buildSidebar() => AdminSidebar(
+          isDesktop: isDesktop,
+          isExpanded: _isSidebarExpanded,
+          currentIndex: _selectedIndex,
+          onSelectIndex: (idx) {
+            setState(() => _selectedIndex = idx);
+            if (!isDesktop) Navigator.pop(context);
+          },
+          onToggleTheme: () => ref.read(themeProvider.notifier).toggleTheme(),
           onLogout: _handleLogout,
-          userName: _userName,
-          cardBg: cardBg,
-          borderColor: borderColor,
-          textColor: textColor,
-          subtitleColor: subtitleColor,
-          isMobile: isMobile,
-          isTablet: isTablet,
-          onOpenDrawer: isMobile ? () => _scaffoldKey.currentState?.openDrawer() : null,
-          subscriptionStatus: _subscriptionStatus,
-          onSelectSubscriptionTab: () => setState(() => _selectedIndex = 3),
-        ),
+        );
 
-        // WORKSPACE TABS VIEW
-        Expanded(
-          child: _isLoading
-              ? const Center(
-                  child: CircularProgressIndicator(color: Color(0xFF6366F1)),
-                )
-              : IndexedStack(
-                  index: _selectedIndex,
+    return PopScope(
+      canPop: false,
+      child: Scaffold(
+        key: _scaffoldKey,
+        backgroundColor: Colors.white,
+        drawer: isDesktop ? null : Drawer(child: buildSidebar()),
+        body: SafeArea(
+          child: Column(
+            children: [
+              // 1. TOP HEADER (Spans 100% full width across the very top!)
+              AdminTopHeader(
+                isDesktop: isDesktop,
+                currentTime: _currentTime,
+                userName: _userName.isNotEmpty ? _userName : 'Admin',
+                userRole: 'Administrator',
+                onMenuPressed: () {
+                  if (isDesktop) {
+                    setState(() => _isSidebarExpanded = !_isSidebarExpanded);
+                  } else {
+                    _scaffoldKey.currentState?.openDrawer();
+                  }
+                },
+                onLogout: _handleLogout,
+                onSelectTab: (idx) => setState(() => _selectedIndex = idx),
+              ),
+
+              // 2. MAIN BODY (Sidebar underneath on left, Content on right)
+              Expanded(
+                child: Row(
                   children: [
-                    // TAB 0: DASHBOARD
-                    AdminDashboardTab(
-                      branches: _branches,
-                      staffCount: _staffUsers.length,
-                      onAddBranch: _showAddBranchDialog,
-                      onAddUser: _showAddUserDialog,
-                      onViewAllBranches: () => setState(() => _selectedIndex = 1),
-                      onViewSubscription: () => setState(() => _selectedIndex = 3),
-                      subscriptionStatus: _subscriptionStatus,
-                      cardBg: cardBg,
-                      borderColor: borderColor,
-                      textColor: textColor,
-                      subtitleColor: subtitleColor,
-                      isDark: isDark,
-                    ),
+                    if (isDesktop) buildSidebar(),
+                    Expanded(
+                      child: Container(
+                        color: scaffoldBg,
+                        child: _isLoading
+                            ? const Center(
+                                child: CircularProgressIndicator(color: Color(0xFF6366F1)),
+                              )
+                            : IndexedStack(
+                                index: _selectedIndex,
+                                children: [
+                                  // TAB 0: DASHBOARD
+                                  AdminDashboardTab(
+                                    branches: _branches,
+                                    staffCount: _staffUsers.length,
+                                    onAddBranch: _showAddBranchDialog,
+                                    onAddUser: _showAddUserDialog,
+                                    onViewAllBranches: () => setState(() => _selectedIndex = 1),
+                                    onViewSubscription: () => setState(() => _selectedIndex = 3),
+                                    subscriptionStatus: _subscriptionStatus,
+                                    cardBg: cardBg,
+                                    borderColor: borderColor,
+                                    textColor: textColor,
+                                    subtitleColor: subtitleColor,
+                                    isDark: isDark,
+                                  ),
 
-                    // TAB 1: OUTLETS & BRANCHES
-                    AdminOutletsTab(
-                      branches: _branches,
-                      onAddBranch: _showAddBranchDialog,
-                      onEditBranch: _showEditBranchDialog,
-                      onDeleteBranch: _handleDeleteBranch,
-                      onSelectActiveBranch: _handleSelectActiveBranch,
-                      activeShopId: _activeShopId,
-                      cardBg: cardBg,
-                      borderColor: borderColor,
-                      textColor: textColor,
-                      subtitleColor: subtitleColor,
-                      isDark: isDark,
-                    ),
+                                  // TAB 1: OUTLETS & BRANCHES
+                                  AdminOutletsTab(
+                                    branches: _branches,
+                                    onAddBranch: _showAddBranchDialog,
+                                    onEditBranch: _showEditBranchDialog,
+                                    onDeleteBranch: _handleDeleteBranch,
+                                    onSelectActiveBranch: _handleSelectActiveBranch,
+                                    activeShopId: _activeShopId,
+                                    cardBg: cardBg,
+                                    borderColor: borderColor,
+                                    textColor: textColor,
+                                    subtitleColor: subtitleColor,
+                                    isDark: isDark,
+                                  ),
 
-                    // TAB 2: USERS & ROLES
-                    AdminUsersTab(
-                      staffUsers: _staffUsers,
-                      searchQuery: _searchQuery,
-                      onSearchChanged: (val) => setState(() => _searchQuery = val),
-                      onAddUser: _showAddUserDialog,
-                      onEditUser: _showEditUserDialog,
-                      onDeleteUser: _handleDeleteUser,
-                      cardBg: cardBg,
-                      borderColor: borderColor,
-                      textColor: textColor,
-                      subtitleColor: subtitleColor,
-                      isDark: isDark,
-                    ),
+                                  // TAB 2: USERS & ROLES
+                                  AdminUsersTab(
+                                    staffUsers: _staffUsers,
+                                    searchQuery: _searchQuery,
+                                    onSearchChanged: (val) => setState(() => _searchQuery = val),
+                                    onAddUser: _showAddUserDialog,
+                                    onEditUser: _showEditUserDialog,
+                                    onDeleteUser: _handleDeleteUser,
+                                    cardBg: cardBg,
+                                    borderColor: borderColor,
+                                    textColor: textColor,
+                                    subtitleColor: subtitleColor,
+                                    isDark: isDark,
+                                  ),
 
-                    // TAB 3: SUBSCRIPTION & MONTHLY PLANS
-                    AdminSubscriptionTab(
-                      cardBg: cardBg,
-                      borderColor: borderColor,
-                      textColor: textColor,
-                      subtitleColor: subtitleColor,
-                      isDark: isDark,
-                      initialStatus: _subscriptionStatus,
-                      onStatusChanged: (st) => setState(() => _subscriptionStatus = st),
+                                  // TAB 3: SUBSCRIPTION & MONTHLY PLANS
+                                  AdminSubscriptionTab(
+                                    cardBg: cardBg,
+                                    borderColor: borderColor,
+                                    textColor: textColor,
+                                    subtitleColor: subtitleColor,
+                                    isDark: isDark,
+                                    initialStatus: _subscriptionStatus,
+                                    onStatusChanged: (st) => setState(() => _subscriptionStatus = st),
+                                  ),
+                                ],
+                              ),
+                      ),
                     ),
                   ],
                 ),
-        ),
-      ],
-    );
-
-    return Scaffold(
-      key: _scaffoldKey,
-      backgroundColor: bg,
-      drawer: isMobile
-          ? Drawer(
-              width: 280,
-              backgroundColor: sidebarBg,
-              child: AdminSidebar(
-                isDark: isDark,
-                isCollapsed: false,
-                isDrawer: true,
-                selectedIndex: _selectedIndex,
-                onSelectIndex: (idx) {
-                  setState(() => _selectedIndex = idx);
-                  Navigator.pop(context);
-                },
-                onToggleCollapse: () {},
-                onLogout: () {
-                  Navigator.pop(context);
-                  _handleLogout();
-                },
-                sidebarBg: sidebarBg,
-                borderColor: borderColor,
-                textColor: textColor,
-                subtitleColor: subtitleColor,
               ),
-            )
-          : null,
-      body: isMobile
-          ? SafeArea(top: false, child: workspaceContent)
-          : Row(
-              children: [
-                // 1. REUSABLE SIDEBAR COMPONENT (Compact on tablet, collapsible on desktop)
-                AdminSidebar(
-                  isDark: isDark,
-                  isCollapsed: isTablet ? true : _isSidebarCollapsed,
-                  isDrawer: false,
-                  selectedIndex: _selectedIndex,
-                  onSelectIndex: (idx) => setState(() => _selectedIndex = idx),
-                  onToggleCollapse: () => setState(() => _isSidebarCollapsed = !_isSidebarCollapsed),
-                  onLogout: _handleLogout,
-                  sidebarBg: sidebarBg,
-                  borderColor: borderColor,
-                  textColor: textColor,
-                  subtitleColor: subtitleColor,
-                ),
-
-                // 2. MAIN WORKSPACE CONTENT
-                Expanded(child: workspaceContent),
-              ],
-            ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

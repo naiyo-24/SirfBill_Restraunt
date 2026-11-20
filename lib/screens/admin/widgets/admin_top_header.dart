@@ -1,451 +1,471 @@
-import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../counter/widgets/about/about_us_dialog.dart';
-import '../models/subscription_plan_models.dart';
+import '../../home/widgets/hardware_store_dialog.dart';
 
 class AdminTopHeader extends StatelessWidget {
-  final int selectedIndex;
-  final VoidCallback onRefresh;
-  final VoidCallback onLaunchPos;
+  final bool isDesktop;
+  final DateTime currentTime;
+  final String userName;
+  final String userRole;
+  final VoidCallback onMenuPressed;
   final VoidCallback onLogout;
-  final String? userName;
-  final Color cardBg;
-  final Color borderColor;
-  final Color textColor;
-  final Color subtitleColor;
-  final bool isMobile;
-  final bool isTablet;
-  final VoidCallback? onOpenDrawer;
-  final SubscriptionStatusModel? subscriptionStatus;
-  final VoidCallback? onSelectSubscriptionTab;
+  final ValueChanged<int> onSelectTab;
 
   const AdminTopHeader({
     super.key,
-    required this.selectedIndex,
-    required this.onRefresh,
-    required this.onLaunchPos,
+    required this.isDesktop,
+    required this.currentTime,
+    required this.userName,
+    this.userRole = 'Admin',
+    required this.onMenuPressed,
     required this.onLogout,
-    this.userName,
-    required this.cardBg,
-    required this.borderColor,
-    required this.textColor,
-    required this.subtitleColor,
-    this.isMobile = false,
-    this.isTablet = false,
-    this.onOpenDrawer,
-    this.subscriptionStatus,
-    this.onSelectSubscriptionTab,
+    required this.onSelectTab,
   });
+
+  String _formatDate(DateTime date) {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    String dayName = days[date.weekday - 1];
+    String monthName = months[date.month - 1];
+    return '$dayName, ${date.day} $monthName ${date.year}';
+  }
+
+  String _formatTime(DateTime date) {
+    int hour = date.hour;
+    String period = hour >= 12 ? 'PM' : 'AM';
+    hour = hour % 12;
+    if (hour == 0) hour = 12;
+    String minute = date.minute.toString().padLeft(2, '0');
+    String second = date.second.toString().padLeft(2, '0');
+    return '$hour:$minute:$second $period';
+  }
+
+  Widget _buildShortcutChip(
+    BuildContext context,
+    String key,
+    String label, {
+    VoidCallback? onTap,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                key,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : const Color(0xFF1E293B),
+                ),
+              ),
+            ),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF1E293B),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    String titleText = 'Dashboard Overview';
-    String descText = 'Business overview, performance metrics & live restaurant activity';
-
-    if (selectedIndex == 1) {
-      titleText = 'Outlets & Branches';
-      descText = 'Configure multi-location restaurants, POS terminals & tax setup';
-    } else if (selectedIndex == 2) {
-      titleText = 'Users & Staff Access';
-      descText = 'Manage cashier credentials, floor staff accounts and role permissions';
-    } else if (selectedIndex == 3) {
-      titleText = 'Subscription & Monthly Plans';
-      descText = 'Manage monthly billing cycle, license features, plan renewals & upgrades';
-    }
-
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final displayName = (userName != null && userName!.trim().isNotEmpty) ? userName!.trim() : 'Restaurant Admin';
-    final userInitial = displayName.isNotEmpty ? displayName[0].toUpperCase() : 'A';
+    final headerBg = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final borderColor = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
 
     return Container(
+      height: 100,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: cardBg,
+        color: headerBg,
         border: Border(bottom: BorderSide(color: borderColor, width: 1)),
       ),
-      child: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: isMobile ? 12 : 20,
-            vertical: isMobile ? 8 : 12,
-          ),
-          child: Row(
-            children: [
-              // Drawer Hamburger Menu on Mobile
-              if (onOpenDrawer != null) ...[
-                IconButton(
-                  icon: const Icon(Icons.menu_rounded, size: 24),
-                  onPressed: onOpenDrawer,
-                  color: textColor,
-                  tooltip: 'Open Menu',
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+      child: Row(
+        children: [
+          // 3-Bar Hamburger Menu Toggle Pill (matching POS Header)
+          Tooltip(
+            message: 'Toggle Navigation Menu',
+            child: InkWell(
+              borderRadius: BorderRadius.circular(10),
+              onTap: onMenuPressed,
+              child: Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: borderColor, width: 1.2),
                 ),
-                const SizedBox(width: 8),
-              ],
-
-          // Title & Subtitle
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  titleText,
-                  style: TextStyle(
-                    fontSize: isMobile ? 15 : 17,
-                    fontWeight: FontWeight.w800,
-                    color: textColor,
-                    letterSpacing: -0.2,
+                child: Center(
+                  child: Icon(
+                    Icons.menu_rounded,
+                    size: 20,
+                    color: isDark ? Colors.white : const Color(0xFF1E293B),
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
-                if (!isMobile) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    descText,
-                    style: TextStyle(fontSize: 11, color: subtitleColor),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ],
+              ),
             ),
           ),
-          const SizedBox(width: 6),
+          SizedBox(width: isDesktop ? 16 : 10),
 
-          // Top Bar Subscription Status Pill
-          if (subscriptionStatus != null) ...[
-            _buildSubscriptionStatusPill(),
-            const SizedBox(width: 8),
-          ],
+          // SirfBill Official Logo
+          Image.asset(
+            isDark ? 'assets/LOGO_DM.png' : 'assets/LOGO.png',
+            height: isDesktop ? 75 : 45,
+            width: isDesktop ? null : 110,
+            alignment: Alignment.centerLeft,
+            fit: BoxFit.contain,
+            cacheHeight: 225,
+          ),
 
-          // Refresh Button
-          if (isMobile)
-            IconButton(
-              onPressed: onRefresh,
-              icon: const Icon(Icons.refresh_rounded, size: 20),
-              tooltip: 'Refresh',
-              color: textColor,
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-            )
-          else
-            OutlinedButton.icon(
-              onPressed: onRefresh,
-              icon: const Icon(Icons.refresh_rounded, size: 15),
-              label: const Text('Refresh', style: TextStyle(fontSize: 12)),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: textColor,
-                side: BorderSide(color: borderColor),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              ),
-            ),
-          const SizedBox(width: 4),
-
-          // All Modules (Desktop & Tablet)
-          if (!isMobile) ...[
-            OutlinedButton.icon(
-              onPressed: () => context.go('/dashboard'),
-              icon: const Icon(Icons.dashboard_customize_rounded, size: 15),
-              label: Text(isTablet ? 'Modules' : 'All Modules', style: const TextStyle(fontSize: 12)),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: textColor,
-                side: BorderSide(color: borderColor),
-                padding: EdgeInsets.symmetric(horizontal: isTablet ? 9 : 12, vertical: 9),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              ),
-            ),
-            const SizedBox(width: 4),
-          ],
-
-          // Launch POS
-          if (isMobile)
-            IconButton(
-              onPressed: onLaunchPos,
-              icon: const Icon(Icons.point_of_sale_rounded, size: 20),
-              tooltip: 'Launch POS',
-              color: const Color(0xFF10B981),
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-            )
-          else
-            ElevatedButton.icon(
-              onPressed: onLaunchPos,
-              icon: const Icon(Icons.point_of_sale_rounded, size: 15),
-              label: Text(isTablet ? 'POS' : 'Launch POS', style: const TextStyle(fontSize: 12)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF10B981),
-                foregroundColor: Colors.white,
-                padding: EdgeInsets.symmetric(horizontal: isTablet ? 10 : 14, vertical: 9),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                elevation: 0,
-              ),
-            ),
-
-          if (!isMobile) ...[
-            const SizedBox(width: 10),
-            Container(
-              height: 24,
-              width: 1,
-              color: borderColor,
-            ),
-            const SizedBox(width: 10),
-          ] else
-            const SizedBox(width: 4),
-
-          // User Profile Pill / Avatar with Dropdown
-          PopupMenuButton<String>(
-            offset: const Offset(0, 44),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(color: borderColor),
-            ),
-            color: cardBg,
-            elevation: 8,
-            tooltip: 'Account & Actions',
-            onSelected: (value) {
-              if (value == 'modules') {
-                context.go('/dashboard');
-              } else if (value == 'about') {
-                AboutUsDialog.show(context);
-              } else if (value == 'logout') {
-                onLogout();
-              }
-            },
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                enabled: false,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      displayName,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                        color: textColor,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Super Administrator',
-                      style: TextStyle(fontSize: 11, color: subtitleColor),
-                    ),
-                  ],
-                ),
-              ),
-              if (isMobile) ...[
-                const PopupMenuDivider(height: 1),
-                PopupMenuItem(
-                  value: 'modules',
-                  child: Row(
+          if (isDesktop)
+            Expanded(
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Wrap(
+                    spacing: 12,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(5),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF10B981).withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: const Icon(Icons.dashboard_customize_rounded, size: 16, color: Color(0xFF10B981)),
+                      const Icon(
+                        Icons.keyboard,
+                        size: 16,
+                        color: Color(0xFF1E293B),
                       ),
-                      const SizedBox(width: 10),
-                      Text(
-                        'All Modules',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: textColor),
+                      _buildShortcutChip(
+                        context,
+                        'F1',
+                        'Dashboard',
+                        onTap: () => onSelectTab(0),
+                      ),
+                      _buildShortcutChip(
+                        context,
+                        'F2',
+                        'Outlets',
+                        onTap: () => onSelectTab(1),
+                      ),
+                      _buildShortcutChip(
+                        context,
+                        'F3',
+                        'Users',
+                        onTap: () => onSelectTab(2),
+                      ),
+                      _buildShortcutChip(
+                        context,
+                        'F4',
+                        'Subscriptions',
+                        onTap: () => onSelectTab(3),
                       ),
                     ],
                   ),
                 ),
-              ],
-              const PopupMenuDivider(height: 1),
-              PopupMenuItem(
-                value: 'about',
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(5),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF6366F1).withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: const Icon(Icons.info_outline_rounded, size: 16, color: Color(0xFF6366F1)),
-                    ),
-                    const SizedBox(width: 10),
-                    Text(
-                      'About SirfBill',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: textColor),
-                    ),
-                  ],
-                ),
               ),
-              const PopupMenuDivider(height: 1),
-              PopupMenuItem(
-                value: 'logout',
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(5),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEF4444).withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: const Icon(Icons.logout_rounded, size: 16, color: Color(0xFFEF4444)),
-                    ),
-                    const SizedBox(width: 10),
-                    const Text(
-                      'Logout',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFFEF4444)),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-            child: isMobile
-                ? Container(
-                    padding: const EdgeInsets.all(2),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: const Color(0xFF6366F1), width: 1.5),
-                    ),
-                    child: CircleAvatar(
-                      radius: 13,
-                      backgroundColor: const Color(0xFF6366F1),
-                      child: Text(
-                        userInitial,
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+            )
+          else
+            const Spacer(),
+
+          // Right side Date Pill, Buy Hardware, and Profile Pill (Crisp 100% scale)
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Date & Time Green Pill
+              InkWell(
+                onTap: () async {
+                  await showDatePicker(
+                    context: context,
+                    initialDate: currentTime,
+                    firstDate: DateTime(2000),
+                    lastDate: DateTime(2100),
+                    builder: (context, child) {
+                      return Theme(
+                        data: ThemeData.light().copyWith(
+                          colorScheme: const ColorScheme.light(
+                            primary: Color(0xFF166534),
+                            onPrimary: Colors.white,
+                            onSurface: Color(0xFF1E293B),
+                            surface: Colors.white,
+                          ),
+                          textButtonTheme: TextButtonThemeData(
+                            style: TextButton.styleFrom(
+                              foregroundColor: const Color(0xFF166534),
+                            ),
+                          ),
+                          dialogTheme: const DialogThemeData(
+                            backgroundColor: Colors.white,
+                          ),
                         ),
+                        child: child!,
+                      );
+                    },
+                  );
+                },
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  height: 38,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isDesktop ? 12 : 8,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F8F5),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: const Color(0xFF22C55E).withValues(alpha: 0.35),
+                    ),
+                  ),
+                  alignment: Alignment.center,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (isDesktop) ...[
+                        const Icon(
+                          Icons.calendar_today,
+                          color: Color(0xFF166534),
+                          size: 15,
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            isDesktop
+                                ? _formatDate(currentTime)
+                                : DateFormat('d MMM yyyy').format(currentTime),
+                            style: TextStyle(
+                              color: const Color(0xFF166534),
+                              fontSize: isDesktop ? 12 : 10,
+                              fontWeight: FontWeight.bold,
+                              height: 1.1,
+                            ),
+                          ),
+                          Text(
+                            _formatTime(currentTime),
+                            style: TextStyle(
+                              color: const Color(0xFF1E293B),
+                              fontSize: isDesktop ? 11 : 9,
+                              height: 1.1,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+
+              // Buy Hardware Top Bar Pill
+              Tooltip(
+                message: 'Buy Certified POS Thermal Printers, Cash Drawers & KOT Displays',
+                child: InkWell(
+                  onTap: () => HardwareStoreDialog.show(context),
+                  borderRadius: BorderRadius.circular(10),
+                  child: Container(
+                    height: 38,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isDesktop ? 12 : 8,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: const Color(0xFF10B981),
+                        width: 1.2,
                       ),
                     ),
-                  )
-                : Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: borderColor),
-                    ),
+                    alignment: Alignment.center,
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        CircleAvatar(
-                          radius: 14,
-                          backgroundColor: const Color(0xFF6366F1),
-                          child: Text(
-                            userInitial,
-                            style: const TextStyle(
+                        const Icon(
+                          Icons.storefront_rounded,
+                          color: Color(0xFF059669),
+                          size: 17,
+                        ),
+                        if (isDesktop) ...[
+                          const SizedBox(width: 6),
+                          const Text(
+                            'Buy Hardware',
+                            style: TextStyle(
+                              color: Color(0xFF065F46),
                               fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.2,
                             ),
                           ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+
+              // Profile Dropdown Pill
+              PopupMenuButton<String>(
+                offset: const Offset(0, 45),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                onSelected: (value) {
+                  if (value == 'hardware') {
+                    HardwareStoreDialog.show(context);
+                  } else if (value == 'about') {
+                    AboutUsDialog.show(context);
+                  } else if (value == 'logout') {
+                    onLogout();
+                  }
+                },
+                itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: 'hardware',
+                    child: Row(
+                      children: [
+                        Icon(Icons.storefront_rounded, size: 18, color: Color(0xFF10B981)),
+                        SizedBox(width: 8),
+                        Text(
+                          'Buy Hardware',
+                          style: TextStyle(fontSize: 14, color: Color(0xFF1E293B)),
                         ),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuDivider(height: 1),
+                  const PopupMenuItem(
+                    value: 'about',
+                    child: Row(
+                      children: [
+                        Icon(Icons.info_outline_rounded,
+                            size: 18, color: Color(0xFF166534)),
+                        SizedBox(width: 8),
+                        Text(
+                          'About SirfBill',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFF1E293B),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuDivider(height: 1),
+                  const PopupMenuItem(
+                    value: 'logout',
+                    child: Row(
+                      children: [
+                        Icon(Icons.logout, size: 18, color: Colors.red),
+                        SizedBox(width: 8),
+                        Text(
+                          'Logout',
+                          style: TextStyle(fontSize: 14, color: Colors.red),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                child: Container(
+                  height: 38,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isDesktop ? 10 : 8,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  alignment: Alignment.center,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const CircleAvatar(
+                        radius: 13,
+                        backgroundColor: Color(0xFFF1F5F9),
+                        child: Icon(
+                          Icons.person,
+                          size: 16,
+                          color: Color(0xFF1E293B),
+                        ),
+                      ),
+                      if (isDesktop) ...[
                         const SizedBox(width: 8),
                         ConstrainedBox(
-                          constraints: BoxConstraints(maxWidth: isTablet ? 90 : 130),
+                          constraints: const BoxConstraints(maxWidth: 160),
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                displayName,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: textColor,
-                                ),
+                                userName.isEmpty ? 'Admin' : userName,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                  color: Color(0xFF1E293B),
+                                  height: 1.1,
+                                ),
                               ),
                               Text(
-                                'Administrator',
-                                style: TextStyle(
+                                userRole,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
                                   fontSize: 10,
-                                  fontWeight: FontWeight.w500,
-                                  color: subtitleColor,
+                                  color: Color(0xFF64748B),
+                                  height: 1.1,
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        const SizedBox(width: 4),
-                        Icon(Icons.keyboard_arrow_down_rounded, size: 18, color: subtitleColor),
+                        const SizedBox(width: 6),
+                        const Icon(
+                          Icons.keyboard_arrow_down,
+                          color: Color(0xFF1E293B),
+                          size: 16,
+                        ),
                       ],
-                    ),
+                    ],
                   ),
-          ),
-        ],
-      ),
-    ),
-  ),
-);
-  }
-
-  Widget _buildSubscriptionStatusPill() {
-    if (subscriptionStatus == null) return const SizedBox.shrink();
-    final st = subscriptionStatus!;
-    final statusUpper = st.status.toUpperCase();
-    final days = st.daysRemaining;
-    final isActive = st.isActive;
-
-    Color bg;
-    Color fg;
-    IconData icon;
-    String label;
-
-    if (statusUpper == 'TRIAL') {
-      bg = const Color(0xFFF59E0B).withValues(alpha: 0.12);
-      fg = const Color(0xFFF59E0B);
-      icon = Icons.hourglass_top_rounded;
-      label = isMobile ? 'Trial ($days d)' : 'Trial ($days days left)';
-    } else if (isActive && days > 0) {
-      bg = const Color(0xFF10B981).withValues(alpha: 0.12);
-      fg = const Color(0xFF10B981);
-      icon = Icons.verified_rounded;
-      label = isMobile ? 'Active ($days d)' : 'Active ($days days left)';
-    } else {
-      bg = const Color(0xFFEF4444).withValues(alpha: 0.12);
-      fg = const Color(0xFFEF4444);
-      icon = Icons.error_outline_rounded;
-      label = isMobile ? 'Expired' : 'Expired - Renew Now';
-    }
-
-    return Tooltip(
-      message: 'Plan: ${st.planName} (₹${st.price.toStringAsFixed(0)}/${st.billingCycle.toLowerCase()})\nClick to view subscription details',
-      child: InkWell(
-        onTap: onSelectSubscriptionTab,
-        borderRadius: BorderRadius.circular(20),
-        child: Container(
-          padding: EdgeInsets.symmetric(horizontal: isMobile ? 8 : 11, vertical: 6),
-          decoration: BoxDecoration(
-            color: bg,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: fg.withValues(alpha: 0.35)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 14, color: fg),
-              const SizedBox(width: 5),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: fg,
                 ),
               ),
             ],
           ),
-        ),
+        ],
       ),
     );
   }

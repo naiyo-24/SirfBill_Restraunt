@@ -43,9 +43,7 @@ class CounterDashboardSidebar extends StatelessWidget {
       (Icons.receipt_long_rounded, 'Orders', 'F3'),
       (Icons.soup_kitchen_rounded, 'Kitchen (KOT)', 'F4'),
       (Icons.restaurant_menu_rounded, 'Menu Management', 'F5'),
-      (Icons.people_alt_rounded, 'Customers (CRM)', 'F6'),
-      (Icons.bar_chart_rounded, 'Reports', 'F7'),
-      (Icons.settings_rounded, 'Settings', 'F8'),
+      (Icons.settings_rounded, 'Settings', 'F6'),
     ];
 
     return AnimatedContainer(
@@ -146,6 +144,15 @@ class CounterDashboardSidebar extends StatelessWidget {
                           if (snap.data == true) {
                             return Column(
                               children: [
+                                SidebarNavItem(
+                                  icon: Icons.groups_rounded,
+                                  label: 'CRM & Reports',
+                                  isExpanded: expanded,
+                                  isDesktop: isDesktop,
+                                  customTextColor: const Color(0xFF8B5CF6),
+                                  customIconColor: const Color(0xFF8B5CF6),
+                                  onTap: () => context.go('/crm'),
+                                ),
                                 SidebarNavItem(
                                   icon: Icons.admin_panel_settings_rounded,
                                   label: 'Admin Panel',
@@ -290,59 +297,66 @@ class CounterDashboardSidebar extends StatelessWidget {
                     alignment: Alignment.center,
                     firstChild: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: borderColor),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.zoom_in_rounded, size: 16, color: Color(0xFF3B82F6)),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                'Zoom $pct%',
-                                style: TextStyle(
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w600,
-                                  color: textColor,
-                                ),
-                              ),
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        physics: const NeverScrollableScrollPhysics(),
+                        child: SizedBox(
+                          width: 228,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: borderColor),
                             ),
-                            IconButton(
-                              constraints: const BoxConstraints(maxWidth: 24, maxHeight: 24),
-                              padding: EdgeInsets.zero,
-                              icon: const Icon(Icons.remove_rounded, size: 14),
-                              tooltip: 'Zoom Out (Ctrl -)',
-                              onPressed: () => ref.read(zoomProvider.notifier).zoomOut(),
-                            ),
-                            Tooltip(
-                              message: 'Reset 100% (Ctrl 0)',
-                              child: InkWell(
-                                onTap: () => ref.read(zoomProvider.notifier).resetZoom(),
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.zoom_in_rounded, size: 16, color: Color(0xFF3B82F6)),
+                                const SizedBox(width: 6),
+                                Expanded(
                                   child: Text(
-                                    '100%',
+                                    'Zoom $pct%',
                                     style: TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                      color: pct == 100 ? const Color(0xFF10B981) : const Color(0xFF64748B),
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w600,
+                                      color: textColor,
                                     ),
                                   ),
                                 ),
-                              ),
+                                IconButton(
+                                  constraints: const BoxConstraints(maxWidth: 24, maxHeight: 24),
+                                  padding: EdgeInsets.zero,
+                                  icon: const Icon(Icons.remove_rounded, size: 14),
+                                  tooltip: 'Zoom Out (Ctrl -)',
+                                  onPressed: () => ref.read(zoomProvider.notifier).zoomOut(),
+                                ),
+                                Tooltip(
+                                  message: 'Reset 100% (Ctrl 0)',
+                                  child: InkWell(
+                                    onTap: () => ref.read(zoomProvider.notifier).resetZoom(),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                      child: Text(
+                                        '100%',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          color: pct == 100 ? const Color(0xFF10B981) : const Color(0xFF64748B),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                IconButton(
+                                  constraints: const BoxConstraints(maxWidth: 24, maxHeight: 24),
+                                  padding: EdgeInsets.zero,
+                                  icon: const Icon(Icons.add_rounded, size: 14),
+                                  tooltip: 'Zoom In (Ctrl +)',
+                                  onPressed: () => ref.read(zoomProvider.notifier).zoomIn(),
+                                ),
+                              ],
                             ),
-                            IconButton(
-                              constraints: const BoxConstraints(maxWidth: 24, maxHeight: 24),
-                              padding: EdgeInsets.zero,
-                              icon: const Icon(Icons.add_rounded, size: 14),
-                              tooltip: 'Zoom In (Ctrl +)',
-                              onPressed: () => ref.read(zoomProvider.notifier).zoomIn(),
-                            ),
-                          ],
+                          ),
                         ),
                       ),
                     ),
