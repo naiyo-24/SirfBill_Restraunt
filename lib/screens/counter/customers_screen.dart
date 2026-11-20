@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../providers/counter_providers.dart';
-import '../../services/customer_service.dart';
-
-import 'widgets/customers/customers_header.dart';
-import 'widgets/customers/customers_summary_cards.dart';
-import 'widgets/customers/customers_filter_bar.dart';
-import 'widgets/customers/customers_table.dart';
-import 'widgets/customers/customer_details_pane.dart';
-import 'widgets/customers/customer_dialogs.dart';
+import '../../models/restaurant_crm_models.dart';
+import '../../providers/restaurant_crm_provider.dart';
+import 'widgets/crm/crm_kpi_cards.dart';
+import 'widgets/crm/crm_segment_bar.dart';
+import 'widgets/crm/crm_customer_card.dart';
+import 'widgets/crm/crm_customer_table.dart';
+import 'widgets/crm/crm_360_insights_modal.dart';
+import 'widgets/crm/crm_khata_settle_dialog.dart';
+import 'widgets/crm/crm_add_edit_customer_dialog.dart';
 
 class CustomersScreen extends ConsumerStatefulWidget {
   const CustomersScreen({super.key});
@@ -18,22 +18,9 @@ class CustomersScreen extends ConsumerStatefulWidget {
 }
 
 class _CustomersScreenState extends ConsumerState<CustomersScreen> {
-  Map<String, dynamic>? _selectedCustomer;
-  int _currentPage = 1;
-  final int _itemsPerPage = 10;
-
-  String _searchQuery = '';
-  String _selectedStatus = 'All Status';
-  String _selectedCity = 'All Cities';
   final TextEditingController _searchCtrl = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(customerProvider.notifier).loadCustomers();
-    });
-  }
+  int _currentPage = 1;
+  static const int _pageSize = 12;
 
   @override
   void dispose() {
@@ -41,237 +28,336 @@ class _CustomersScreenState extends ConsumerState<CustomersScreen> {
     super.dispose();
   }
 
-  Future<void> _deleteCustomer(String customerId) async {
-    final bool? confirm = await showDialog<bool>(
+  void _openAddEditDialog([RestaurantCustomer? customer]) {
+    final notifier = ref.read(restaurantCrmProvider.notifier);
+    CrmAddEditCustomerDialog.show(
+      context,
+      customer: customer,
+      onSave: notifier.saveCustomer,
+    );
+  }
+
+  void _openKhataSettleDialog(RestaurantCustomer customer) {
+    final notifier = ref.read(restaurantCrmProvider.notifier);
+    CrmKhataSettleDialog.show(
+      context,
+      customer: customer,
+      onSettle: notifier.settleKhataDues,
+    );
+  }
+
+  void _openAdjustLoyaltyDialog(RestaurantCustomer customer) {
+    final notifier = ref.read(restaurantCrmProvider.notifier);
+    final ctrl = TextEditingController();
+    final reasonCtrl = TextEditingController(text: 'Manual adjustment');
+
+    showDialog(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Delete Customer'),
-          content: const Text(
-            'Are you sure you want to delete this customer? This action cannot be undone.',
-          ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.stars_rounded, color: Color(0xFFF59E0B)),
+            SizedBox(width: 8),
+            Text('Adjust Loyalty Points', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Current Points: ${customer.loyaltyPoints} pts', style: const TextStyle(fontWeight: FontWeight.w600)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: ctrl,
+              keyboardType: const TextInputType.numberWithOptions(signed: true),
+              decoration: const InputDecoration(
+                labelText: 'Points Delta (+ or -)',
+                hintText: 'e.g. 100 or -50',
+                border: OutlineInputBorder(),
+              ),
             ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            const SizedBox(height: 10),
+            TextField(
+              controller: reasonCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Reason',
+                border: OutlineInputBorder(),
+              ),
             ),
           ],
-        );
-      },
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              final pts = int.tryParse(ctrl.text.trim()) ?? 0;
+              if (pts == 0) return;
+              Navigator.pop(ctx);
+              await notifier.adjustLoyaltyPoints(
+                customerId: customer.id,
+                points: pts,
+                reason: reasonCtrl.text.trim(),
+              );
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981), foregroundColor: Colors.white),
+            child: const Text('Confirm'),
+          ),
+        ],
+      ),
     );
+  }
 
-    if (confirm == true) {
-      try {
-        await CustomerService.deleteCustomer(customerId);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Customer deleted successfully')),
+  void _confirmDeleteCustomer(RestaurantCustomer customer) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Delete Guest Profile', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Text('Are you sure you want to permanently delete profile for "${customer.name}"?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await ref.read(restaurantCrmProvider.notifier).deleteCustomer(customer.id);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showMobileInsightsSheet(RestaurantCustomer customer) {
+    ref.read(restaurantCrmProvider.notifier).selectCustomer(customer);
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Consumer(
+        builder: (context, ref, _) {
+          final state = ref.watch(restaurantCrmProvider);
+          return Container(
+            height: MediaQuery.of(context).size.height * 0.85,
+            decoration: const BoxDecoration(
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            child: Crm360InsightsModal(
+              customer: customer,
+              insights: state.insights,
+              khataLedger: state.khataLedger,
+              isLoading: state.isInsightsLoading,
+              onClose: () => Navigator.pop(ctx),
+              onSettleKhata: () {
+                Navigator.pop(ctx);
+                _openKhataSettleDialog(customer);
+              },
+              onAdjustLoyalty: () {
+                Navigator.pop(ctx);
+                _openAdjustLoyaltyDialog(customer);
+              },
+              onEditProfile: () {
+                Navigator.pop(ctx);
+                _openAddEditDialog(customer);
+              },
+            ),
           );
-          if (_selectedCustomer?['full_id'] == customerId) {
-            setState(() {
-              _selectedCustomer = null;
-            });
-          }
-          ref.read(customerProvider.notifier).loadCustomers();
-        }
-      } catch (e) {
-        if (mounted) {
-          final errorMessage = e.toString().replaceAll('Exception: ', '');
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
-          );
-        }
-      }
-    }
+        },
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final customerAsync = ref.watch(customerProvider);
+    final state = ref.watch(restaurantCrmProvider);
+    final notifier = ref.read(restaurantCrmProvider.notifier);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final screenBg = isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC);
 
-    return customerAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (err, stack) => Center(child: Text('Error: $err')),
-      data: (allCustomers) {
-        if (_selectedCustomer != null) {
-          final updatedCust = allCustomers
-              .where((c) => c['full_id'] == _selectedCustomer!['full_id'])
-              .firstOrNull;
-          if (updatedCust != null && updatedCust != _selectedCustomer) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted) setState(() => _selectedCustomer = updatedCust);
-            });
-          }
-        }
+    final filtered = state.filteredCustomers;
+    final totalRecords = filtered.length;
+    final totalPages = (totalRecords / _pageSize).ceil() == 0 ? 1 : (totalRecords / _pageSize).ceil();
+    final startIdx = (_currentPage - 1) * _pageSize;
+    final endIdx = (startIdx + _pageSize > totalRecords) ? totalRecords : startIdx + _pageSize;
+    final paged = filtered.isNotEmpty ? filtered.sublist(startIdx, endIdx) : <RestaurantCustomer>[];
 
-        final filteredCustomers = allCustomers.where((c) {
-          final matchesSearch =
-              c['name'].toString().toLowerCase().contains(
-                _searchQuery.toLowerCase(),
-              ) ||
-              c['phone'].toString().contains(_searchQuery) ||
-              c['id'].toString().toLowerCase().contains(
-                _searchQuery.toLowerCase(),
-              );
-          final matchesStatus =
-              _selectedStatus == 'All Status' || c['status'] == _selectedStatus;
-          final matchesCity =
-              _selectedCity == 'All Cities' || c['city'] == _selectedCity;
-          return matchesSearch && matchesStatus && matchesCity;
-        }).toList();
+    final segmentCounts = {
+      CustomerSegment.all: state.totalGuests,
+      CustomerSegment.vip: state.vipCount,
+      CustomerSegment.regular: state.regularCount,
+      CustomerSegment.newGuest: state.newCount,
+      CustomerSegment.atRisk: state.atRiskCount,
+      CustomerSegment.hasDue: state.customers.where((c) => c.creditBalance > 0).length,
+    };
 
-        final totalRecords = filteredCustomers.length;
-        final totalPages = (totalRecords / _itemsPerPage).ceil() == 0
-            ? 1
-            : (totalRecords / _itemsPerPage).ceil();
-        final startIdx = (_currentPage - 1) * _itemsPerPage;
-        final endIdx = (startIdx + _itemsPerPage > totalRecords)
-            ? totalRecords
-            : startIdx + _itemsPerPage;
-        final pagedCustomers = filteredCustomers.isNotEmpty
-            ? filteredCustomers.sublist(startIdx, endIdx)
-            : <Map<String, dynamic>>[];
+    return Scaffold(
+      backgroundColor: screenBg,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isMobile = constraints.maxWidth < 650;
+          final isTablet = constraints.maxWidth >= 650 && constraints.maxWidth < 1050;
+          final isDesktop = constraints.maxWidth >= 1050;
 
-        final statuses = [
-          'All Status',
-          ...allCustomers.map((e) => e['status'].toString()).toSet(),
-        ];
-        final cities = [
-          'All Cities',
-          ...allCustomers.map((e) => e['city'].toString()).toSet(),
-        ];
+          return RefreshIndicator(
+            color: const Color(0xFF10B981),
+            onRefresh: () => notifier.loadCustomers(),
+            child: ListView(
+              padding: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 20, vertical: 16),
+              children: [
+                // 1. KPI Summary Cards
+                CrmKpiCards(
+                  totalGuests: state.totalGuests,
+                  vipCount: state.vipCount,
+                  regularCount: state.regularCount,
+                  totalKhataOutstanding: state.totalKhataOutstanding,
+                  totalLoyaltyPoints: state.totalLoyaltyPoints,
+                  isMobile: isMobile,
+                ),
+                const SizedBox(height: 16),
 
-        return Container(
-          color: Theme.of(context).scaffoldBackgroundColor,
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              bool isDesktop = constraints.maxWidth > 800;
-              return ListView(
-                padding: const EdgeInsets.all(24.0),
-                children: [
-                  // Header
-                  CustomersHeader(
-                    filteredCustomers: filteredCustomers,
-                    onRefresh: () =>
-                        ref.read(customerProvider.notifier).loadCustomers(),
-                    onAddCustomer: () => showAddCustomerDialog(
-                      context,
-                      () => ref.read(customerProvider.notifier).loadCustomers(),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
+                // 2. Segment Filter Bar + Search
+                CrmSegmentBar(
+                  selectedSegment: state.selectedSegment,
+                  onSegmentSelected: (seg) {
+                    notifier.selectSegment(seg);
+                    setState(() => _currentPage = 1);
+                  },
+                  searchController: _searchCtrl,
+                  onSearchChanged: (val) {
+                    notifier.setSearchQuery(val);
+                    setState(() => _currentPage = 1);
+                  },
+                  onAddCustomer: () => _openAddEditDialog(),
+                  onRefresh: () => notifier.loadCustomers(),
+                  segmentCounts: segmentCounts,
+                  isMobile: isMobile,
+                ),
+                const SizedBox(height: 16),
 
-                  // Summary Cards
-                  CustomersSummaryCards(allCustomers: allCustomers),
-                  const SizedBox(height: 24),
-
-                  // Main Content
+                // 3. Customer Directory Content (Desktop: Table + optional side pane; Mobile/Tablet: Card Grid)
+                if (state.isLoading)
+                  const SizedBox(
+                    height: 300,
+                    child: Center(child: CircularProgressIndicator(color: Color(0xFF10B981))),
+                  )
+                else if (isDesktop)
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Left Table Area
-                      if (isDesktop || _selectedCustomer == null)
-                        Expanded(
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).cardColor,
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.02),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: Column(
-                              children: [
-                                CustomersFilterBar(
-                                  searchCtrl: _searchCtrl,
-                                  selectedStatus: _selectedStatus,
-                                  selectedCity: _selectedCity,
-                                  statuses: statuses,
-                                  cities: cities,
-                                  onSearchChanged: (val) => setState(() {
-                                    _searchQuery = val;
-                                    _currentPage = 1;
-                                  }),
-                                  onStatusChanged: (val) => setState(() {
-                                    _selectedStatus = val!;
-                                    _currentPage = 1;
-                                  }),
-                                  onCityChanged: (val) => setState(() {
-                                    _selectedCity = val!;
-                                    _currentPage = 1;
-                                  }),
-                                  onReset: () => setState(() {
-                                    _searchCtrl.clear();
-                                    _searchQuery = '';
-                                    _selectedStatus = 'All Status';
-                                    _selectedCity = 'All Cities';
-                                    _currentPage = 1;
-                                  }),
-                                ),
-                                CustomersTable(
-                                  pagedCustomers: pagedCustomers,
-                                  selectedCustomer: _selectedCustomer,
-                                  currentPage: _currentPage,
-                                  totalPages: totalPages,
-                                  totalRecords: totalRecords,
-                                  startIdx: startIdx,
-                                  endIdx: endIdx,
-                                  onSelectCustomer: (customer) {
-                                    setState(() {
-                                      _selectedCustomer = customer;
-                                    });
-                                  },
-                                  onDeleteCustomer: _deleteCustomer,
-                                  onPageChanged: (page) =>
-                                      setState(() => _currentPage = page),
-                                ),
-                              ],
-                            ),
+                      // Main Table Area
+                      Expanded(
+                        child: CrmCustomerTable(
+                          customers: paged,
+                          selectedCustomer: state.selectedCustomer,
+                          onSelectCustomer: (cust) {
+                            if (state.selectedCustomer?.id == cust.id) {
+                              notifier.selectCustomer(null);
+                            } else {
+                              notifier.selectCustomer(cust);
+                            }
+                          },
+                          onSettleKhata: _openKhataSettleDialog,
+                          onEdit: _openAddEditDialog,
+                          onDelete: _confirmDeleteCustomer,
+                          currentPage: _currentPage,
+                          totalPages: totalPages,
+                          totalRecords: totalRecords,
+                          onPageChanged: (page) => setState(() => _currentPage = page),
+                        ),
+                      ),
+
+                      // Optional Right 360 Insights Panel if customer is selected
+                      if (state.selectedCustomer != null) ...[
+                        const SizedBox(width: 16),
+                        SizedBox(
+                          width: 380,
+                          height: 680,
+                          child: Crm360InsightsModal(
+                            customer: state.selectedCustomer!,
+                            insights: state.insights,
+                            khataLedger: state.khataLedger,
+                            isLoading: state.isInsightsLoading,
+                            onClose: () => notifier.selectCustomer(null),
+                            onSettleKhata: () => _openKhataSettleDialog(state.selectedCustomer!),
+                            onAdjustLoyalty: () => _openAdjustLoyaltyDialog(state.selectedCustomer!),
+                            onEditProfile: () => _openAddEditDialog(state.selectedCustomer!),
                           ),
                         ),
-
-                      // Right Details Panel
-                      if (_selectedCustomer != null) ...[
-                        if (isDesktop) const SizedBox(width: 24),
-                        isDesktop
-                            ? SizedBox(
-                                width: 320,
-                                child: CustomerDetailsPane(
-                                  customer: _selectedCustomer!,
-                                  onClose: () =>
-                                      setState(() => _selectedCustomer = null),
-                                  onCustomerUpdated: () => ref
-                                      .read(customerProvider.notifier)
-                                      .loadCustomers(),
-                                ),
-                              )
-                            : Expanded(
-                                child: CustomerDetailsPane(
-                                  customer: _selectedCustomer!,
-                                  onClose: () =>
-                                      setState(() => _selectedCustomer = null),
-                                  onCustomerUpdated: () => ref
-                                      .read(customerProvider.notifier)
-                                      .loadCustomers(),
-                                ),
-                              ),
                       ],
                     ],
+                  )
+                else
+                  // Mobile & Tablet Responsive List / Grid
+                  Column(
+                    children: [
+                      if (paged.isEmpty)
+                        Container(
+                          height: 200,
+                          alignment: Alignment.center,
+                          child: const Text('No guests match the selected filter'),
+                        )
+                      else if (isTablet)
+                        GridView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
+                            childAspectRatio: 1.7,
+                          ),
+                          itemCount: paged.length,
+                          itemBuilder: (ctx, i) => CrmCustomerCard(
+                            customer: paged[i],
+                            onTap: () => _showMobileInsightsSheet(paged[i]),
+                            onSettleKhata: () => _openKhataSettleDialog(paged[i]),
+                            onEdit: () => _openAddEditDialog(paged[i]),
+                            onDelete: () => _confirmDeleteCustomer(paged[i]),
+                          ),
+                        )
+                      else
+                        ListView.separated(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: paged.length,
+                          separatorBuilder: (_, __) => const SizedBox(height: 10),
+                          itemBuilder: (ctx, i) => CrmCustomerCard(
+                            customer: paged[i],
+                            onTap: () => _showMobileInsightsSheet(paged[i]),
+                            onSettleKhata: () => _openKhataSettleDialog(paged[i]),
+                            onEdit: () => _openAddEditDialog(paged[i]),
+                            onDelete: () => _confirmDeleteCustomer(paged[i]),
+                          ),
+                        ),
+                      const SizedBox(height: 16),
+
+                      // Pagination
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.chevron_left_rounded),
+                            onPressed: _currentPage > 1 ? () => setState(() => _currentPage--) : null,
+                          ),
+                          Text(
+                            'Page $_currentPage of $totalPages',
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.chevron_right_rounded),
+                            onPressed: _currentPage < totalPages ? () => setState(() => _currentPage++) : null,
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                ],
-              );
-            },
-          ),
-        );
-      },
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 }
