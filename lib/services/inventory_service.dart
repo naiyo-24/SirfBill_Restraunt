@@ -134,6 +134,12 @@ class InventoryService {
       return savedId;
     }
 
+    final assignedId = prefs.getString('assigned_outlet_id');
+    if (assignedId != null && assignedId.isNotEmpty) {
+      await setShopId(assignedId);
+      return assignedId;
+    }
+
     if (_cachedShopId != null) return _cachedShopId!;
 
     final token = prefs.getString('access_token');
@@ -141,20 +147,36 @@ class InventoryService {
       throw Exception('Not authenticated. Please log in.');
     }
 
-    final response = await ApiClient().dio.get('/api/admin/shops');
-
-    if (response.statusCode == 200) {
-      final List<dynamic> shops = response.data;
-      if (shops.isNotEmpty) {
-        _cachedShopId = shops.first['id'];
-        await prefs.setString('selected_shop_id', _cachedShopId!);
-        return _cachedShopId!;
-      } else {
-        throw Exception('No shops found');
+    // 1. First try /api/restaurant/outlets (allowed for WAITER, CASHIER, KITCHEN & ADMIN)
+    try {
+      final outletsResp = await ApiClient().dio.get('/api/restaurant/outlets');
+      if (outletsResp.statusCode == 200 && outletsResp.data is List && (outletsResp.data as List).isNotEmpty) {
+        final firstId = (outletsResp.data as List).first['id']?.toString();
+        if (firstId != null && firstId.isNotEmpty) {
+          _cachedShopId = firstId;
+          await prefs.setString('selected_shop_id', firstId);
+          await prefs.setString('assigned_outlet_id', firstId);
+          return firstId;
+        }
       }
-    } else {
-      throw Exception('Failed to fetch shop ID');
-    }
+    } catch (_) {}
+
+    // 2. Fallback to /api/admin/shops (allowed for ADMIN/MANAGER)
+    try {
+      final response = await ApiClient().dio.get('/api/admin/shops');
+      if (response.statusCode == 200) {
+        final List<dynamic> shops = response.data;
+        if (shops.isNotEmpty) {
+          _cachedShopId = shops.first['id']?.toString();
+          if (_cachedShopId != null) {
+            await prefs.setString('selected_shop_id', _cachedShopId!);
+            return _cachedShopId!;
+          }
+        }
+      }
+    } catch (_) {}
+
+    throw Exception('Failed to fetch shop/outlet ID');
   }
 
   static Future<void> setShopId(String shopId) async {

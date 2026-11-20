@@ -56,15 +56,35 @@ class AuthService {
               await prefs.setString('assigned_outlet_name', data['outlet']['name'].toString());
             }
           } else {
-            await prefs.remove('assigned_outlet_id');
-            await prefs.remove('assigned_outlet_name');
-            final shopsResp = await ApiClient().dio.get('/api/admin/shops');
-            if (shopsResp.statusCode == 200 && shopsResp.data != null) {
-              final List<dynamic> shops = shopsResp.data;
-              if (shops.isNotEmpty) {
-                final firstShopId = shops.first['id'].toString();
-                await InventoryService.setShopId(firstShopId);
+            // First attempt /api/restaurant/outlets (available to all staff including WAITER)
+            String? resolvedOutletId;
+            try {
+              final outletsResp = await ApiClient().dio.get('/api/restaurant/outlets');
+              if (outletsResp.statusCode == 200 && outletsResp.data is List && (outletsResp.data as List).isNotEmpty) {
+                final firstOutlet = (outletsResp.data as List).first;
+                resolvedOutletId = firstOutlet['id']?.toString();
+                if (firstOutlet['name'] != null) {
+                  await prefs.setString('assigned_outlet_name', firstOutlet['name'].toString());
+                }
               }
+            } catch (_) {}
+
+            // Fallback to /api/admin/shops (available to ADMIN)
+            if (resolvedOutletId == null) {
+              try {
+                final shopsResp = await ApiClient().dio.get('/api/admin/shops');
+                if (shopsResp.statusCode == 200 && shopsResp.data != null) {
+                  final List<dynamic> shops = shopsResp.data;
+                  if (shops.isNotEmpty) {
+                    resolvedOutletId = shops.first['id'].toString();
+                  }
+                }
+              } catch (_) {}
+            }
+
+            if (resolvedOutletId != null && resolvedOutletId.isNotEmpty) {
+              await InventoryService.setShopId(resolvedOutletId);
+              await prefs.setString('assigned_outlet_id', resolvedOutletId);
             }
           }
         } catch (_) {}
