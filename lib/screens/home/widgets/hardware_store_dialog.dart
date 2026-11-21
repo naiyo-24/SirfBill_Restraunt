@@ -362,7 +362,34 @@ class _HardwareStoreDialogState extends State<HardwareStoreDialog> {
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator(color: Color(0xFF10B981)))
                   : filteredProducts.isEmpty
-                      ? const Center(child: Text('No hardware products available in this category'))
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.inventory_2_outlined, size: 48, color: subtitleColor),
+                              const SizedBox(height: 12),
+                              Text(
+                                'No hardware products found in backend catalog',
+                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: textColor),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                'Products are loaded directly from the backend server database.',
+                                style: TextStyle(fontSize: 12, color: subtitleColor),
+                              ),
+                              const SizedBox(height: 16),
+                              OutlinedButton.icon(
+                                onPressed: _loadCatalog,
+                                icon: const Icon(Icons.refresh_rounded, size: 16),
+                                label: const Text('Refresh from Backend'),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: const Color(0xFF10B981),
+                                  side: const BorderSide(color: Color(0xFF10B981)),
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
                       : LayoutBuilder(
                           builder: (context, constraints) {
                             final isWide = constraints.maxWidth > 700;
