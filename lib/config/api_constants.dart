@@ -27,24 +27,24 @@ class ApiConstants {
   }
 
   static String get baseUrl {
-    // 1. User-customized server IP or domain saved locally on this machine
-    if (_overriddenBaseUrl != null && _overriddenBaseUrl!.isNotEmpty) {
-      return _overriddenBaseUrl!;
-    }
-
-    // 2. Build-time argument (if supplied via --dart-define)
+    // 1. Build-time argument (if supplied via --dart-define)
     const dartDefineUrl = String.fromEnvironment('API_BASE_URL');
     if (dartDefineUrl.isNotEmpty) {
       return dartDefineUrl;
     }
 
-    // 3. DotEnv configuration (.env)
+    // 2. DotEnv configuration (.env)
     final envUrl = dotenv.env['API_BASE_URL'];
     if (envUrl != null && envUrl.trim().isNotEmpty) {
       return envUrl.trim();
     }
 
-    // 4. Default fallback
-    return 'http://127.0.0.1:8000';
+    // 3. User-customized server IP or domain saved locally on this machine
+    if (_overriddenBaseUrl != null && _overriddenBaseUrl!.isNotEmpty) {
+      return _overriddenBaseUrl!;
+    }
+
+    // 4. Default fallback matching .env
+    return 'http://206.189.131.105:8033';
   }
 }

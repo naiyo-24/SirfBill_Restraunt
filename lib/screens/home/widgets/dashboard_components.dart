@@ -108,7 +108,7 @@ class DashboardTopBar extends StatelessWidget {
   final bool isMobile;
   final bool isCheckingUpdate;
   final VoidCallback onCheckUpdate;
-  final VoidCallback onOpenServerSettings;
+  final VoidCallback? onOpenServerSettings;
   final VoidCallback onToggleTheme;
 
   const DashboardTopBar({
@@ -117,7 +117,7 @@ class DashboardTopBar extends StatelessWidget {
     required this.isMobile,
     required this.isCheckingUpdate,
     required this.onCheckUpdate,
-    required this.onOpenServerSettings,
+    this.onOpenServerSettings,
     required this.onToggleTheme,
   });
 
@@ -208,16 +208,6 @@ class DashboardTopBar extends StatelessWidget {
                   ),
                 ),
         const SizedBox(width: 4),
-        IconButton(
-          tooltip: 'Server Connection Settings',
-          onPressed: onOpenServerSettings,
-          icon: Icon(
-            Icons.dns_rounded,
-            color: isDark ? Colors.white70 : const Color(0xFF64748B),
-            size: isMobile ? 19 : 20,
-          ),
-        ),
-        const SizedBox(width: 2),
         IconButton(
           onPressed: onToggleTheme,
           icon: Icon(

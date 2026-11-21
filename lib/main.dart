@@ -86,7 +86,7 @@ class _SirfBillAppState extends ConsumerState<SirfBillApp> {
     );
 
     return MaterialApp.router(
-      title: 'Sirfbill Restaurant',
+      title: 'SirfBill Restraunt',
       debugShowCheckedModeBanner: false,
       scrollBehavior: const AppScrollBehavior(),
       themeMode: themeMode,

@@ -217,7 +217,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             isMobile: isMobile,
                             isCheckingUpdate: _isCheckingUpdate,
                             onCheckUpdate: _manualCheckUpdate,
-                            onOpenServerSettings: () => ServerConfigDialog.show(context),
                             onToggleTheme: () => ref.read(themeProvider.notifier).toggleTheme(),
                           ),
                         ),

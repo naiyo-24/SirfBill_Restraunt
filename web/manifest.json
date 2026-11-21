@@ -1,11 +1,11 @@
 {
-    "name": "SirfBill",
-    "short_name": "SirfBill",
+    "name": "SirfBill Restraunt",
+    "short_name": "SirfBill Restraunt",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#ffffff",
     "theme_color": "#0175C2",
-    "description": "Manju Medical Stores - Digital Clinic & Billing System",
+    "description": "SirfBill Restaurant - POS, Kitchen Display & Operations Management Platform",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
