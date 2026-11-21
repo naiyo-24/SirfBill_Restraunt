@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../config/api_client.dart';
 import '../../models/hardware_product_model.dart';
 import '../inventory_service.dart';
@@ -115,6 +116,9 @@ class HardwareService {
   /// 8. Place Hardware Order / Demo Inquiry
   static Future<HardwareOrderModel?> createOrder({
     required String productId,
+    String? productName,
+    double? price,
+    double? totalPrice,
     required int quantity,
     required String contactName,
     required String contactPhone,
@@ -125,23 +129,76 @@ class HardwareService {
     try {
       String outletId = '';
       try {
-        outletId = await InventoryService.getShopId();
+        final prefs = await SharedPreferences.getInstance();
+        outletId = prefs.getString('selected_shop_id') ??
+            prefs.getString('assigned_outlet_id') ??
+            '';
+        if (outletId.isEmpty) {
+          outletId = await InventoryService.getShopId();
+        }
       } catch (_) {}
 
-      final payload = {
-        'product_id': productId,
+      final parsedProductId = int.tryParse(productId);
+      final calcTotal = totalPrice ?? ((price ?? 0) * quantity);
+
+      final payload = <String, dynamic>{
+        'product_id': parsedProductId ?? productId,
+        if (parsedProductId != null) 'product': parsedProductId,
+        if (productName != null && productName.isNotEmpty) ...{
+          'product_name': productName,
+          'item_name': productName,
+        },
         'quantity': quantity,
+        if (price != null && price > 0) ...{
+          'price': price,
+          'unit_price': price,
+        },
+        if (calcTotal > 0) ...{
+          'total_price': calcTotal,
+          'total_amount': calcTotal,
+        },
         'contact_name': contactName,
+        'name': contactName,
         'contact_phone': contactPhone,
+        'phone': contactPhone,
         'shipping_address': shippingAddress,
+        'address': shippingAddress,
         'city': city,
         'pincode': pincode,
-        if (outletId.isNotEmpty) 'outlet_id': outletId,
+        'status': 'NEW',
+        if (outletId.isNotEmpty) ...{
+          'outlet_id': outletId,
+          'tenant_id': outletId,
+          'shop_id': outletId,
+        },
       };
 
-      final res = await _dio.post('/api/hardware/orders', data: payload);
+      debugPrint('Placing Hardware Order payload: $payload');
+
+      Response res;
+      try {
+        res = await _dio.post('/api/hardware/orders', data: payload);
+      } on DioException catch (dioErr) {
+        if (dioErr.response?.statusCode == 404 || dioErr.response?.statusCode == 301) {
+          res = await _dio.post('/api/hardware/orders/', data: payload);
+        } else {
+          rethrow;
+        }
+      }
+
       if (res.statusCode == 200 || res.statusCode == 201) {
-        return HardwareOrderModel.fromJson(Map<String, dynamic>.from(res.data));
+        debugPrint('Hardware Order created successfully: ${res.data}');
+        Map<String, dynamic> dataMap = {};
+        if (res.data is Map) {
+          if (res.data['order'] is Map) {
+            dataMap = Map<String, dynamic>.from(res.data['order']);
+          } else if (res.data['data'] is Map) {
+            dataMap = Map<String, dynamic>.from(res.data['data']);
+          } else {
+            dataMap = Map<String, dynamic>.from(res.data);
+          }
+        }
+        return HardwareOrderModel.fromJson(dataMap);
       }
     } catch (e) {
       debugPrint('Error placing hardware order: $e');

@@ -326,9 +326,14 @@ class AdminTopHeader extends StatelessWidget {
 
               // Profile Dropdown Pill
               PopupMenuButton<String>(
+                color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                elevation: 4,
                 offset: const Offset(0, 45),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(
+                    color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                  ),
                 ),
                 onSelected: (value) {
                   if (value == 'hardware') {
@@ -340,32 +345,42 @@ class AdminTopHeader extends StatelessWidget {
                   }
                 },
                 itemBuilder: (context) => [
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: 'hardware',
                     child: Row(
                       children: [
-                        Icon(Icons.storefront_rounded, size: 18, color: Color(0xFF10B981)),
-                        SizedBox(width: 8),
+                        const Icon(Icons.storefront_rounded, size: 18, color: Color(0xFF10B981)),
+                        const SizedBox(width: 8),
                         Text(
                           'Buy Hardware',
-                          style: TextStyle(fontSize: 14, color: Color(0xFF1E293B)),
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: isDark ? Colors.white : const Color(0xFF1E293B),
+                          ),
                         ),
                       ],
                     ),
                   ),
-                  const PopupMenuDivider(height: 1),
-                  const PopupMenuItem(
+                  const PopupMenuDivider(
+                    height: 1,
+                  ),
+                  PopupMenuItem(
                     value: 'about',
                     child: Row(
                       children: [
-                        Icon(Icons.info_outline_rounded,
-                            size: 18, color: Color(0xFF166534)),
-                        SizedBox(width: 8),
+                        Icon(
+                          Icons.info_outline_rounded,
+                          size: 18,
+                          color: isDark ? const Color(0xFF34D399) : const Color(0xFF15803D),
+                        ),
+                        const SizedBox(width: 8),
                         Text(
                           'About SirfBill',
                           style: TextStyle(
                             fontSize: 14,
-                            color: Color(0xFF1E293B),
+                            fontWeight: FontWeight.w600,
+                            color: isDark ? Colors.white : const Color(0xFF1E293B),
                           ),
                         ),
                       ],
@@ -376,11 +391,15 @@ class AdminTopHeader extends StatelessWidget {
                     value: 'logout',
                     child: Row(
                       children: [
-                        Icon(Icons.logout, size: 18, color: Colors.red),
+                        Icon(Icons.logout, size: 18, color: Colors.redAccent),
                         SizedBox(width: 8),
                         Text(
                           'Logout',
-                          style: TextStyle(fontSize: 14, color: Colors.red),
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.redAccent,
+                          ),
                         ),
                       ],
                     ),

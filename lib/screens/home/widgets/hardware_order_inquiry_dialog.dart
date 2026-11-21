@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../../models/hardware_product_model.dart';
 import '../../../services/hardware/hardware_service.dart';
 
@@ -61,28 +61,67 @@ class _HardwareOrderInquiryDialogState extends State<HardwareOrderInquiryDialog>
     final item = widget.item;
     final totalPrice = item.price * _qty;
 
+    final rawPhone = _phoneCtrl.text.trim();
+    final digits = rawPhone.replaceAll(RegExp(r'\D'), '');
+    final cleanPhone = digits.length == 12 && digits.startsWith('91')
+        ? digits.substring(2)
+        : (digits.length == 11 && digits.startsWith('0') ? digits.substring(1) : digits);
+
+    HardwareOrderModel? order;
+    String? orderError;
+
     try {
-      final order = await HardwareService.createOrder(
+      order = await HardwareService.createOrder(
         productId: item.id,
+        productName: item.name,
+        price: item.price,
+        totalPrice: totalPrice,
         quantity: _qty,
         contactName: _nameCtrl.text.trim(),
-        contactPhone: _phoneCtrl.text.trim(),
+        contactPhone: cleanPhone,
         shippingAddress: _addressCtrl.text.trim(),
         city: _cityCtrl.text.trim(),
         pincode: _pincodeCtrl.text.trim(),
       );
+    } catch (e) {
+      debugPrint('Hardware order database store error: $e');
+      orderError = e.toString();
+    }
 
-      final orderNo = order?.orderNumber ??
-          'HWO-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
+    if (!mounted) return;
+    setState(() => _isSubmitting = false);
+
+    if (order != null) {
+      final orderNo = order.orderNumber.isNotEmpty
+          ? order.orderNumber
+          : 'HWO-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
+
+      Navigator.pop(context);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Order #$orderNo successfully recorded in Hardware Orders!'),
+          backgroundColor: const Color(0xFF10B981),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+
       final msg =
-          'Hello SirfBill Hardware Team! I have placed Order #$orderNo for:\n• ${item.name} (${item.sku})\n• Quantity: $_qty\n• Total: ${_inFormat.format(totalPrice)}\n• Delivery to: ${_nameCtrl.text}, ${_addressCtrl.text}, ${_cityCtrl.text} - ${_pincodeCtrl.text}\n• Phone: ${_phoneCtrl.text}';
-
-      if (mounted) Navigator.pop(context);
+          'Hello SirfBill Hardware Team! I have placed Order #$orderNo for:\n• ${item.name} (${item.sku})\n• Quantity: $_qty\n• Total: ${_inFormat.format(totalPrice)}\n• Delivery to: ${_nameCtrl.text}, ${_addressCtrl.text}, ${_cityCtrl.text} - ${_pincodeCtrl.text}\n• Phone: $cleanPhone';
       await widget.onOpenWhatsApp(msg);
-    } catch (_) {
+    } else {
+      Navigator.pop(context);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Order noted! Directing to WhatsApp (Backend note: $orderError)'),
+          backgroundColor: Colors.orange.shade800,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+
       final msg =
-          'Hello SirfBill Hardware Team! I want to purchase:\n• ${item.name} (${item.sku})\n• Quantity: $_qty\n• Name: ${_nameCtrl.text}\n• Phone: ${_phoneCtrl.text}\n• Address: ${_addressCtrl.text}, ${_cityCtrl.text} - ${_pincodeCtrl.text}';
-      if (mounted) Navigator.pop(context);
+          'Hello SirfBill Hardware Team! I want to purchase:\n• ${item.name} (${item.sku})\n• Quantity: $_qty\n• Total: ${_inFormat.format(totalPrice)}\n• Name: ${_nameCtrl.text}\n• Phone: $cleanPhone\n• Address: ${_addressCtrl.text}, ${_cityCtrl.text} - ${_pincodeCtrl.text}';
       await widget.onOpenWhatsApp(msg);
     }
   }
@@ -166,11 +205,37 @@ class _HardwareOrderInquiryDialogState extends State<HardwareOrderInquiryDialog>
                   TextFormField(
                     controller: _phoneCtrl,
                     keyboardType: TextInputType.phone,
+                    autovalidateMode: AutovalidateMode.onUserInteraction,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'[0-9+\s\-]')),
+                      LengthLimitingTextInputFormatter(15),
+                    ],
                     decoration: const InputDecoration(
                       labelText: 'Contact Phone / WhatsApp *',
+                      hintText: 'e.g. 9876543210',
+                      prefixIcon: Icon(Icons.phone_android_rounded, size: 18),
                       contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                     ),
-                    validator: (v) => v == null || v.length < 10 ? 'Enter valid 10-digit number' : null,
+                    validator: (v) {
+                      final raw = (v ?? '').trim();
+                      if (raw.isEmpty) {
+                        return 'Phone number is required';
+                      }
+                      final digits = raw.replaceAll(RegExp(r'\D'), '');
+                      String tenDigit = digits;
+                      if (digits.length == 12 && digits.startsWith('91')) {
+                        tenDigit = digits.substring(2);
+                      } else if (digits.length == 11 && digits.startsWith('0')) {
+                        tenDigit = digits.substring(1);
+                      }
+                      if (tenDigit.length != 10) {
+                        return 'Enter a valid 10-digit mobile number';
+                      }
+                      if (!RegExp(r'^[6-9]\d{9}$').hasMatch(tenDigit)) {
+                        return 'Must be a valid mobile starting with 6, 7, 8, or 9';
+                      }
+                      return null;
+                    },
                   ),
                   const SizedBox(height: 8),
                   TextFormField(
@@ -199,11 +264,20 @@ class _HardwareOrderInquiryDialogState extends State<HardwareOrderInquiryDialog>
                         child: TextFormField(
                           controller: _pincodeCtrl,
                           keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            LengthLimitingTextInputFormatter(6),
+                          ],
                           decoration: const InputDecoration(
                             labelText: 'Pincode *',
+                            hintText: '6 digits',
                             contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                           ),
-                          validator: (v) => v == null || v.length < 6 ? '6-digit pincode' : null,
+                          validator: (v) {
+                            if (v == null || v.trim().isEmpty) return 'Required';
+                            if (v.trim().length != 6) return '6-digit pincode';
+                            return null;
+                          },
                         ),
                       ),
                     ],

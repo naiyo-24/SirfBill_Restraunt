@@ -3,7 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../../../../services/windows_auto_updater.dart';
-import 'about_us_policies.dart';
+
+export 'about_policy_card.dart';
 
 class AboutFeatureCard extends StatelessWidget {
   final IconData icon;
@@ -30,7 +31,7 @@ class AboutFeatureCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       decoration: BoxDecoration(
         color: cardBg,
         borderRadius: BorderRadius.circular(12),
@@ -38,11 +39,12 @@ class AboutFeatureCard extends StatelessWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: iconColor.withValues(alpha: 0.12),
+              color: iconColor.withValues(alpha: 0.14),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(icon, color: iconColor, size: 18),
@@ -52,16 +54,19 @@ class AboutFeatureCard extends StatelessWidget {
             title,
             style: TextStyle(
               fontWeight: FontWeight.bold,
-              fontSize: 12,
+              fontSize: 11.5,
               color: textColor,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 2),
           Text(
             desc,
             style: TextStyle(
-              fontSize: 10,
+              fontSize: 9.5,
               color: subtitleColor,
+              height: 1.25,
             ),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
@@ -94,6 +99,10 @@ class AboutContactRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final iconColor = isDark ? const Color(0xFF34D399) : const Color(0xFF15803D);
+    final linkColor = isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB);
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
@@ -101,29 +110,40 @@ class AboutContactRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
         child: Row(
           children: [
-            Icon(icon, size: 18, color: const Color(0xFF166534)),
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: iconColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, size: 16, color: iconColor),
+            ),
             const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: subtitleColor,
-                    fontWeight: FontWeight.w500,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: subtitleColor,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                ),
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: isLink ? const Color(0xFF166534) : textColor,
-                    decoration: isLink ? TextDecoration.underline : null,
+                  Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: isLink ? linkColor : textColor,
+                      decoration: isLink ? TextDecoration.underline : null,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),
@@ -140,112 +160,112 @@ class AboutHeroHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const primaryGreen = Color(0xFF166534);
-    const accentGreen = Color(0xFF22C55E);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isPhone = MediaQuery.of(context).size.width < 600;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 22),
-      decoration: const BoxDecoration(
+      padding: EdgeInsets.symmetric(
+        horizontal: isPhone ? 18 : 24,
+        vertical: isPhone ? 16 : 20,
+      ),
+      decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [primaryGreen, Color(0xFF15803D), accentGreen],
+          colors: isDark
+              ? const [Color(0xFF064E3B), Color(0xFF047857), Color(0xFF0D9488)]
+              : const [Color(0xFF166534), Color(0xFF15803D), Color(0xFF22C55E)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
       ),
-      child: Stack(
+      child: Row(
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.15),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
+          Container(
+            padding: const EdgeInsets.all(7),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF0F172A) : Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.15),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
                 ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: Image.asset(
-                    'assets/icon.png',
-                    height: 48,
-                    width: 48,
-                    fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => const Icon(
-                      Icons.receipt_long_rounded,
-                      color: primaryGreen,
-                      size: 40,
-                    ),
-                  ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.asset(
+                'assets/icon.png',
+                height: isPhone ? 40 : 46,
+                width: isPhone ? 40 : 46,
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => const Icon(
+                  Icons.receipt_long_rounded,
+                  color: Color(0xFF10B981),
+                  size: 36,
                 ),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
                   children: [
-                    Row(
-                      children: [
-                        const Text(
-                          'SirfBill',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: -0.5,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        FutureBuilder<PackageInfo>(
-                          future: PackageInfo.fromPlatform(),
-                          builder: (context, snapshot) {
-                            final version = snapshot.hasData ? snapshot.data!.version : '1.0.3';
-                            return Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.25),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                'v$version',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 3),
-                    const Text(
-                      'Bill Karo, Befikar Raho',
+                    Text(
+                      'SirfBill',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
+                        fontSize: isPhone ? 18 : 22,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: -0.5,
                       ),
+                    ),
+                    const SizedBox(width: 8),
+                    FutureBuilder<PackageInfo>(
+                      future: PackageInfo.fromPlatform(),
+                      builder: (context, snapshot) {
+                        final version = snapshot.hasData ? snapshot.data!.version : '1.0.50';
+                        return Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.22),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            'v$version',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
-              ),
-            ],
-          ),
-          Positioned(
-            top: -6,
-            right: -6,
-            child: IconButton(
-              icon: const Icon(Icons.close, color: Colors.white70),
-              onPressed: onClose,
-              tooltip: 'Close',
+                const SizedBox(height: 2),
+                const Text(
+                  'Bill Karo, Befikar Raho',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.close, color: Colors.white),
+            onPressed: onClose,
+            tooltip: 'Close',
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(maxWidth: 32, maxHeight: 32),
           ),
         ],
       ),
@@ -270,10 +290,10 @@ class AboutCompanyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const primaryGreen = Color(0xFF166534);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: cardBg,
         borderRadius: BorderRadius.circular(14),
@@ -282,12 +302,12 @@ class AboutCompanyCard extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            height: 56,
-            width: 56,
+            height: 50,
+            width: 50,
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
+              color: isDark ? const Color(0xFF0F172A) : Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: borderColor),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.04),
@@ -297,7 +317,7 @@ class AboutCompanyCard extends StatelessWidget {
               ],
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(8),
               child: Image.asset(
                 'assets/naiyo24_logo.jpeg',
                 fit: BoxFit.cover,
@@ -306,15 +326,15 @@ class AboutCompanyCard extends StatelessWidget {
                     'NAIYO24',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: primaryGreen,
-                      fontSize: 10,
+                      color: Color(0xFF10B981),
+                      fontSize: 9,
                     ),
                   ),
                 ),
               ),
             ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -323,7 +343,7 @@ class AboutCompanyCard extends StatelessWidget {
                   'NAIYO24 PVT. LTD.',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    fontSize: 14,
+                    fontSize: 13,
                     color: textColor,
                   ),
                 ),
@@ -331,147 +351,12 @@ class AboutCompanyCard extends StatelessWidget {
                 Text(
                   'Empowering businesses with modern point-of-sale and digital automation platforms.',
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: 10.5,
                     color: subtitleColor,
-                    height: 1.3,
+                    height: 1.25,
                   ),
                 ),
               ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Legal policy preview button & dialog launcher.
-class AboutLegalComplianceCard extends StatelessWidget {
-  final Color cardBg;
-  final Color borderColor;
-
-  const AboutLegalComplianceCard({
-    super.key,
-    required this.cardBg,
-    required this.borderColor,
-  });
-
-  static void showPolicyDialog(BuildContext context, {required String title, required String content}) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        backgroundColor: isDark ? const Color(0xFF0F172A) : Colors.white,
-        title: Row(
-          children: [
-            const Icon(Icons.description_rounded, color: Color(0xFF166534), size: 22),
-            const SizedBox(width: 10),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: isDark ? Colors.white : const Color(0xFF1E293B),
-              ),
-            ),
-          ],
-        ),
-        content: SizedBox(
-          width: 520,
-          child: SingleChildScrollView(
-            child: Text(
-              content,
-              style: TextStyle(
-                fontSize: 13,
-                height: 1.6,
-                color: isDark ? Colors.grey[300] : const Color(0xFF334155),
-              ),
-            ),
-          ),
-        ),
-        actions: [
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF166534),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    const primaryGreen = Color(0xFF166534);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: cardBg,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: borderColor),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: InkWell(
-              borderRadius: BorderRadius.circular(8),
-              onTap: () => showPolicyDialog(
-                context,
-                title: 'Privacy Policy',
-                content: AboutUsPolicies.privacyPolicy,
-              ),
-              child: const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8),
-                child: Row(
-                  children: [
-                    Icon(Icons.privacy_tip_outlined, size: 16, color: primaryGreen),
-                    SizedBox(width: 8),
-                    Text(
-                      'Privacy Policy',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: primaryGreen,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Container(height: 20, width: 1, color: borderColor),
-          const SizedBox(width: 12),
-          Expanded(
-            child: InkWell(
-              borderRadius: BorderRadius.circular(8),
-              onTap: () => showPolicyDialog(
-                context,
-                title: 'Terms & Conditions',
-                content: AboutUsPolicies.termsAndConditions,
-              ),
-              child: const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8),
-                child: Row(
-                  children: [
-                    Icon(Icons.gavel_rounded, size: 16, color: primaryGreen),
-                    SizedBox(width: 8),
-                    Text(
-                      'Terms & Conditions',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: primaryGreen,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
             ),
           ),
         ],
@@ -496,35 +381,33 @@ class AboutDialogFooter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    const primaryGreen = Color(0xFF166534);
+    final btnColor = isDark ? const Color(0xFF10B981) : const Color(0xFF15803D);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
         border: Border(top: BorderSide(color: borderColor)),
       ),
-      child: Wrap(
-        alignment: WrapAlignment.spaceBetween,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        spacing: 12,
-        runSpacing: 10,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            '© 2026 NAIYO24 PVT. LTD. All rights reserved.',
-            style: TextStyle(fontSize: 11, color: subtitleColor),
+          Expanded(
+            child: Text(
+              '© 2026 NAIYO24 PVT. LTD.',
+              style: TextStyle(fontSize: 10.5, color: subtitleColor),
+            ),
           ),
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               if (!kIsWeb && Platform.isWindows) ...[
                 TextButton.icon(
-                  icon: const Icon(Icons.system_update_rounded, size: 16),
-                  label: const Text('Check for Updates'),
+                  icon: const Icon(Icons.system_update_rounded, size: 15),
+                  label: const Text('Update', style: TextStyle(fontSize: 11)),
                   style: TextButton.styleFrom(
-                    foregroundColor: primaryGreen,
-                    textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    foregroundColor: btnColor,
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                   ),
                   onPressed: () async {
                     Navigator.pop(context);
@@ -534,28 +417,28 @@ class AboutDialogFooter extends StatelessWidget {
                         WindowsAutoUpdater.showUpdateDialog(context, updateInfo);
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('You are using the latest version of SirfBill!'),
-                            backgroundColor: primaryGreen,
+                          SnackBar(
+                            content: const Text('You are using the latest version of SirfBill!'),
+                            backgroundColor: btnColor,
                           ),
                         );
                       }
                     }
                   },
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
               ],
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: primaryGreen,
+                  backgroundColor: btnColor,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
                 onPressed: onClose,
-                child: const Text('Close'),
+                child: const Text('Close', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
               ),
             ],
           ),

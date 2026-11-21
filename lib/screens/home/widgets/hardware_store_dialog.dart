@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../models/hardware_product_model.dart';
 import '../../../services/hardware/hardware_service.dart';
@@ -368,11 +367,6 @@ class _HardwareStoreDialogState extends State<HardwareStoreDialog> {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       ),
       onPressed: () => _openWhatsApp('Hello SirfBill Hardware Desk, I need assistance choosing POS equipment for my restaurant.'),
-    );
-  }
-          ],
-        ),
-      ),
     );
   }
 }

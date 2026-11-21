@@ -24,18 +24,19 @@ class AboutUsDialog extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cardBg = isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC);
     final borderColor = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
-    final textColor = isDark ? Colors.white : const Color(0xFF1E293B);
-    final subtitleColor = isDark ? Colors.grey[400] : const Color(0xFF64748B);
+    final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final subtitleColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
 
     final screenSize = MediaQuery.of(context).size;
-    final dialogWidth = (screenSize.width * 0.9).clamp(320.0, 620.0);
-    final dialogHeight = (screenSize.height * 0.85).clamp(400.0, 760.0);
+    final isPhone = screenSize.width < 600;
+    final dialogWidth = isPhone ? screenSize.width - 24 : 540.0;
+    final dialogHeight = isPhone ? (screenSize.height * 0.85).clamp(380.0, 660.0) : 660.0;
 
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       backgroundColor: isDark ? const Color(0xFF0F172A) : Colors.white,
       clipBehavior: Clip.antiAlias,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      insetPadding: EdgeInsets.symmetric(horizontal: isPhone ? 12 : 24, vertical: isPhone ? 16 : 24),
       child: SizedBox(
         width: dialogWidth,
         height: dialogHeight,
@@ -49,20 +50,23 @@ class AboutUsDialog extends StatelessWidget {
             // 2. Scrollable Content
             Flexible(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
+                padding: EdgeInsets.symmetric(
+                  horizontal: isPhone ? 16 : 24,
+                  vertical: isPhone ? 14 : 20,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'DEVELOPED & OPERATED BY',
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: 10.5,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 0.8,
                         color: subtitleColor,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
 
                     // Organization Card
                     AboutCompanyCard(
@@ -71,94 +75,78 @@ class AboutUsDialog extends StatelessWidget {
                       textColor: textColor,
                       subtitleColor: subtitleColor,
                     ),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 14),
 
                     Text(
                       'KEY SYSTEM HIGHLIGHTS',
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: 10.5,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 0.8,
                         color: subtitleColor,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
 
-                    // Feature highlights grid
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        final isCompact = constraints.maxWidth < 450;
-                        final features = [
-                          AboutFeatureCard(
+                    // Feature highlights grid (clean 3-card strip)
+                    Row(
+                      children: [
+                        Expanded(
+                          child: AboutFeatureCard(
                             icon: Icons.cloud_done_rounded,
                             iconColor: const Color(0xFF0284C7),
-                            title: 'Cloud-Powered',
-                            desc: 'Live inventory sync & secure cloud backup',
+                            title: 'Cloud POS',
+                            desc: 'Live sync & cloud backup',
                             cardBg: cardBg,
                             borderColor: borderColor,
                             textColor: textColor,
                             subtitleColor: subtitleColor,
                           ),
-                          AboutFeatureCard(
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: AboutFeatureCard(
                             icon: Icons.print_rounded,
                             iconColor: const Color(0xFF2563EB),
                             title: 'Universal Print',
-                            desc: 'Thermal (58/80mm) & A4 PDF',
+                            desc: 'Thermal 58/80 & A4',
                             cardBg: cardBg,
                             borderColor: borderColor,
                             textColor: textColor,
                             subtitleColor: subtitleColor,
                           ),
-                          AboutFeatureCard(
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: AboutFeatureCard(
                             icon: Icons.shield_rounded,
                             iconColor: const Color(0xFF059669),
-                            title: 'GST Compliant',
-                            desc: 'Instant tax & HSN tracking',
+                            title: 'GST Ready',
+                            desc: 'Instant tax & HSN',
                             cardBg: cardBg,
                             borderColor: borderColor,
                             textColor: textColor,
                             subtitleColor: subtitleColor,
                           ),
-                        ];
-
-                        if (isCompact) {
-                          return Column(
-                            children: features
-                                .map((f) => Padding(
-                                      padding: const EdgeInsets.only(bottom: 8),
-                                      child: f,
-                                    ))
-                                .toList(),
-                          );
-                        }
-
-                        return Row(
-                          children: [
-                            Expanded(child: features[0]),
-                            const SizedBox(width: 10),
-                            Expanded(child: features[1]),
-                            const SizedBox(width: 10),
-                            Expanded(child: features[2]),
-                          ],
-                        );
-                      },
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 14),
 
                     Text(
                       'OFFICIAL CONTACT & SUPPORT',
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: 10.5,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 0.8,
                         color: subtitleColor,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
 
                     // Support channels
                     Container(
-                      padding: const EdgeInsets.all(14),
+                      padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: cardBg,
                         borderRadius: BorderRadius.circular(14),
@@ -173,7 +161,7 @@ class AboutUsDialog extends StatelessWidget {
                             textColor: textColor,
                             subtitleColor: subtitleColor,
                           ),
-                          Divider(height: 16, color: borderColor),
+                          Divider(height: 12, color: borderColor),
                           AboutContactRow(
                             icon: Icons.language_rounded,
                             label: 'Website',
@@ -183,7 +171,7 @@ class AboutUsDialog extends StatelessWidget {
                             textColor: textColor,
                             subtitleColor: subtitleColor,
                           ),
-                          Divider(height: 16, color: borderColor),
+                          Divider(height: 12, color: borderColor),
                           AboutContactRow(
                             icon: Icons.email_rounded,
                             label: 'Support Email',
@@ -193,7 +181,7 @@ class AboutUsDialog extends StatelessWidget {
                             textColor: textColor,
                             subtitleColor: subtitleColor,
                           ),
-                          Divider(height: 16, color: borderColor),
+                          Divider(height: 12, color: borderColor),
                           AboutContactRow(
                             icon: Icons.headset_mic_rounded,
                             label: 'Customer Support',
@@ -206,18 +194,18 @@ class AboutUsDialog extends StatelessWidget {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 14),
 
                     Text(
                       'LEGAL & COMPLIANCE',
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: 10.5,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 0.8,
                         color: subtitleColor,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
 
                     // Privacy policy and Terms row
                     AboutLegalComplianceCard(
