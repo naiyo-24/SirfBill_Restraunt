@@ -60,8 +60,9 @@ class InventorySidebarFooter extends ConsumerWidget {
           labelColor: textColor,
         ),
 
-        // Screen Zoom Control (smoothly collapses when in icon-only mode)
-        AnimatedCrossFade(
+        // Screen Zoom Control (Desktop & Web only - hidden on phone screens)
+        if (MediaQuery.sizeOf(context).width >= 650)
+          AnimatedCrossFade(
           duration: const Duration(milliseconds: 200),
           crossFadeState: _isCollapsed ? CrossFadeState.showFirst : CrossFadeState.showSecond,
           firstChild: const SizedBox(height: 6),

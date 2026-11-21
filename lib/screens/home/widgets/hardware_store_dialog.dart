@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../models/hardware_product_model.dart';
 import '../../../services/hardware/hardware_service.dart';
+import 'hardware_order_inquiry_dialog.dart';
 import 'hardware_store_product_card.dart';
 
 class HardwareStoreDialog extends StatefulWidget {
@@ -97,158 +98,10 @@ class _HardwareStoreDialogState extends State<HardwareStoreDialog> {
   }
 
   void _showOrderDialog(HardwareProduct item) {
-    int qty = 1;
-    final nameCtrl = TextEditingController();
-    final phoneCtrl = TextEditingController();
-    final addressCtrl = TextEditingController();
-    final cityCtrl = TextEditingController();
-    final pincodeCtrl = TextEditingController();
-    final formKey = GlobalKey<FormState>();
-    bool isSubmitting = false;
-
-    final inFormat = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
-
-    showDialog(
-      context: context,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setDlgState) {
-            final totalPrice = item.price * qty;
-
-            return Dialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 520),
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Form(
-                    key: formKey,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text('Hardware Order / Inquiry', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                            IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(ctx)),
-                          ],
-                        ),
-                        const Divider(),
-                        Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                        const SizedBox(height: 2),
-                        Text('SKU: ${item.sku} • Price: ${inFormat.format(item.price)} each', style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                        const SizedBox(height: 12),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text('Quantity:', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                            Row(
-                              children: [
-                                IconButton(
-                                  icon: const Icon(Icons.remove_circle_outline, size: 20),
-                                  onPressed: qty > 1 ? () => setDlgState(() => qty--) : null,
-                                ),
-                                Text('$qty', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-                                IconButton(
-                                  icon: const Icon(Icons.add_circle_outline, size: 20),
-                                  onPressed: () => setDlgState(() => qty++),
-                                ),
-                              ],
-                            ),
-                            Text('Total: ${inFormat.format(totalPrice)}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF10B981))),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        TextFormField(
-                          controller: nameCtrl,
-                          decoration: const InputDecoration(labelText: 'Contact / Restaurant Name *', contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
-                          validator: (v) => v == null || v.isEmpty ? 'Required' : null,
-                        ),
-                        const SizedBox(height: 8),
-                        TextFormField(
-                          controller: phoneCtrl,
-                          keyboardType: TextInputType.phone,
-                          decoration: const InputDecoration(labelText: 'Contact Phone / WhatsApp *', contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
-                          validator: (v) => v == null || v.length < 10 ? 'Enter valid 10-digit number' : null,
-                        ),
-                        const SizedBox(height: 8),
-                        TextFormField(
-                          controller: addressCtrl,
-                          decoration: const InputDecoration(labelText: 'Delivery Address *', contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
-                          validator: (v) => v == null || v.isEmpty ? 'Required' : null,
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextFormField(
-                                controller: cityCtrl,
-                                decoration: const InputDecoration(labelText: 'City *', contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
-                                validator: (v) => v == null || v.isEmpty ? 'Required' : null,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: TextFormField(
-                                controller: pincodeCtrl,
-                                keyboardType: TextInputType.number,
-                                decoration: const InputDecoration(labelText: 'Pincode *', contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
-                                validator: (v) => v == null || v.length < 6 ? '6-digit pincode' : null,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            icon: const Icon(Icons.check_circle_rounded, size: 18),
-                            label: isSubmitting
-                                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                                : const Text('Confirm Order & Open WhatsApp'),
-                            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 12)),
-                            onPressed: isSubmitting
-                                ? null
-                                : () async {
-                                    if (!formKey.currentState!.validate()) return;
-                                    setDlgState(() => isSubmitting = true);
-
-                                    try {
-                                      final order = await HardwareService.createOrder(
-                                        productId: item.id,
-                                        quantity: qty,
-                                        contactName: nameCtrl.text.trim(),
-                                        contactPhone: phoneCtrl.text.trim(),
-                                        shippingAddress: addressCtrl.text.trim(),
-                                        city: cityCtrl.text.trim(),
-                                        pincode: pincodeCtrl.text.trim(),
-                                      );
-
-                                      final orderNo = order?.orderNumber ?? 'HWO-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
-                                      final msg =
-                                          'Hello SirfBill Hardware Team! I have placed Order #$orderNo for:\n• ${item.name} (${item.sku})\n• Quantity: $qty\n• Total: ${inFormat.format(totalPrice)}\n• Delivery to: ${nameCtrl.text}, ${addressCtrl.text}, ${cityCtrl.text} - ${pincodeCtrl.text}\n• Phone: ${phoneCtrl.text}';
-
-                                      if (ctx.mounted) Navigator.pop(ctx);
-                                      await _openWhatsApp(msg);
-                                    } catch (_) {
-                                      final msg =
-                                          'Hello SirfBill Hardware Team! I want to purchase:\n• ${item.name} (${item.sku})\n• Quantity: $qty\n• Name: ${nameCtrl.text}\n• Phone: ${phoneCtrl.text}\n• Address: ${addressCtrl.text}, ${cityCtrl.text} - ${pincodeCtrl.text}';
-                                      if (ctx.mounted) Navigator.pop(ctx);
-                                      await _openWhatsApp(msg);
-                                    }
-                                  },
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
+    HardwareOrderInquiryDialog.show(
+      context,
+      item: item,
+      onOpenWhatsApp: _openWhatsApp,
     );
   }
 
@@ -300,14 +153,25 @@ class _HardwareStoreDialogState extends State<HardwareStoreDialog> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
+                        Wrap(
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 8,
+                          runSpacing: 4,
                           children: [
-                            Text('SirfBill Certified POS Hardware', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textColor)),
-                            const SizedBox(width: 8),
+                            Text(
+                              'SirfBill Certified POS Hardware',
+                              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: textColor),
+                            ),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(color: const Color(0xFF10B981).withValues(alpha: 0.15), borderRadius: BorderRadius.circular(4)),
-                              child: const Text('100% Plug & Play', style: TextStyle(color: Color(0xFF10B981), fontSize: 10, fontWeight: FontWeight.bold)),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text(
+                                '100% Plug & Play',
+                                style: TextStyle(color: Color(0xFF10B981), fontSize: 10, fontWeight: FontWeight.bold),
+                              ),
                             ),
                           ],
                         ),
@@ -420,35 +284,92 @@ class _HardwareStoreDialogState extends State<HardwareStoreDialog> {
 
             // 4. Contact & Order Action Footer
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
                 color: cardBg,
                 borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
                 border: Border(top: BorderSide(color: borderColor)),
               ),
-              child: Row(
-                children: [
-                  const Icon(Icons.headset_mic_rounded, color: Color(0xFF10B981), size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text('Need urgent hardware consultation or custom bulk quote? Call $supportPhoneDisplay', style: TextStyle(fontSize: 11, color: subtitleColor)),
-                  ),
-                  OutlinedButton.icon(
-                    icon: const Icon(Icons.phone, size: 14),
-                    label: const Text('Call Support'),
-                    style: OutlinedButton.styleFrom(foregroundColor: const Color(0xFF10B981), side: const BorderSide(color: Color(0xFF10B981))),
-                    onPressed: () => _launchCall(supportPhone),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton.icon(
-                    icon: const Icon(Icons.chat_bubble_outline_rounded, size: 14),
-                    label: const Text('WhatsApp Desk'),
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF25D366), foregroundColor: Colors.white),
-                    onPressed: () => _openWhatsApp('Hello SirfBill Hardware Desk, I need assistance choosing POS equipment for my restaurant.'),
-                  ),
-                ],
+              child: LayoutBuilder(
+                builder: (context, footerBox) {
+                  final isCompact = footerBox.maxWidth < 620;
+                  final textPart = Row(
+                    children: [
+                      const Icon(Icons.headset_mic_rounded, color: Color(0xFF10B981), size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Need hardware advice or bulk quote? Call $supportPhoneDisplay',
+                          style: TextStyle(fontSize: 11, color: subtitleColor),
+                        ),
+                      ),
+                    ],
+                  );
+
+                  final buttonsPart = Row(
+                    mainAxisSize: isCompact ? MainAxisSize.max : MainAxisSize.min,
+                    children: [
+                      isCompact
+                          ? Expanded(child: _buildCallBtn())
+                          : _buildCallBtn(),
+                      const SizedBox(width: 8),
+                      isCompact
+                          ? Expanded(child: _buildWhatsAppBtn())
+                          : _buildWhatsAppBtn(),
+                    ],
+                  );
+
+                  if (isCompact) {
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        textPart,
+                        const SizedBox(height: 8),
+                        buttonsPart,
+                      ],
+                    );
+                  }
+                  return Row(
+                    children: [
+                      Expanded(child: textPart),
+                      const SizedBox(width: 12),
+                      buttonsPart,
+                    ],
+                  );
+                },
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCallBtn() {
+    return OutlinedButton.icon(
+      icon: const Icon(Icons.phone, size: 14),
+      label: const Text('Call Support', style: TextStyle(fontSize: 12)),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: const Color(0xFF10B981),
+        side: const BorderSide(color: Color(0xFF10B981)),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      ),
+      onPressed: () => _launchCall(supportPhone),
+    );
+  }
+
+  Widget _buildWhatsAppBtn() {
+    return ElevatedButton.icon(
+      icon: const Icon(Icons.chat_bubble_outline_rounded, size: 14),
+      label: const Text('WhatsApp Desk', style: TextStyle(fontSize: 12)),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFF25D366),
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      ),
+      onPressed: () => _openWhatsApp('Hello SirfBill Hardware Desk, I need assistance choosing POS equipment for my restaurant.'),
+    );
+  }
           ],
         ),
       ),

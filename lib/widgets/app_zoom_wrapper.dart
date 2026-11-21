@@ -61,6 +61,12 @@ class _AppZoomWrapperState extends ConsumerState<AppZoomWrapper> {
             builder: (context, constraints) {
               final w = constraints.maxWidth;
               final h = constraints.maxHeight;
+              final isPhone = w < 650;
+
+              // Phone screens: render native 100% layout without zoom scaling or floating resizer HUD
+              if (isPhone) {
+                return widget.child;
+              }
 
               Widget scaledContent = widget.child;
 

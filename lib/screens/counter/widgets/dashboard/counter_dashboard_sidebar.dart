@@ -285,8 +285,9 @@ class CounterDashboardSidebar extends StatelessWidget {
                 ),
               ),
 
-              // Screen Zoom Control (Desktop & Web)
-              Consumer(
+              // Screen Zoom Control (Desktop & Web only - hidden on phone screens)
+              if (MediaQuery.sizeOf(context).width >= 650)
+                Consumer(
                 builder: (context, ref, _) {
                   final zoom = ref.watch(zoomProvider);
                   final pct = (zoom * 100).round();
