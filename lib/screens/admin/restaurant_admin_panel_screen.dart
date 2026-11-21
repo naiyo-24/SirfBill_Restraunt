@@ -18,8 +18,8 @@ import 'widgets/admin_dashboard_tab.dart';
 import 'widgets/admin_outlets_tab.dart';
 import 'widgets/admin_users_tab.dart';
 import 'widgets/admin_subscription_tab.dart';
-import 'widgets/admin_hardware_tab.dart';
 import 'widgets/admin_dialogs.dart';
+import '../home/widgets/hardware_store_dialog.dart';
 
 class RestaurantAdminPanelScreen extends ConsumerStatefulWidget {
   const RestaurantAdminPanelScreen({super.key});
@@ -75,7 +75,7 @@ class _RestaurantAdminPanelScreenState extends ConsumerState<RestaurantAdminPane
         setState(() => _selectedIndex = 3);
         return true;
       } else if (event.logicalKey == LogicalKeyboardKey.f5) {
-        setState(() => _selectedIndex = 4);
+        HardwareStoreDialog.show(context);
         return true;
       } else if (event.logicalKey == LogicalKeyboardKey.f6) {
         context.go('/dashboard');
@@ -334,9 +334,9 @@ class _RestaurantAdminPanelScreenState extends ConsumerState<RestaurantAdminPane
     Widget buildSidebar() => AdminSidebar(
           isDesktop: isDesktop,
           isExpanded: _isSidebarExpanded,
-          currentIndex: _selectedIndex,
+          currentIndex: _selectedIndex.clamp(0, 3),
           onSelectIndex: (idx) {
-            setState(() => _selectedIndex = idx);
+            setState(() => _selectedIndex = idx.clamp(0, 3));
             if (!isDesktop) Navigator.pop(context);
           },
           onToggleTheme: () => ref.read(themeProvider.notifier).toggleTheme(),
@@ -366,7 +366,7 @@ class _RestaurantAdminPanelScreenState extends ConsumerState<RestaurantAdminPane
                   }
                 },
                 onLogout: _handleLogout,
-                onSelectTab: (idx) => setState(() => _selectedIndex = idx),
+                onSelectTab: (idx) => setState(() => _selectedIndex = idx.clamp(0, 3)),
               ),
 
               // 2. MAIN BODY (Sidebar underneath on left, Content on right)
@@ -382,7 +382,7 @@ class _RestaurantAdminPanelScreenState extends ConsumerState<RestaurantAdminPane
                                 child: CircularProgressIndicator(color: Color(0xFF6366F1)),
                               )
                             : IndexedStack(
-                                index: _selectedIndex,
+                                index: _selectedIndex.clamp(0, 3),
                                 children: [
                                   // TAB 0: DASHBOARD
                                   AdminDashboardTab(
@@ -439,15 +439,6 @@ class _RestaurantAdminPanelScreenState extends ConsumerState<RestaurantAdminPane
                                     isDark: isDark,
                                     initialStatus: _subscriptionStatus,
                                     onStatusChanged: (st) => setState(() => _subscriptionStatus = st),
-                                  ),
-
-                                  // TAB 4: BUY HARDWARE & EQUIPMENT MARKETPLACE
-                                  AdminHardwareTab(
-                                    cardBg: cardBg,
-                                    borderColor: borderColor,
-                                    textColor: textColor,
-                                    subtitleColor: subtitleColor,
-                                    isDark: isDark,
                                   ),
                                 ],
                               ),

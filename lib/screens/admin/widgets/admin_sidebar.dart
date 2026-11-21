@@ -40,7 +40,6 @@ class AdminSidebar extends StatelessWidget {
       (Icons.storefront_rounded, 'Outlets & Branches', 'F2'),
       (Icons.manage_accounts_rounded, 'Users & Roles', 'F3'),
       (Icons.card_membership_rounded, 'Subscription', 'F4'),
-      (Icons.inventory_2_rounded, 'Buy Hardware', 'F5'),
     ];
 
     return AnimatedContainer(
