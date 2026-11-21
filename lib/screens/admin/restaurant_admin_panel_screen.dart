@@ -18,6 +18,7 @@ import 'widgets/admin_dashboard_tab.dart';
 import 'widgets/admin_outlets_tab.dart';
 import 'widgets/admin_users_tab.dart';
 import 'widgets/admin_subscription_tab.dart';
+import 'widgets/admin_hardware_tab.dart';
 import 'widgets/admin_dialogs.dart';
 
 class RestaurantAdminPanelScreen extends ConsumerStatefulWidget {
@@ -74,7 +75,7 @@ class _RestaurantAdminPanelScreenState extends ConsumerState<RestaurantAdminPane
         setState(() => _selectedIndex = 3);
         return true;
       } else if (event.logicalKey == LogicalKeyboardKey.f5) {
-        context.go('/counter/billing');
+        setState(() => _selectedIndex = 4);
         return true;
       } else if (event.logicalKey == LogicalKeyboardKey.f6) {
         context.go('/dashboard');
@@ -438,6 +439,15 @@ class _RestaurantAdminPanelScreenState extends ConsumerState<RestaurantAdminPane
                                     isDark: isDark,
                                     initialStatus: _subscriptionStatus,
                                     onStatusChanged: (st) => setState(() => _subscriptionStatus = st),
+                                  ),
+
+                                  // TAB 4: BUY HARDWARE & EQUIPMENT MARKETPLACE
+                                  AdminHardwareTab(
+                                    cardBg: cardBg,
+                                    borderColor: borderColor,
+                                    textColor: textColor,
+                                    subtitleColor: subtitleColor,
+                                    isDark: isDark,
                                   ),
                                 ],
                               ),

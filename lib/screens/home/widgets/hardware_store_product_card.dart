@@ -1,19 +1,20 @@
 import 'package:flutter/material.dart';
-import '../models/hardware_item_model.dart';
+import 'package:intl/intl.dart';
+import '../../../models/hardware_product_model.dart';
 
-/// Card widget presenting a single certified hardware product with full specs.
+/// Card widget presenting a single certified hardware product with pricing, specs & order action.
 class HardwareStoreProductCard extends StatelessWidget {
-  final HardwareProductItem item;
+  final HardwareProduct product;
   final bool isDark;
   final Color cardBg;
   final Color textColor;
   final Color subtitleColor;
   final Color borderColor;
-  final ValueChanged<HardwareProductItem> onInquire;
+  final ValueChanged<HardwareProduct> onInquire;
 
   const HardwareStoreProductCard({
     super.key,
-    required this.item,
+    required this.product,
     required this.isDark,
     required this.cardBg,
     required this.textColor,
@@ -22,8 +23,61 @@ class HardwareStoreProductCard extends StatelessWidget {
     required this.onInquire,
   });
 
+  IconData _resolveIcon(String category) {
+    switch (category.toUpperCase()) {
+      case 'PRINTER':
+        return Icons.print_rounded;
+      case 'POS_TERMINAL':
+        return Icons.point_of_sale_rounded;
+      case 'HANDHELD_PDA':
+        return Icons.phone_android_rounded;
+      case 'KDS_DISPLAY':
+        return Icons.soup_kitchen_rounded;
+      case 'CASH_DRAWER':
+        return Icons.archive_rounded;
+      case 'SCANNER':
+        return Icons.qr_code_scanner_rounded;
+      case 'PAPER_ROLLS':
+        return Icons.receipt_long_rounded;
+      default:
+        return Icons.storefront_rounded;
+    }
+  }
+
+  Color _resolveColor(String category) {
+    switch (category.toUpperCase()) {
+      case 'PRINTER':
+        return const Color(0xFF10B981);
+      case 'POS_TERMINAL':
+        return const Color(0xFF3B82F6);
+      case 'HANDHELD_PDA':
+        return const Color(0xFFF59E0B);
+      case 'KDS_DISPLAY':
+        return const Color(0xFFF97316);
+      case 'CASH_DRAWER':
+        return const Color(0xFF8B5CF6);
+      case 'SCANNER':
+        return const Color(0xFFEC4899);
+      default:
+        return const Color(0xFF065F46);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final inFormat = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
+    final accentColor = _resolveColor(product.category);
+    final icon = _resolveIcon(product.category);
+
+    final displaySpecs = product.features.isNotEmpty
+        ? product.features.take(4).toList()
+        : [
+            '100% Plug & Play with SirfBill POS',
+            'Commercial Heavy-Duty Restaurant Grade',
+            'Full 12-Month Official Replacement Warranty',
+            'Express Dispatch within 24 Hours',
+          ];
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -48,10 +102,10 @@ class HardwareStoreProductCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: item.accentColor.withValues(alpha: 0.12),
+                  color: accentColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(item.icon, color: item.accentColor, size: 24),
+                child: Icon(icon, color: accentColor, size: 24),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -62,9 +116,9 @@ class HardwareStoreProductCard extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            item.title,
+                            product.name,
                             style: TextStyle(
-                              fontSize: 14,
+                              fontSize: 13.5,
                               fontWeight: FontWeight.w700,
                               color: textColor,
                             ),
@@ -72,27 +126,30 @@ class HardwareStoreProductCard extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: item.accentColor.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            item.tag,
-                            style: TextStyle(
-                              color: item.accentColor,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
+                        if (product.isPopular || product.isFeatured)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: accentColor.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              product.isPopular ? 'BESTSELLER' : 'FLAGSHIP',
+                              style: TextStyle(
+                                color: accentColor,
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
-                        ),
                       ],
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 3),
                     Text(
-                      item.description,
-                      style: TextStyle(fontSize: 11.5, color: subtitleColor),
+                      product.shortDescription.isNotEmpty
+                          ? product.shortDescription
+                          : '${product.brand} • ${product.modelNumber.isNotEmpty ? product.modelNumber : product.categoryDisplay}',
+                      style: TextStyle(fontSize: 11, color: subtitleColor),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -101,20 +158,50 @@ class HardwareStoreProductCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
+          // Price and MRP Row
+          Row(
+            children: [
+              Text(
+                inFormat.format(product.price),
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF10B981)),
+              ),
+              const SizedBox(width: 6),
+              if (product.mrp > product.price) ...[
+                Text(
+                  inFormat.format(product.mrp),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: subtitleColor,
+                    decoration: TextDecoration.lineThrough,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                  decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(4)),
+                  child: Text(
+                    '${product.discountPercentage}% OFF',
+                    style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w800, color: Colors.orange),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 8),
           const Divider(height: 1),
           const SizedBox(height: 8),
 
-          // Product Specs List: all 4 specs are fully visible without being squished
+          // Product Specs List
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: item.specs.map((spec) {
+            children: displaySpecs.map((spec) {
               return Padding(
                 padding: const EdgeInsets.symmetric(vertical: 2),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Icon(Icons.check_circle_rounded, size: 13, color: item.accentColor),
+                    Icon(Icons.check_circle_rounded, size: 13, color: accentColor),
                     const SizedBox(width: 7),
                     Expanded(
                       child: Text(
@@ -124,6 +211,8 @@ class HardwareStoreProductCard extends StatelessWidget {
                           fontWeight: FontWeight.w500,
                           color: isDark ? Colors.white70 : const Color(0xFF334155),
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
@@ -131,29 +220,33 @@ class HardwareStoreProductCard extends StatelessWidget {
               );
             }).toList(),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Expanded(
-                child: Text(
-                  'Pre-configured for SirfBill',
-                  style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFF10B981)),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.verified_user_rounded, size: 12, color: Color(0xFF10B981)),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${product.warrantyMonths}M Warranty',
+                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF10B981)),
+                  ),
+                ],
               ),
-              const SizedBox(width: 4),
-              TextButton.icon(
-                onPressed: () => onInquire(item),
-                icon: const Icon(Icons.shopping_cart_outlined, size: 14),
-                label: const Text('Buy / Inquire'),
-                style: TextButton.styleFrom(
-                  foregroundColor: item.accentColor,
-                  textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              ElevatedButton.icon(
+                onPressed: () => onInquire(product),
+                icon: const Icon(Icons.shopping_bag_outlined, size: 14),
+                label: const Text('Order Now'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF10B981),
+                  foregroundColor: Colors.white,
+                  textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   minimumSize: Size.zero,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
               ),
             ],
