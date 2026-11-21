@@ -96,182 +96,173 @@ class CrmReportsHeader extends StatelessWidget {
     final headerBg = isDark ? const Color(0xFF1E293B) : Colors.white;
     final borderColor = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
 
-    return Container(
-      height: 100,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: headerBg,
-        border: Border(bottom: BorderSide(color: borderColor, width: 1)),
-      ),
-      child: Row(
-        children: [
-          // 3-Bar Hamburger Menu Toggle Pill (matching POS Header)
-          Tooltip(
-            message: 'Toggle Navigation Menu',
-            child: InkWell(
-              borderRadius: BorderRadius.circular(10),
-              onTap: onMenuPressed,
-              child: Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: borderColor, width: 1.2),
-                ),
-                child: Center(
-                  child: Icon(
-                    Icons.menu_rounded,
-                    size: 20,
-                    color: isDark ? Colors.white : const Color(0xFF1E293B),
-                  ),
-                ),
-              ),
-            ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final w = constraints.maxWidth;
+        final isNarrow = w < 540;
+        final isVeryNarrow = w < 420;
+
+        return Container(
+          height: isDesktop ? 80 : 60,
+          padding: EdgeInsets.symmetric(horizontal: isNarrow ? 8 : 12),
+          decoration: BoxDecoration(
+            color: headerBg,
+            border: Border(bottom: BorderSide(color: borderColor, width: 1)),
           ),
-          SizedBox(width: isDesktop ? 16 : 10),
-
-          // SirfBill Official Logo
-          Image.asset(
-            isDark ? 'assets/LOGO_DM.png' : 'assets/LOGO.png',
-            height: isDesktop ? 75 : 45,
-            width: isDesktop ? null : 110,
-            alignment: Alignment.centerLeft,
-            fit: BoxFit.contain,
-            cacheHeight: 225,
-          ),
-
-          if (isDesktop)
-            Expanded(
-              child: Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                  ),
-                  child: Wrap(
-                    spacing: 12,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      const Icon(
-                        Icons.keyboard,
-                        size: 16,
-                        color: Color(0xFF1E293B),
-                      ),
-                      _buildShortcutChip(
-                        context,
-                        'F1',
-                        'Customers (CRM)',
-                        onTap: () => onSelectTab(0),
-                      ),
-                      _buildShortcutChip(
-                        context,
-                        'F2',
-                        'Reports',
-                        onTap: () => onSelectTab(1),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            )
-          else
-            const Spacer(),
-
-          // Right side Date Pill, Buy Hardware, and Profile Pill (Crisp 100% scale)
-          Row(
-            mainAxisSize: MainAxisSize.min,
+          child: Row(
             children: [
-              // Date & Time Green Pill
-              InkWell(
-                onTap: () async {
-                  await showDatePicker(
-                    context: context,
-                    initialDate: currentTime,
-                    firstDate: DateTime(2000),
-                    lastDate: DateTime(2100),
-                    builder: (context, child) {
-                      return Theme(
-                        data: ThemeData.light().copyWith(
-                          colorScheme: const ColorScheme.light(
-                            primary: Color(0xFF166534),
-                            onPrimary: Colors.white,
-                            onSurface: Color(0xFF1E293B),
-                            surface: Colors.white,
-                          ),
-                          textButtonTheme: TextButtonThemeData(
-                            style: TextButton.styleFrom(
-                              foregroundColor: const Color(0xFF166534),
-                            ),
-                          ),
-                          dialogTheme: const DialogThemeData(
-                            backgroundColor: Colors.white,
-                          ),
-                        ),
-                        child: child!,
-                      );
-                    },
-                  );
-                },
-                borderRadius: BorderRadius.circular(10),
-                child: Container(
-                  height: 38,
-                  padding: EdgeInsets.symmetric(
-                    horizontal: isDesktop ? 12 : 8,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF1F8F5),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: const Color(0xFF22C55E).withValues(alpha: 0.35),
+              // 3-Bar Hamburger Menu Toggle Pill
+              Tooltip(
+                message: 'Toggle Navigation Menu',
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(10),
+                  onTap: onMenuPressed,
+                  child: Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: borderColor, width: 1.2),
+                    ),
+                    child: Center(
+                      child: Icon(
+                        Icons.menu_rounded,
+                        size: 20,
+                        color: isDark ? Colors.white : const Color(0xFF1E293B),
+                      ),
                     ),
                   ),
-                  alignment: Alignment.center,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (isDesktop) ...[
-                        const Icon(
-                          Icons.calendar_today,
-                          color: Color(0xFF166534),
-                          size: 15,
-                        ),
-                        const SizedBox(width: 8),
-                      ],
-                      Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
+                ),
+              ),
+              SizedBox(width: isDesktop ? 16 : (isNarrow ? 8 : 10)),
+
+              // SirfBill Official Logo
+              Image.asset(
+                isDark ? 'assets/LOGO_DM.png' : 'assets/LOGO.png',
+                height: isDesktop ? 65 : (isNarrow ? 32 : 40),
+                width: isDesktop ? null : (isNarrow ? 82 : 100),
+                alignment: Alignment.centerLeft,
+                fit: BoxFit.contain,
+                cacheHeight: 225,
+              ),
+
+              if (isDesktop)
+                Expanded(
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: Wrap(
+                        spacing: 12,
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
-                          Text(
-                            isDesktop
-                                ? _formatDate(currentTime)
-                                : DateFormat('d MMM yyyy').format(currentTime),
-                            style: TextStyle(
-                              color: const Color(0xFF166534),
-                              fontSize: isDesktop ? 12 : 10,
-                              fontWeight: FontWeight.bold,
-                              height: 1.1,
-                            ),
+                          const Icon(
+                            Icons.keyboard,
+                            size: 16,
+                            color: Color(0xFF1E293B),
                           ),
-                          Text(
-                            _formatTime(currentTime),
-                            style: TextStyle(
-                              color: const Color(0xFF1E293B),
-                              fontSize: isDesktop ? 11 : 9,
-                              height: 1.1,
-                            ),
+                          _buildShortcutChip(
+                            context,
+                            'F1',
+                            'Customers (CRM)',
+                            onTap: () => onSelectTab(0),
+                          ),
+                          _buildShortcutChip(
+                            context,
+                            'F2',
+                            'Reports',
+                            onTap: () => onSelectTab(1),
                           ),
                         ],
                       ),
-                    ],
+                    ),
                   ),
-                ),
-              ),
-              const SizedBox(width: 8),
+                )
+              else
+                const Spacer(),
+
+              // Right side Date Pill, Buy Hardware, and Profile Pill
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Date & Time Green Pill
+                  InkWell(
+                    onTap: () async {
+                      await showDatePicker(
+                        context: context,
+                        initialDate: currentTime,
+                        firstDate: DateTime(2000),
+                        lastDate: DateTime(2100),
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      height: 38,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isDesktop ? 12 : (isVeryNarrow ? 6 : 8),
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F8F5),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: const Color(0xFF22C55E).withValues(alpha: 0.35),
+                        ),
+                      ),
+                      alignment: Alignment.center,
+                      child: isVeryNarrow
+                          ? const Icon(
+                              Icons.calendar_today,
+                              color: Color(0xFF166534),
+                              size: 16,
+                            )
+                          : Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (isDesktop) ...[
+                                  const Icon(
+                                    Icons.calendar_today,
+                                    color: Color(0xFF166534),
+                                    size: 15,
+                                  ),
+                                  const SizedBox(width: 8),
+                                ],
+                                Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      isDesktop
+                                          ? _formatDate(currentTime)
+                                          : DateFormat('d MMM').format(currentTime),
+                                      style: TextStyle(
+                                        color: const Color(0xFF166534),
+                                        fontSize: isDesktop ? 12 : 10,
+                                        fontWeight: FontWeight.bold,
+                                        height: 1.1,
+                                      ),
+                                    ),
+                                    Text(
+                                      _formatTime(currentTime),
+                                      style: TextStyle(
+                                        color: const Color(0xFF1E293B),
+                                        fontSize: isDesktop ? 11 : 9,
+                                        height: 1.1,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                    ),
+                  ),
+                  SizedBox(width: isNarrow ? 4 : 8),
 
               // Buy Hardware Top Bar Pill
               Tooltip(
@@ -456,5 +447,7 @@ class CrmReportsHeader extends StatelessWidget {
         ],
       ),
     );
+  },
+);
   }
 }

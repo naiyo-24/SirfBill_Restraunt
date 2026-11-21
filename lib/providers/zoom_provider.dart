@@ -49,4 +49,12 @@ class ZoomNotifier extends Notifier<double> {
   void resetZoom() {
     setZoom(1.0);
   }
+
+  void fitWidth(double currentWidth, {double baseWidth = 1200}) {
+    if (currentWidth <= 0 || baseWidth <= 0) return;
+    final idealRatio = (currentWidth / baseWidth);
+    // If screen is wider than baseWidth, keep at 1.0, otherwise scale down to fit
+    final target = idealRatio >= 1.0 ? 1.0 : idealRatio;
+    setZoom(target);
+  }
 }

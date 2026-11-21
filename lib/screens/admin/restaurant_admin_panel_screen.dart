@@ -349,6 +349,36 @@ class _RestaurantAdminPanelScreenState extends ConsumerState<RestaurantAdminPane
         key: _scaffoldKey,
         backgroundColor: Colors.white,
         drawer: isDesktop ? null : Drawer(child: buildSidebar()),
+        bottomNavigationBar: !isDesktop
+            ? NavigationBar(
+                selectedIndex: _selectedIndex.clamp(0, 3),
+                onDestinationSelected: (idx) => setState(() => _selectedIndex = idx.clamp(0, 3)),
+                backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+                indicatorColor: const Color(0xFF6366F1).withValues(alpha: 0.15),
+                destinations: const [
+                  NavigationDestination(
+                    icon: Icon(Icons.dashboard_outlined),
+                    selectedIcon: Icon(Icons.dashboard_rounded, color: Color(0xFF6366F1)),
+                    label: 'Dashboard',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.storefront_outlined),
+                    selectedIcon: Icon(Icons.storefront_rounded, color: Color(0xFF6366F1)),
+                    label: 'Outlets',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.people_outline_rounded),
+                    selectedIcon: Icon(Icons.people_rounded, color: Color(0xFF6366F1)),
+                    label: 'Users',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.workspace_premium_outlined),
+                    selectedIcon: Icon(Icons.workspace_premium_rounded, color: Color(0xFF6366F1)),
+                    label: 'Plans',
+                  ),
+                ],
+              )
+            : null,
         body: SafeArea(
           child: Column(
             children: [

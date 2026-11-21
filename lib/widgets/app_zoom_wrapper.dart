@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/zoom_provider.dart';
+import 'app_screen_resizer.dart';
 
 class AppZoomWrapper extends ConsumerStatefulWidget {
   final Widget child;
@@ -91,7 +92,19 @@ class _AppZoomWrapperState extends ConsumerState<AppZoomWrapper> {
                 );
               }
 
-              return scaledContent;
+              return Stack(
+                fit: StackFit.expand,
+                children: [
+                  scaledContent,
+                  Positioned(
+                    bottom: 14,
+                    right: 14,
+                    child: SafeArea(
+                      child: AppScreenResizer(screenWidth: w),
+                    ),
+                  ),
+                ],
+              );
             },
           ),
         ),

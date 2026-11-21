@@ -151,6 +151,26 @@ class _RestaurantCrmReportsScreenState
         key: _scaffoldKey,
         backgroundColor: Colors.white,
         drawer: isDesktop ? null : Drawer(child: buildSidebar()),
+        bottomNavigationBar: !isDesktop
+            ? NavigationBar(
+                selectedIndex: _selectedIndex,
+                onDestinationSelected: (idx) => setState(() => _selectedIndex = idx),
+                backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+                indicatorColor: const Color(0xFF10B981).withValues(alpha: 0.15),
+                destinations: const [
+                  NavigationDestination(
+                    icon: Icon(Icons.people_outline_rounded),
+                    selectedIcon: Icon(Icons.people_rounded, color: Color(0xFF10B981)),
+                    label: 'Customers',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.analytics_outlined),
+                    selectedIcon: Icon(Icons.analytics_rounded, color: Color(0xFF10B981)),
+                    label: 'Reports',
+                  ),
+                ],
+              )
+            : null,
         body: SafeArea(
           child: Column(
             children: [
