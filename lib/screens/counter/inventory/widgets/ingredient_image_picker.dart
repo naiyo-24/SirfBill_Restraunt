@@ -181,15 +181,23 @@ class _IngredientImagePickerState extends State<IngredientImagePicker> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 6,
             children: [
-              const Icon(Icons.image_outlined, size: 16, color: Color(0xFF10B981)),
-              const SizedBox(width: 6),
-              const Text(
-                'Ingredient Image',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.image_outlined, size: 16, color: Color(0xFF10B981)),
+                  SizedBox(width: 6),
+                  Text(
+                    'Ingredient Image',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
+                ],
               ),
-              const Spacer(),
               // Segmented option switcher
               Container(
                 decoration: BoxDecoration(

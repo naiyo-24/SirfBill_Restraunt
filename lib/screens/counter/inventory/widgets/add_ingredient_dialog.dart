@@ -159,12 +159,15 @@ class _AddIngredientDialogState extends State<AddIngredientDialog> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    isEditing ? 'Edit Ingredient' : 'Add New Ingredient',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                  Expanded(
+                    child: Text(
+                      isEditing ? 'Edit Ingredient' : 'Add New Ingredient',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   Row(
@@ -243,35 +246,32 @@ class _AddIngredientDialogState extends State<AddIngredientDialog> {
                         onImageChanged: (url) => setState(() => _imageUrl = url),
                       ),
                       const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: IngredientCategoryDropdown(
-                              categories: _categories,
-                              selectedCategory: _selectedCategory,
-                              onChanged: (v) {
-                                if (v != null) {
-                                  setState(() {
-                                    _selectedCategory = v;
-                                    if (!_userEditedSku && _nameController.text.trim().isNotEmpty) {
-                                      _codeController.text = _generateSku(_nameController.text, v);
-                                    }
-                                  });
-                                }
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: IngredientSupplierDropdown(
-                              suppliers: _suppliers,
-                              selectedSupplier: _selectedSupplier,
-                              onChanged: (v) {
-                                if (v != null) setState(() => _selectedSupplier = v);
-                              },
-                            ),
-                          ),
-                        ],
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          final isSmall = constraints.maxWidth < 450;
+                          final catDropdown = IngredientCategoryDropdown(
+                            categories: _categories,
+                            selectedCategory: _selectedCategory,
+                            onChanged: (v) {
+                              if (v != null) {
+                                setState(() {
+                                  _selectedCategory = v;
+                                  if (!_userEditedSku && _nameController.text.trim().isNotEmpty) {
+                                    _codeController.text = _generateSku(_nameController.text, v);
+                                  }
+                                });
+                              }
+                            },
+                          );
+                          final suppDropdown = IngredientSupplierDropdown(
+                            suppliers: _suppliers,
+                            selectedSupplier: _selectedSupplier,
+                            onChanged: (v) => setState(() => _selectedSupplier = v!),
+                          );
+                          return isSmall
+                              ? Column(children: [catDropdown, const SizedBox(height: 12), suppDropdown])
+                              : Row(children: [Expanded(child: catDropdown), const SizedBox(width: 12), Expanded(child: suppDropdown)]);
+                        },
                       ),
                       const SizedBox(height: 12),
 

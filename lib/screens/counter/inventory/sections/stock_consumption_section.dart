@@ -145,30 +145,34 @@ class _StockConsumptionSectionState extends State<StockConsumptionSection> {
 
   Widget _buildMetricSummaryBanner(bool isDark) {
     return Container(
-      margin: const EdgeInsets.fromLTRB(24, 0, 24, 12),
-      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E293B) : Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildSummaryCell('Consumed Stock', '₹${_safeData.totalConsumptionInr.toStringAsFixed(2)}', const Color(0xFF10B981), isDark),
-          _buildDivider(isDark),
-          _buildSummaryCell('Returned to Shelf', '₹${_safeData.totalReversalsInr.toStringAsFixed(2)}', const Color(0xFF3B82F6), isDark),
-          _buildDivider(isDark),
-          _buildSummaryCell('Prep Wastage', '₹${_safeData.totalWastageInr.toStringAsFixed(2)}', const Color(0xFFEF4444), isDark),
-          _buildDivider(isDark),
-          _buildSummaryCell('Ledger Mutations', '${_safeData.totalRecords} deductions', isDark ? Colors.white : const Color(0xFF0F172A), isDark),
-        ],
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _buildSummaryCell('Consumed Stock', '₹${_safeData.totalConsumptionInr.toStringAsFixed(2)}', const Color(0xFF10B981), isDark),
+            _buildDivider(isDark),
+            _buildSummaryCell('Returned to Shelf', '₹${_safeData.totalReversalsInr.toStringAsFixed(2)}', const Color(0xFF3B82F6), isDark),
+            _buildDivider(isDark),
+            _buildSummaryCell('Prep Wastage', '₹${_safeData.totalWastageInr.toStringAsFixed(2)}', const Color(0xFFEF4444), isDark),
+            _buildDivider(isDark),
+            _buildSummaryCell('Ledger Mutations', '${_safeData.totalRecords} deductions', isDark ? Colors.white : const Color(0xFF0F172A), isDark),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildDivider(bool isDark) {
-    return Container(height: 32, width: 1, color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0));
+    return Container(height: 32, width: 1, margin: const EdgeInsets.symmetric(horizontal: 12), color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0));
   }
 
   Widget _buildSummaryCell(String label, String value, Color color, bool isDark) {
@@ -183,33 +187,52 @@ class _StockConsumptionSectionState extends State<StockConsumptionSection> {
 
   Widget _buildFilterAndToggleBar(bool isDark) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF0F172A) : Colors.white,
         border: Border(bottom: BorderSide(color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0))),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              _buildFilterChip('All Events', null),
-              const SizedBox(width: 6),
-              _buildFilterChip('KOT Consumptions', 'ORDER_CONSUMPTION'),
-              const SizedBox(width: 6),
-              _buildFilterChip('Voids (Restocked)', 'REVERSAL'),
-              const SizedBox(width: 6),
-              _buildFilterChip('Wastage', 'WASTAGE'),
-            ],
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildFilterChip('All Events', null),
+                  const SizedBox(width: 6),
+                  _buildFilterChip('KOT Consumptions', 'ORDER_CONSUMPTION'),
+                  const SizedBox(width: 6),
+                  _buildFilterChip('Voids', 'REVERSAL'),
+                  const SizedBox(width: 6),
+                  _buildFilterChip('Wastage', 'WASTAGE'),
+                ],
+              ),
+            ),
           ),
+          const SizedBox(width: 10),
           Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Detailed Audit View', style: TextStyle(fontSize: 11.5, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B))),
-              const SizedBox(width: 6),
-              Switch(
-                value: _isDetailedLedgerView,
-                activeThumbColor: const Color(0xFF10B981),
-                onChanged: (v) => setState(() => _isDetailedLedgerView = v),
+              Text(
+                'Audit View',
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                ),
+              ),
+              const SizedBox(width: 4),
+              Transform.scale(
+                scale: 0.8,
+                child: Switch(
+                  value: _isDetailedLedgerView,
+                  activeThumbColor: const Color(0xFF10B981),
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  onChanged: (v) => setState(() => _isDetailedLedgerView = v),
+                ),
               ),
             ],
           ),
@@ -221,6 +244,8 @@ class _StockConsumptionSectionState extends State<StockConsumptionSection> {
   Widget _buildFilterChip(String label, String? reason) {
     final isSelected = _reasonFilter == reason;
     return ChoiceChip(
+      visualDensity: VisualDensity.compact,
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       label: Text(label, style: TextStyle(fontSize: 11, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
       selected: isSelected,
       onSelected: (_) {
@@ -233,18 +258,36 @@ class _StockConsumptionSectionState extends State<StockConsumptionSection> {
 
   Widget _buildEmptyState(bool isDark) {
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.soup_kitchen_outlined, size: 52, color: Colors.grey.shade400),
-          const SizedBox(height: 12),
-          const Text('No recipe consumptions recorded yet', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-          const SizedBox(height: 4),
-          Text(
-            'When orders are fired in POS or KDS, raw ingredient deductions will stream here in real time.',
-            style: TextStyle(fontSize: 12, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
-          ),
-        ],
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.soup_kitchen_outlined, size: 48, color: Color(0xFF10B981)),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'No recipe consumptions recorded yet',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: Text(
+                'When orders are fired in POS or KDS, raw ingredient deductions will stream here in real time.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12.5, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B), height: 1.4),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

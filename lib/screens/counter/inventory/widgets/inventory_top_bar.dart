@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../services/shop_service.dart';
+import '../../../home/widgets/hardware_store_dialog.dart';
 import '../models/inventory_models.dart';
 import 'inventory_notification_bell.dart';
 import 'inventory_top_bar_components.dart';
@@ -151,17 +152,19 @@ class InventoryTopBar extends StatelessWidget {
           ),
 
           // Logo / Branding
-          Image.asset(
-            isDark ? 'assets/LOGO_DM.png' : 'assets/LOGO.png',
-            height: isDesktop ? 46 : 36,
-            fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) => const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.inventory_2_rounded, color: Color(0xFF10B981), size: 24),
-                SizedBox(width: 6),
-                Text('SirfBill', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-              ],
+          Flexible(
+            child: Image.asset(
+              isDark ? 'assets/LOGO_DM.png' : 'assets/LOGO.png',
+              height: isDesktop ? 46 : 30,
+              fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.inventory_2_rounded, color: Color(0xFF10B981), size: 24),
+                  SizedBox(width: 6),
+                  Text('SirfBill', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                ],
+              ),
             ),
           ),
 
@@ -292,10 +295,60 @@ class InventoryTopBar extends StatelessWidget {
                   onTap: onOpenNotifications!,
                   isDark: isDark,
                 ),
-                const SizedBox(width: 10),
+                SizedBox(width: isDesktop ? 8 : 6),
               ],
-              InventoryDateCalendarPill(currentTime: currentTime),
-              const SizedBox(width: 10),
+              InventoryDateCalendarPill(
+                currentTime: currentTime,
+                isDesktop: isDesktop,
+              ),
+              SizedBox(width: isDesktop ? 8 : 6),
+              // Buy Hardware Pill
+              Tooltip(
+                message: 'Buy Certified POS Thermal Printers, Cash Drawers & KOT Displays',
+                child: InkWell(
+                  onTap: () => HardwareStoreDialog.show(context),
+                  borderRadius: BorderRadius.circular(10),
+                  child: Container(
+                    height: 38,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isDesktop ? 12 : 8,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: const Color(0xFF10B981),
+                        width: 1.2,
+                      ),
+                    ),
+                    alignment: Alignment.center,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.storefront_rounded,
+                          color: Color(0xFF059669),
+                          size: 17,
+                        ),
+                        if (isDesktop) ...[
+                          const SizedBox(width: 6),
+                          const Text(
+                            'Buy Hardware',
+                            style: TextStyle(
+                              color: Color(0xFF065F46),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(width: isDesktop ? 8 : 6),
               InventoryProfilePill(
                 userName: userName,
                 userRole: userRole,

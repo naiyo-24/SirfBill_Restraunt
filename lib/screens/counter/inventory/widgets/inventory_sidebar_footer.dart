@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../providers/theme_provider.dart';
 import '../../../../providers/zoom_provider.dart';
+import '../../../home/widgets/hardware_store_dialog.dart';
 import '../../widgets/about/about_us_dialog.dart';
 
 class InventorySidebarFooter extends ConsumerWidget {
@@ -49,6 +50,15 @@ class InventorySidebarFooter extends ConsumerWidget {
           icon: const Icon(Icons.logout_rounded, size: 20, color: Colors.red),
           label: 'Logout',
           labelColor: Colors.red,
+        ),
+
+        // Buy Hardware
+        _buildFooterItem(
+          tooltip: 'Buy Hardware Products',
+          onTap: () => HardwareStoreDialog.show(context),
+          icon: const Icon(Icons.storefront_rounded, color: Color(0xFF10B981), size: 20),
+          label: 'Buy Hardware',
+          labelColor: textColor,
         ),
 
         // About SirfBill

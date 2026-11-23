@@ -339,21 +339,24 @@ class _FoodCostReconciliationCardState extends State<FoodCostReconciliationCard>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  runSpacing: 4,
                   children: [
                     Text(
-                      'Actual Food Cost: ${cogsPct.toStringAsFixed(1)}% of Gross Sales (Target Benchmark: ${benchmark.toStringAsFixed(1)}%)',
+                      'Actual Food Cost: ${cogsPct.toStringAsFixed(1)}% (Target: ${benchmark.toStringAsFixed(1)}%)',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 11.5,
                         fontWeight: FontWeight.w600,
                         color: isDark ? Colors.white : const Color(0xFF0F172A),
                       ),
                     ),
                     Text(
-                      isWithinBudget ? 'HEALTHY MARGIN' : 'OVER BUDGET',
+                      isWithinBudget ? 'HEALTHY' : 'OVER BUDGET',
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: 10.5,
                         fontWeight: FontWeight.w800,
                         color: isWithinBudget ? const Color(0xFF10B981) : const Color(0xFFEF4444),
                       ),
@@ -381,19 +384,19 @@ class _FoodCostReconciliationCardState extends State<FoodCostReconciliationCard>
   }
 
   Widget _buildBreakdownHeader(BuildContext context, bool isDark) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isSmall = constraints.maxWidth < 520;
+        final title = Text(
           'Commodity Food Cost & Variance Breakdown',
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w700,
             color: isDark ? Colors.white : const Color(0xFF0F172A),
           ),
-        ),
-        SizedBox(
-          width: 220,
+        );
+        final searchField = SizedBox(
+          width: isSmall ? double.infinity : 220,
           height: 34,
           child: TextField(
             onChanged: (val) => setState(() => _searchQuery = val),
@@ -415,8 +418,23 @@ class _FoodCostReconciliationCardState extends State<FoodCostReconciliationCard>
               ),
             ),
           ),
-        ),
-      ],
+        );
+
+        if (isSmall) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              title,
+              const SizedBox(height: 8),
+              searchField,
+            ],
+          );
+        }
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [title, searchField],
+        );
+      },
     );
   }
 }

@@ -61,7 +61,7 @@ class _CreateRecipeDialogState extends State<CreateRecipeDialog> {
     _variantController.dispose();
     for (final l in _lines) {
       l.qtyController.dispose();
-    }
+    } 
     super.dispose();
   }
 
@@ -115,18 +115,18 @@ class _CreateRecipeDialogState extends State<CreateRecipeDialog> {
         final fromUnit = line.unit.trim().toUpperCase();
         final targetUom = (ing.recipeUom.isNotEmpty ? ing.recipeUom : 'G').trim().toUpperCase();
         double normQty = qty;
-        if (fromUnit != targetUom) {
-          if ((fromUnit == 'KG' && targetUom == 'G') || (fromUnit == 'LTR' && targetUom == 'ML')) {
-            normQty = qty * 1000.0;
-          } else if ((fromUnit == 'G' && targetUom == 'KG') || (fromUnit == 'ML' && targetUom == 'LTR')) {
-            normQty = qty / 1000.0;
-          } else if (fromUnit == 'DOZEN' && targetUom == 'PCS') {
-            normQty = qty * 12.0;
-          } else if (fromUnit == 'PCS' && targetUom == 'DOZEN') {
-            normQty = qty / 12.0;
-          }
+        if (fromUnit == 'KG' && (targetUom == 'G' || targetUom == 'GRAM' || targetUom == 'GRAMS')) {
+          normQty = qty * 1000.0;
+        } else if ((fromUnit == 'G' || fromUnit == 'GRAM') && targetUom == 'KG') {
+          normQty = qty / 1000.0;
+        } else if (fromUnit == 'LTR' && (targetUom == 'ML' || targetUom == 'MILLILITER')) {
+          normQty = qty * 1000.0;
+        } else if (fromUnit == 'ML' && targetUom == 'LTR') {
+          normQty = qty / 1000.0;
         }
-        total += normQty * ing.costPerRecipeUnit;
+        final convFactor = ing.uomConversionFactor > 0 ? ing.uomConversionFactor : 1.0;
+        final unitCost = (ing.costPerPurchaseUnit > 0 ? (ing.costPerPurchaseUnit / convFactor) : 0.0);
+        total += (normQty * unitCost);
       }
     }
     return total;
@@ -176,7 +176,10 @@ class _CreateRecipeDialogState extends State<CreateRecipeDialog> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to save recipe: $e'), backgroundColor: const Color(0xFFEF4444)));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Failed to save recipe: $e'),
+          backgroundColor: Colors.red,
+        ));
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -186,14 +189,16 @@ class _CreateRecipeDialogState extends State<CreateRecipeDialog> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isCompact = MediaQuery.of(context).size.width < 600;
 
     return Dialog(
+      insetPadding: EdgeInsets.symmetric(horizontal: isCompact ? 12 : 32, vertical: 20),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       backgroundColor: isDark ? const Color(0xFF0F172A) : Colors.white,
       child: Container(
         width: 820,
         constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.90),
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(isCompact ? 14 : 24),
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : Form(
@@ -222,31 +227,32 @@ class _CreateRecipeDialogState extends State<CreateRecipeDialog> {
   Widget _buildHeader(BuildContext context, bool isDark) {
     final isEdit = widget.existingRecipe != null;
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(color: const Color(0xFF10B981).withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
-              child: const Icon(Icons.menu_book_rounded, color: Color(0xFF10B981), size: 24),
-            ),
-            const SizedBox(width: 14),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  isEdit ? 'Edit Recipe Bill of Materials (BOM)' : 'Create Recipe Bill of Materials (BOM)',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: isDark ? Colors.white : const Color(0xFF0F172A)),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'Map menu dishes to raw commodities with automatic Dual-UOM normalization (KG/G/ML/LTR)',
-                  style: TextStyle(fontSize: 12, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
-                ),
-              ],
-            ),
-          ],
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(color: const Color(0xFF10B981).withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
+          child: const Icon(Icons.menu_book_rounded, color: Color(0xFF10B981), size: 24),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                isEdit ? 'Edit Recipe BOM' : 'Create Recipe BOM',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: isDark ? Colors.white : const Color(0xFF0F172A)),
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'Map menu dishes to raw commodities with automatic Dual-UOM normalization',
+                style: TextStyle(fontSize: 11.5, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
         ),
         IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close, size: 20)),
       ],
@@ -261,57 +267,72 @@ class _CreateRecipeDialogState extends State<CreateRecipeDialog> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
       ),
-      child: Column(
-        children: [
-          Row(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isSmall = constraints.maxWidth < 480;
+          final dishDropdown = DropdownButtonFormField<PosMenuItem>(
+            initialValue: _selectedMenuItem,
+            decoration: const InputDecoration(labelText: 'Menu Item / Dish *', border: OutlineInputBorder(), isDense: true),
+            items: _menuItems.map((m) => DropdownMenuItem(value: m, child: Text('${m.name} (₹${m.price.toStringAsFixed(0)})', overflow: TextOverflow.ellipsis))).toList(),
+            onChanged: (val) => setState(() => _selectedMenuItem = val),
+            validator: (v) => v == null ? 'Select dish' : null,
+          );
+          final variantField = TextFormField(
+            controller: _variantController,
+            decoration: const InputDecoration(labelText: 'Variant', hintText: 'Standard / Half / Full', border: OutlineInputBorder(), isDense: true),
+          );
+          final yieldField = TextFormField(
+            controller: _yieldController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(labelText: 'Yield (Servings) *', border: OutlineInputBorder(), isDense: true),
+            validator: (v) => (double.tryParse(v ?? '') ?? 0) <= 0 ? 'Enter > 0' : null,
+            onChanged: (_) => setState(() {}),
+          );
+
+          return Column(
             children: [
-              Expanded(
-                flex: 4,
-                child: DropdownButtonFormField<PosMenuItem>(
-                  initialValue: _selectedMenuItem,
-                  decoration: const InputDecoration(labelText: 'Menu Item / Dish *', border: OutlineInputBorder(), isDense: true),
-                  items: _menuItems.map((m) => DropdownMenuItem(value: m, child: Text('${m.name} (₹${m.price.toStringAsFixed(0)})'))).toList(),
-                  onChanged: (val) => setState(() => _selectedMenuItem = val),
-                  validator: (v) => v == null ? 'Select dish' : null,
+              if (isSmall) ...[
+                dishDropdown,
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(child: variantField),
+                    const SizedBox(width: 10),
+                    Expanded(child: yieldField),
+                  ],
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                flex: 2,
-                child: TextFormField(
-                  controller: _variantController,
-                  decoration: const InputDecoration(labelText: 'Variant', hintText: 'Standard / Half / Full', border: OutlineInputBorder(), isDense: true),
+              ] else ...[
+                Row(
+                  children: [
+                    Expanded(flex: 4, child: dishDropdown),
+                    const SizedBox(width: 12),
+                    Expanded(flex: 2, child: variantField),
+                    const SizedBox(width: 12),
+                    Expanded(flex: 2, child: yieldField),
+                  ],
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                flex: 2,
-                child: TextFormField(
-                  controller: _yieldController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(labelText: 'Yield (Servings) *', border: OutlineInputBorder(), isDense: true),
-                  validator: (v) => (double.tryParse(v ?? '') ?? 0) <= 0 ? 'Enter > 0' : null,
-                  onChanged: (_) => setState(() {}),
-                ),
+              ],
+              const SizedBox(height: 10),
+              TextFormField(
+                controller: _instructionsController,
+                maxLines: 2,
+                decoration: const InputDecoration(labelText: 'Culinary Preparation & Plating Notes (Optional)', border: OutlineInputBorder(), isDense: true),
               ),
             ],
-          ),
-          const SizedBox(height: 10),
-          TextFormField(
-            controller: _instructionsController,
-            maxLines: 2,
-            decoration: const InputDecoration(labelText: 'Culinary Preparation & Plating Notes (Optional)', border: OutlineInputBorder(), isDense: true),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
 
   Widget _buildLinesHeader() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Wrap(
+      alignment: WrapAlignment.spaceBetween,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 8,
+      runSpacing: 6,
       children: [
-        const Text('RAW INGREDIENT REQUIREMENTS (DUAL-UOM NORMALIZED)', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+        const Text('RAW INGREDIENT REQUIREMENTS (DUAL-UOM)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
         ElevatedButton.icon(
           onPressed: () {
             setState(() {
@@ -322,8 +343,12 @@ class _CreateRecipeDialogState extends State<CreateRecipeDialog> {
             });
           },
           icon: const Icon(Icons.add, size: 14),
-          label: const Text('Add Ingredient Line', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+          label: const Text('Add Ingredient', style: TextStyle(fontSize: 11.5)),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF10B981),
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          ),
         ),
       ],
     );
@@ -331,61 +356,87 @@ class _CreateRecipeDialogState extends State<CreateRecipeDialog> {
 
   Widget _buildLinesList(bool isDark) {
     final units = ['G', 'KG', 'ML', 'LTR', 'PCS', 'DOZEN', 'PORTION', 'TSP', 'TBSP'];
-    return ListView.builder(
-      itemCount: _lines.length,
-      itemBuilder: (context, index) {
-        final line = _lines[index];
-        return Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1E293B) : Colors.white,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                flex: 4,
-                child: DropdownButtonFormField<Ingredient>(
-                  initialValue: line.ingredient,
-                  decoration: const InputDecoration(labelText: 'Ingredient', isDense: true, border: OutlineInputBorder()),
-                  items: _ingredients.map((i) => DropdownMenuItem(value: i, child: Text('${i.name} (₹${i.costPerPurchaseUnit.toStringAsFixed(1)}/${i.purchaseUom})'))).toList(),
-                  onChanged: (val) {
-                    setState(() {
-                      line.ingredient = val;
-                      if (val != null && val.recipeUom.isNotEmpty) line.unit = val.recipeUom;
-                    });
-                  },
-                ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isSmall = constraints.maxWidth < 500;
+        return ListView.builder(
+          itemCount: _lines.length,
+          itemBuilder: (context, index) {
+            final line = _lines[index];
+            final ingDropdown = DropdownButtonFormField<Ingredient>(
+              initialValue: line.ingredient,
+              isExpanded: true,
+              decoration: const InputDecoration(labelText: 'Ingredient', isDense: true, border: OutlineInputBorder()),
+              items: _ingredients.map((i) => DropdownMenuItem(value: i, child: Text('${i.name} (₹${i.costPerPurchaseUnit.toStringAsFixed(1)}/${i.purchaseUom})', overflow: TextOverflow.ellipsis))).toList(),
+              onChanged: (val) {
+                setState(() {
+                  line.ingredient = val;
+                  if (val != null && val.recipeUom.isNotEmpty) line.unit = val.recipeUom;
+                });
+              },
+            );
+
+            final qtyField = TextFormField(
+              controller: line.qtyController,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(labelText: 'Quantity', isDense: true, border: OutlineInputBorder()),
+              onChanged: (_) => setState(() {}),
+            );
+
+            final uomDropdown = DropdownButtonFormField<String>(
+              initialValue: units.contains(line.unit) ? line.unit : 'G',
+              isExpanded: true,
+              decoration: const InputDecoration(labelText: 'UOM Unit', isDense: true, border: OutlineInputBorder()),
+              items: units.map((u) => DropdownMenuItem(value: u, child: Text(u))).toList(),
+              onChanged: (val) => setState(() => line.unit = val ?? 'G'),
+            );
+
+            final deleteBtn = IconButton(
+              icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444), size: 20),
+              onPressed: _lines.length <= 1 ? null : () => setState(() => _lines.removeAt(index)),
+            );
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                flex: 2,
-                child: TextFormField(
-                  controller: line.qtyController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(labelText: 'Quantity', isDense: true, border: OutlineInputBorder()),
-                  onChanged: (_) => setState(() {}),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                flex: 2,
-                child: DropdownButtonFormField<String>(
-                  initialValue: units.contains(line.unit) ? line.unit : 'G',
-                  decoration: const InputDecoration(labelText: 'UOM Unit', isDense: true, border: OutlineInputBorder()),
-                  items: units.map((u) => DropdownMenuItem(value: u, child: Text(u))).toList(),
-                  onChanged: (val) => setState(() => line.unit = val ?? 'G'),
-                ),
-              ),
-              const SizedBox(width: 8),
-              IconButton(
-                icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444), size: 20),
-                onPressed: _lines.length <= 1 ? null : () => setState(() => _lines.removeAt(index)),
-              ),
-            ],
-          ),
+              child: isSmall
+                  ? Column(
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(child: ingDropdown),
+                            const SizedBox(width: 4),
+                            deleteBtn,
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(child: qtyField),
+                            const SizedBox(width: 8),
+                            Expanded(child: uomDropdown),
+                          ],
+                        ),
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        Expanded(flex: 4, child: ingDropdown),
+                        const SizedBox(width: 10),
+                        Expanded(flex: 2, child: qtyField),
+                        const SizedBox(width: 10),
+                        Expanded(flex: 2, child: uomDropdown),
+                        const SizedBox(width: 8),
+                        deleteBtn,
+                      ],
+                    ),
+            );
+          },
         );
       },
     );
@@ -399,19 +450,21 @@ class _CreateRecipeDialogState extends State<CreateRecipeDialog> {
     final foodCostPct = sellingPrice > 0 ? ((portionCost / sellingPrice) * 100) : 0.0;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
         color: const Color(0xFF10B981).withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        spacing: 12,
+        runSpacing: 4,
         children: [
-          Text('Est. Batch Cost: ₹${batchCost.toStringAsFixed(2)}  •  Portion Cost: ₹${portionCost.toStringAsFixed(2)}',
-              style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF047857))),
-          Text('Projected Food Cost: ${foodCostPct.toStringAsFixed(1)}% (Selling Price: ₹${sellingPrice.toStringAsFixed(0)})',
-              style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: foodCostPct > 35 ? const Color(0xFFEF4444) : (foodCostPct > 30 ? const Color(0xFFF59E0B) : const Color(0xFF047857)))),
+          Text('Batch: ₹${batchCost.toStringAsFixed(2)} • Portion: ₹${portionCost.toStringAsFixed(2)}',
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF047857))),
+          Text('Food Cost: ${foodCostPct.toStringAsFixed(1)}% (Selling Price: ₹${sellingPrice.toStringAsFixed(0)})',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: foodCostPct > 35 ? const Color(0xFFEF4444) : (foodCostPct > 30 ? const Color(0xFFF59E0B) : const Color(0xFF047857)))),
         ],
       ),
     );

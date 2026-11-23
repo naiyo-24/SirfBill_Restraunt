@@ -353,24 +353,26 @@ class _PhysicalCountAuditDialogState extends State<PhysicalCountAuditDialog> {
             const SizedBox(height: 16),
 
             // Actions Bottom Bar
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
+            Wrap(
+              alignment: WrapAlignment.end,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 12,
+              runSpacing: 8,
               children: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
                   child: const Text('Cancel'),
                 ),
-                const SizedBox(width: 12),
                 ElevatedButton.icon(
                   onPressed: _isSubmitting ? null : _submitAuditBatch,
                   icon: _isSubmitting
-                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : const Icon(Icons.send_rounded, size: 16),
-                  label: Text(_isSubmitting ? 'Posting Ledger...' : 'Submit Audit Batch ($enteredCount items)'),
+                      ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Icon(Icons.send_rounded, size: 15),
+                  label: Text(_isSubmitting ? 'Posting...' : 'Submit Batch ($enteredCount items)'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF10B981),
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
                 ),

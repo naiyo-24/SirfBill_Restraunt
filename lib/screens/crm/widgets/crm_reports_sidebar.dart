@@ -7,6 +7,7 @@ import '../../../../providers/zoom_provider.dart';
 import '../../../../services/windows_auto_updater.dart';
 import '../../counter/widgets/about/about_us_dialog.dart';
 import '../../counter/widgets/dashboard/sidebar_nav_item.dart';
+import '../../home/widgets/hardware_store_dialog.dart';
 
 class CrmReportsSidebar extends StatelessWidget {
   final bool isDesktop;
@@ -129,6 +130,17 @@ class CrmReportsSidebar extends StatelessWidget {
                         endIndent: 16,
                       ),
                       const SizedBox(height: 6),
+
+                      // Buy Hardware
+                      SidebarNavItem(
+                        icon: Icons.storefront_rounded,
+                        label: 'Buy Hardware',
+                        isExpanded: expanded,
+                        isDesktop: isDesktop,
+                        customTextColor: const Color(0xFF10B981),
+                        customIconColor: const Color(0xFF10B981),
+                        onTap: () => HardwareStoreDialog.show(context),
+                      ),
 
                       // Dark Mode & Logout
                       SidebarNavItem(

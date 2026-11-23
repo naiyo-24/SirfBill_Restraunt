@@ -87,28 +87,66 @@ class BillingService {
     try {
       final shopId = await InventoryService.getShopId();
 
+      // In restaurant backend, live and settled orders are served at /api/restaurant/orders
       final response = await ApiClient().dio.get(
-        '/api/admin/pos/history',
+        '/api/restaurant/orders',
         queryParameters: {
-          'shop_id': shopId,
-          'tenant_id': shopId,
+          if (shopId.isNotEmpty) 'outlet_id': shopId,
           'limit': 1000,
         },
       );
 
-      if (response.statusCode == 200) {
-        return response.data;
-      } else {
-        throw Exception('Failed to fetch POS history: ${response.data}');
-      }
-    } catch (e) {
-      if (e.toString().contains('No shops found')) {
+      if (response.statusCode == 200 && response.data != null) {
+        final List list = response.data is List
+            ? response.data
+            : (response.data['orders'] ?? response.data['items'] ?? []);
+
+        final mappedHistory = list.map((o) {
+          final billNo = (o['order_number'] ?? o['order_no'] ?? o['bill_no'] ?? o['id'] ?? '').toString();
+          final total = (o['total_amount'] as num?)?.toDouble() ??
+              (o['grand_total'] as num?)?.toDouble() ??
+              (o['total'] as num?)?.toDouble() ??
+              0.0;
+          final items = o['items'] ?? o['order_items'] ?? o['lines'] ?? [];
+
+          return <String, dynamic>{
+            'id': o['id']?.toString() ?? billNo,
+            'bill_no': billNo,
+            'order_number': billNo,
+            'invoice_no': billNo,
+            'amount': total,
+            'total': total,
+            'grand_total': total,
+            'subtotal': (o['subtotal'] as num?)?.toDouble() ?? total,
+            'discount': (o['discount'] as num?)?.toDouble() ?? 0.0,
+            'tax': (o['tax'] as num?)?.toDouble() ?? (o['gst'] as num?)?.toDouble() ?? 0.0,
+            'date': o['created_at'] ?? o['date'] ?? DateTime.now().toIso8601String(),
+            'created_at': o['created_at'] ?? o['date'] ?? DateTime.now().toIso8601String(),
+            'payment_mode': (o['payment_method'] ?? o['payment_mode'] ?? 'CASH').toString().toUpperCase(),
+            'payment_method': (o['payment_method'] ?? o['payment_mode'] ?? 'CASH').toString().toUpperCase(),
+            'customer_name': o['customer_name'] ?? 'Walk-in Guest',
+            'customer_phone': o['customer_phone'] ?? '',
+            'items': items,
+            'items_detail': items,
+            'status': o['status'] ?? 'COMPLETED',
+          };
+        }).toList();
+
         return <String, dynamic>{
-          'history': <dynamic>[],
-          'summary': <String, dynamic>{},
+          'history': mappedHistory,
+          'summary': response.data is Map ? (response.data['summary'] ?? <String, dynamic>{}) : <String, dynamic>{},
         };
       }
-      throw Exception('Error fetching POS history: $e');
+
+      return <String, dynamic>{
+        'history': <dynamic>[],
+        'summary': <String, dynamic>{},
+      };
+    } catch (_) {
+      return <String, dynamic>{
+        'history': <dynamic>[],
+        'summary': <String, dynamic>{},
+      };
     }
   }
 }

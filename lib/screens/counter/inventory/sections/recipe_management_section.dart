@@ -119,7 +119,7 @@ class _RecipeManagementSectionState extends State<RecipeManagementSection> {
               : (filtered.isEmpty
                   ? _buildEmptyState(isDark)
                   : ListView.builder(
-                      padding: const EdgeInsets.all(24),
+                      padding: EdgeInsets.all(MediaQuery.of(context).size.width < 600 ? 12 : 24),
                       itemCount: filtered.length,
                       itemBuilder: (context, index) {
                         return _buildRecipeCard(context, filtered[index], isDark);
@@ -132,23 +132,26 @@ class _RecipeManagementSectionState extends State<RecipeManagementSection> {
 
   Widget _buildFilterBar(bool isDark) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF0F172A) : Colors.white,
         border: Border(bottom: BorderSide(color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0))),
       ),
-      child: Row(
-        children: [
-          const Text('Food Cost Filter: ', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
-          const SizedBox(width: 8),
-          _buildFilterChip('All (${_recipes.length})', null),
-          const SizedBox(width: 6),
-          _buildFilterChip('Ideal ≤30%', RecipeCostStatus.ideal),
-          const SizedBox(width: 6),
-          _buildFilterChip('Warning 30-35%', RecipeCostStatus.warning),
-          const SizedBox(width: 6),
-          _buildFilterChip('Critical >35%', RecipeCostStatus.criticalSpike),
-        ],
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        child: Row(
+          children: [
+            _buildFilterChip('All (${_recipes.length})', null),
+            const SizedBox(width: 6),
+            _buildFilterChip('Ideal ≤30%', RecipeCostStatus.ideal),
+            const SizedBox(width: 6),
+            _buildFilterChip('Warning 30-35%', RecipeCostStatus.warning),
+            const SizedBox(width: 6),
+            _buildFilterChip('Critical >35%', RecipeCostStatus.criticalSpike),
+          ],
+        ),
       ),
     );
   }
@@ -156,6 +159,8 @@ class _RecipeManagementSectionState extends State<RecipeManagementSection> {
   Widget _buildFilterChip(String label, RecipeCostStatus? status) {
     final isSelected = _statusFilter == status;
     return ChoiceChip(
+      visualDensity: VisualDensity.compact,
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       label: Text(label, style: TextStyle(fontSize: 11, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
       selected: isSelected,
       onSelected: (_) => setState(() => _statusFilter = status),
@@ -165,25 +170,48 @@ class _RecipeManagementSectionState extends State<RecipeManagementSection> {
 
   Widget _buildEmptyState(bool isDark) {
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.restaurant_menu_rounded, size: 52, color: Colors.grey.shade400),
-          const SizedBox(height: 12),
-          const Text('No recipes configured yet', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-          const SizedBox(height: 4),
-          Text(
-            'Create Bill of Materials (BOM) linking menu dishes to raw ingredients with automated Dual-UOM normalization.',
-            style: TextStyle(fontSize: 12, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton.icon(
-            onPressed: () => CreateRecipeDialog.show(context, onSaved: _loadRecipes),
-            icon: const Icon(Icons.add, size: 16),
-            label: const Text('Create First Recipe BOM'),
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981), foregroundColor: Colors.white),
-          ),
-        ],
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.restaurant_menu_rounded, size: 48, color: Color(0xFF10B981)),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'No recipes configured yet',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: Text(
+                'Create Bill of Materials (BOM) linking menu dishes to raw ingredients with automated Dual-UOM normalization.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12.5, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B), height: 1.4),
+              ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: () => CreateRecipeDialog.show(context, onSaved: _loadRecipes),
+              icon: const Icon(Icons.add, size: 16),
+              label: const Text('Create First Recipe BOM'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF10B981),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -211,9 +239,12 @@ class _RecipeManagementSectionState extends State<RecipeManagementSection> {
         ),
         title: Row(
           children: [
-            Text(
-              recipe.itemName,
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: isDark ? Colors.white : const Color(0xFF0F172A)),
+            Flexible(
+              child: Text(
+                recipe.itemName,
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: isDark ? Colors.white : const Color(0xFF0F172A)),
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
             const SizedBox(width: 8),
             Container(
@@ -253,16 +284,20 @@ class _RecipeManagementSectionState extends State<RecipeManagementSection> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  alignment: WrapAlignment.spaceBetween,
                   children: [
                     const Text('BILL OF MATERIALS (BOM) INGREDIENTS', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
                     Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         OutlinedButton.icon(
                           onPressed: () => RecipeCostingDialog.show(context, recipe: recipe),
                           icon: const Icon(Icons.analytics_outlined, size: 14),
-                          label: const Text('Costing Analysis & Simulator', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
+                          label: const Text('Costing', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
                           style: OutlinedButton.styleFrom(foregroundColor: const Color(0xFF6366F1)),
                         ),
                         const SizedBox(width: 8),
@@ -271,7 +306,7 @@ class _RecipeManagementSectionState extends State<RecipeManagementSection> {
                           icon: const Icon(Icons.edit_outlined, size: 14),
                           label: const Text('Edit BOM', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 4),
                         IconButton(
                           icon: const Icon(Icons.delete_outline, size: 18, color: Color(0xFFEF4444)),
                           onPressed: () => _deleteRecipe(recipe),

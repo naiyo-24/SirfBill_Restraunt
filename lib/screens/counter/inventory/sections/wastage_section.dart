@@ -121,30 +121,34 @@ class _WastageSectionState extends State<WastageSection> {
   Widget _buildMetricSummaryBanner(bool isDark) {
     final s = _safeSummary;
     return Container(
-      margin: const EdgeInsets.fromLTRB(24, 0, 24, 12),
-      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E293B) : Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildSummaryCell('Financial Loss (30d)', '₹${s.totalFinancialLossInr.toStringAsFixed(2)}', const Color(0xFFEF4444), isDark),
-          _buildDivider(isDark),
-          _buildSummaryCell('Wastage Incidents', '${s.totalWasteIncidents} logged', const Color(0xFFEA580C), isDark),
-          _buildDivider(isDark),
-          _buildSummaryCell('Primary Loss Reason', s.lossByReasonInr.isNotEmpty ? s.lossByReasonInr.keys.first : 'None', const Color(0xFF7C3AED), isDark),
-          _buildDivider(isDark),
-          _buildSummaryCell('Leakage Scope', '${_safeLogs.length} ledger records', isDark ? Colors.white : const Color(0xFF0F172A), isDark),
-        ],
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _buildSummaryCell('Financial Loss (30d)', '₹${s.totalFinancialLossInr.toStringAsFixed(2)}', const Color(0xFFEF4444), isDark),
+            _buildDivider(isDark),
+            _buildSummaryCell('Wastage Incidents', '${s.totalWasteIncidents} logged', const Color(0xFFEA580C), isDark),
+            _buildDivider(isDark),
+            _buildSummaryCell('Primary Loss Reason', s.lossByReasonInr.isNotEmpty ? s.lossByReasonInr.keys.first : 'None', const Color(0xFF7C3AED), isDark),
+            _buildDivider(isDark),
+            _buildSummaryCell('Leakage Scope', '${_safeLogs.length} ledger records', isDark ? Colors.white : const Color(0xFF0F172A), isDark),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildDivider(bool isDark) {
-    return Container(height: 32, width: 1, color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0));
+    return Container(height: 32, width: 1, margin: const EdgeInsets.symmetric(horizontal: 12), color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0));
   }
 
   Widget _buildSummaryCell(String label, String value, Color color, bool isDark) {
@@ -200,25 +204,29 @@ class _WastageSectionState extends State<WastageSection> {
 
   Widget _buildFilterBar(bool isDark) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF0F172A) : Colors.white,
         border: Border(bottom: BorderSide(color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0))),
       ),
-      child: Row(
-        children: [
-          _buildFilterChip('All Loss (${_safeLogs.length})', null),
-          const SizedBox(width: 6),
-          _buildFilterChip('Spoilage', 'SPOILAGE'),
-          const SizedBox(width: 6),
-          _buildFilterChip('Burnt / Ruined', 'BURNT'),
-          const SizedBox(width: 6),
-          _buildFilterChip('Expired', 'EXPIR'),
-          const SizedBox(width: 6),
-          _buildFilterChip('Customer Return', 'RETURN'),
-          const SizedBox(width: 6),
-          _buildFilterChip('Prep Trim', 'TRIM'),
-        ],
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        child: Row(
+          children: [
+            _buildFilterChip('All Loss (${_safeLogs.length})', null),
+            const SizedBox(width: 6),
+            _buildFilterChip('Spoilage', 'SPOILAGE'),
+            const SizedBox(width: 6),
+            _buildFilterChip('Burnt / Ruined', 'BURNT'),
+            const SizedBox(width: 6),
+            _buildFilterChip('Expired', 'EXPIR'),
+            const SizedBox(width: 6),
+            _buildFilterChip('Customer Return', 'RETURN'),
+            const SizedBox(width: 6),
+            _buildFilterChip('Prep Trim', 'TRIM'),
+          ],
+        ),
       ),
     );
   }

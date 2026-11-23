@@ -197,31 +197,32 @@ class _LogWastageDialogState extends State<LogWastageDialog> with SingleTickerPr
 
   Widget _buildHeader(BuildContext context, bool isDark) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(color: const Color(0xFFEF4444).withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
-              child: const Icon(Icons.delete_sweep_rounded, color: Color(0xFFEF4444), size: 24),
-            ),
-            const SizedBox(width: 14),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Record Kitchen Food Loss / Wastage',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: isDark ? Colors.white : const Color(0xFF0F172A)),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'Unbilled kitchen loss with automatic WAC valuation and immutable ledger auditing',
-                  style: TextStyle(fontSize: 12, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
-                ),
-              ],
-            ),
-          ],
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(color: const Color(0xFFEF4444).withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
+          child: const Icon(Icons.delete_sweep_rounded, color: Color(0xFFEF4444), size: 24),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Record Kitchen Food Loss',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: isDark ? Colors.white : const Color(0xFF0F172A)),
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'Unbilled kitchen loss with automatic WAC valuation and ledger auditing',
+                style: TextStyle(fontSize: 11.5, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
         ),
         IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close, size: 20)),
       ],
@@ -242,8 +243,8 @@ class _LogWastageDialogState extends State<LogWastageDialog> with SingleTickerPr
         indicatorSize: TabBarIndicatorSize.tab,
         dividerColor: Colors.transparent,
         tabs: const [
-          Tab(icon: Icon(Icons.inventory_2_outlined, size: 16), text: 'Track A1: Raw Material Loss'),
-          Tab(icon: Icon(Icons.restaurant_outlined, size: 16), text: 'Track A2: Cooked Dish / Prep Batch'),
+          Tab(icon: Icon(Icons.inventory_2_outlined, size: 16), text: 'Raw Materials'),
+          Tab(icon: Icon(Icons.restaurant_outlined, size: 16), text: 'Cooked Dishes'),
         ],
       ),
     );
@@ -319,8 +320,9 @@ class _LogWastageDialogState extends State<LogWastageDialog> with SingleTickerPr
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
             initialValue: _rawReason,
+            isExpanded: true,
             decoration: const InputDecoration(labelText: 'Root-Cause Reason *', border: OutlineInputBorder(), isDense: true),
-            items: reasons.map((r) => DropdownMenuItem(value: r['code']!, child: Text(r['label']!))).toList(),
+            items: reasons.map((r) => DropdownMenuItem(value: r['code']!, child: Text(r['label']!, overflow: TextOverflow.ellipsis))).toList(),
             onChanged: (val) => setState(() => _rawReason = val ?? 'SPOILAGE'),
           ),
           const SizedBox(height: 12),
@@ -416,8 +418,9 @@ class _LogWastageDialogState extends State<LogWastageDialog> with SingleTickerPr
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
             initialValue: _dishReason,
+            isExpanded: true,
             decoration: const InputDecoration(labelText: 'Waste Root Cause *', border: OutlineInputBorder(), isDense: true),
-            items: reasons.map((r) => DropdownMenuItem(value: r['code']!, child: Text(r['label']!))).toList(),
+            items: reasons.map((r) => DropdownMenuItem(value: r['code']!, child: Text(r['label']!, overflow: TextOverflow.ellipsis))).toList(),
             onChanged: (val) => setState(() => _dishReason = val ?? 'BURNT_RUINED'),
           ),
           const SizedBox(height: 12),

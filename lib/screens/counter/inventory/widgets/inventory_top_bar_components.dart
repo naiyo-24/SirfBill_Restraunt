@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../services/shop_service.dart';
+import '../../../home/widgets/hardware_store_dialog.dart';
 import '../../widgets/about/about_us_dialog.dart';
 
 class InventoryBranchSelector extends StatelessWidget {
@@ -102,8 +103,13 @@ class InventoryBranchSelector extends StatelessWidget {
 
 class InventoryDateCalendarPill extends StatelessWidget {
   final DateTime currentTime;
+  final bool isDesktop;
 
-  const InventoryDateCalendarPill({super.key, required this.currentTime});
+  const InventoryDateCalendarPill({
+    super.key,
+    required this.currentTime,
+    this.isDesktop = true,
+  });
 
   String _formatDate(DateTime date) {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -123,6 +129,36 @@ class InventoryDateCalendarPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    if (!isDesktop) {
+      return Tooltip(
+        message: '${_formatDate(currentTime)} • ${_formatTime(currentTime)}',
+        child: InkWell(
+          onTap: () => showDatePicker(
+            context: context,
+            initialDate: currentTime,
+            firstDate: DateTime(2000),
+            lastDate: DateTime(2100),
+          ),
+          borderRadius: BorderRadius.circular(10),
+          child: Container(
+            height: 38,
+            width: 38,
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F8F5),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: const Color(0xFF22C55E).withValues(alpha: 0.35),
+                width: 1.2,
+              ),
+            ),
+            child: const Center(
+              child: Icon(Icons.calendar_today_rounded, color: Color(0xFF166534), size: 16),
+            ),
+          ),
+        ),
+      );
+    }
+
     return InkWell(
       onTap: () => showDatePicker(
         context: context,
@@ -132,7 +168,7 @@ class InventoryDateCalendarPill extends StatelessWidget {
       ),
       borderRadius: BorderRadius.circular(10),
       child: Container(
-        height: 44,
+        height: 38,
         padding: const EdgeInsets.symmetric(horizontal: 10),
         decoration: BoxDecoration(
           color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F8F5),
@@ -237,10 +273,33 @@ class InventoryProfilePill extends StatelessWidget {
         side: BorderSide(color: borderColor),
       ),
       onSelected: (val) {
+        if (val == 'hardware') HardwareStoreDialog.show(context);
         if (val == 'about') AboutUsDialog.show(context);
         if (val == 'logout') onLogout();
       },
       itemBuilder: (context) => [
+        PopupMenuItem(
+          value: 'hardware',
+          child: Row(
+            children: [
+              const Icon(
+                Icons.storefront_rounded,
+                size: 18,
+                color: Color(0xFF10B981),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Buy Hardware',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? Colors.white : const Color(0xFF1E293B),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const PopupMenuDivider(height: 1),
         PopupMenuItem(
           value: 'about',
           child: Row(

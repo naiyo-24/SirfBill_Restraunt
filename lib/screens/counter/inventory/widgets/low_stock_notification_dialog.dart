@@ -262,44 +262,46 @@ class LowStockNotificationDialog extends StatelessWidget {
     final title = varianceCount > 0 ? 'Discrepancy & Stock Alerts' : 'Low Stock Alerts';
     final totalAlerts = lowStockItems.length + varianceCount;
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [Color(0xFFEF4444), Color(0xFFDC2626)]),
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [BoxShadow(color: const Color(0xFFEF4444).withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 3))],
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(colors: [Color(0xFFEF4444), Color(0xFFDC2626)]),
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [BoxShadow(color: const Color(0xFFEF4444).withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 3))],
+          ),
+          child: const Icon(Icons.notifications_active_rounded, color: Colors.white, size: 22),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 8,
+                runSpacing: 4,
+                children: [
+                  Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: isDark ? Colors.white : const Color(0xFF0F172A))),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                    decoration: BoxDecoration(color: const Color(0xFFEF4444).withValues(alpha: 0.12), borderRadius: BorderRadius.circular(6)),
+                    child: Text('$totalAlerts ALERTS', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFFEF4444))),
+                  ),
+                ],
               ),
-              child: const Icon(Icons.notifications_active_rounded, color: Colors.white, size: 22),
-            ),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: isDark ? Colors.white : const Color(0xFF0F172A))),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                      decoration: BoxDecoration(color: const Color(0xFFEF4444).withValues(alpha: 0.12), borderRadius: BorderRadius.circular(6)),
-                      child: Text('$totalAlerts ALERTS', style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFFEF4444))),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  varianceCount > 0
-                      ? '$varianceCount transfer transit discrepancy reported by receiving branch'
-                      : (outOfStockCount > 0 ? '$outOfStockCount out of stock • $lowCount below safety par' : 'Replenish commodities before kitchen service is disrupted'),
-                  style: TextStyle(fontSize: 12, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
-                ),
-              ],
-            ),
-          ],
+              const SizedBox(height: 2),
+              Text(
+                varianceCount > 0
+                    ? '$varianceCount transfer transit discrepancy reported by receiving branch'
+                    : (outOfStockCount > 0 ? '$outOfStockCount out of stock • $lowCount below safety par' : 'Replenish commodities before kitchen service is disrupted'),
+                style: TextStyle(fontSize: 11.5, color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
         ),
         IconButton(onPressed: () => Navigator.of(context).pop(), icon: const Icon(Icons.close, size: 20), visualDensity: VisualDensity.compact),
       ],
