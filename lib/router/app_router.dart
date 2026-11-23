@@ -43,39 +43,6 @@ final goRouter = GoRouter(
       return '/dashboard';
     }
 
-    // Auto-forward from splash based on role or active station module
-    if (loc == '/splash') {
-      if (isLoggedIn) {
-        final role = (prefs.getString('user_role') ?? '').trim().toUpperCase();
-        final loginModule = (prefs.getString('role_login_name') ?? '').trim().toUpperCase();
-        final stationKey = (prefs.getString('station_module_key') ?? '').trim().toLowerCase();
-        final userName = (prefs.getString('user_name') ?? '').trim().toLowerCase();
-        final userId = (prefs.getString('user_id') ?? '').trim().toLowerCase();
-
-        final isCrm = role == 'CRM' ||
-            role == 'REPORTS' ||
-            stationKey == 'crm' ||
-            loginModule.contains('CRM') ||
-            loginModule.contains('REPORT') ||
-            userName.contains('crm') ||
-            userId.contains('crm');
-
-        if (role == 'ADMIN' || role == 'OWNER' || role == 'SUPER_ADMIN') {
-          return '/admin';
-        } else if (role == 'KITCHEN' || role == 'CHEF' || role == 'KDS' || loginModule.contains('KITCHEN')) {
-          return '/kitchen';
-        } else if (role == 'WAITER' || role == 'CAPTAIN' || role == 'SERVER' || loginModule.contains('WAITER')) {
-          return '/waiter';
-        } else if (role == 'INVENTORY' || role == 'STOCK' || loginModule.contains('INVENTORY')) {
-          return '/inventory';
-        } else if (isCrm) {
-          return '/crm';
-        }
-        return '/counter/billing';
-      }
-      return '/dashboard';
-    }
-
     // Direct CRM users to CRM screen if they land on POS Billing
     if (loc == '/counter/billing' && isLoggedIn) {
       final role = (prefs.getString('user_role') ?? '').trim().toUpperCase();
