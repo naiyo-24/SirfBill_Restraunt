@@ -192,15 +192,17 @@ class _PosCartPanelState extends ConsumerState<PosCartPanel> {
 
               // 2. Flexible Scrollable Middle Cart Items Section
               Expanded(
-                child: Scrollbar(
-                  controller: _cartScrollController,
-                  thumbVisibility: true,
-                  trackVisibility: true,
-                  interactive: true,
-                  thickness: 7.0,
-                  radius: const Radius.circular(8),
-                  child: itemsList,
-                ),
+                child: posState.cart.isEmpty
+                    ? itemsList
+                    : Scrollbar(
+                        controller: _cartScrollController,
+                        thumbVisibility: true,
+                        trackVisibility: true,
+                        interactive: true,
+                        thickness: 7.0,
+                        radius: const Radius.circular(8),
+                        child: itemsList,
+                      ),
               ),
 
               // 3. Fixed Bottom Section

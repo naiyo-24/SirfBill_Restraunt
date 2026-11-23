@@ -269,7 +269,12 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
       child: Scaffold(
         key: _scaffoldKey,
         backgroundColor: isDark ? const Color(0xFF0F172A) : Colors.white,
-        drawer: isDesktop ? null : Drawer(child: buildSidebar(isDrawer: true)),
+        drawer: isDesktop
+            ? null
+            : Drawer(
+                width: 256,
+                child: buildSidebar(isDrawer: true),
+              ),
         body: SafeArea(
           child: Column(
             children: [

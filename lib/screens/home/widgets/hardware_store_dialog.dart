@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../models/hardware_product_model.dart';
+import '../../../services/auth_service.dart';
 import '../../../services/hardware/hardware_service.dart';
 import 'hardware_order_inquiry_dialog.dart';
 import 'hardware_store_product_card.dart';
@@ -8,11 +10,140 @@ import 'hardware_store_product_card.dart';
 class HardwareStoreDialog extends StatefulWidget {
   const HardwareStoreDialog({super.key});
 
-  static Future<void> show(BuildContext context) {
+  static Future<void> show(BuildContext context) async {
+    final token = await AuthService.getToken();
+    final isLoggedIn = token != null && token.trim().isNotEmpty;
+
+    if (!context.mounted) return;
+
+    if (!isLoggedIn) {
+      await showLoginRequiredDialog(context);
+      return;
+    }
+
     return showDialog(
       context: context,
       builder: (ctx) => const HardwareStoreDialog(),
     );
+  }
+
+  static Future<void> showLoginRequiredDialog(BuildContext context) async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardBg = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final subtitleColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+
+    bool isAlreadyOnLogin = false;
+    try {
+      final loc = GoRouterState.of(context).uri.toString();
+      isAlreadyOnLogin = loc.contains('role_login');
+    } catch (_) {}
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: cardBg,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(color: const Color(0xFFF59E0B).withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
+              child: const Icon(Icons.lock_outline_rounded, color: Color(0xFFF59E0B), size: 24),
+            ),
+            const SizedBox(width: 12),
+            Expanded(child: Text('Login Required', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor))),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Please log in to your restaurant account first before purchasing certified hardware.',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: textColor, height: 1.4),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Hardware orders and warranties must be linked directly to your restaurant outlet in the database.',
+              style: TextStyle(fontSize: 12, color: subtitleColor, height: 1.3),
+            ),
+            const SizedBox(height: 16),
+            InkWell(
+              onTap: () {
+                Navigator.pop(ctx);
+                _openWhatsAppDirect(
+                  'Hello SirfBill Hardware Team! I want to purchase restaurant hardware (Printers/POS/Cash Drawers). Please assist me.',
+                );
+              },
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.chat_outlined, size: 16, color: Color(0xFF10B981)),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Don\'t have an account? Chat with Sales',
+                        style: TextStyle(fontSize: 12, color: Color(0xFF10B981), fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Cancel', style: TextStyle(color: subtitleColor)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF10B981),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            ),
+            onPressed: () {
+              Navigator.pop(ctx);
+              if (!isAlreadyOnLogin) {
+                context.push('/role_login?roleName=Admin&nextRoute=/admin', extra: {
+                  'roleName': 'Admin',
+                  'themeColor': const Color(0xFF6366F1),
+                  'nextRoute': '/admin',
+                });
+              }
+            },
+            child: Text(isAlreadyOnLogin ? 'Log In Below' : 'Go to Login'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static Future<void> _openWhatsAppDirect(String message) async {
+    final encoded = Uri.encodeComponent(message);
+    final nativeUri = Uri.parse('whatsapp://send?phone=918100463128&text=$encoded');
+    final webUri = Uri.parse('https://wa.me/918100463128?text=$encoded');
+    try {
+      if (await launchUrl(nativeUri, mode: LaunchMode.externalApplication)) return;
+    } catch (_) {}
+    try {
+      if (await launchUrl(webUri, mode: LaunchMode.externalApplication)) return;
+    } catch (_) {}
+    try {
+      await launchUrl(webUri);
+    } catch (e) {
+      debugPrint('Could not launch WhatsApp: $e');
+    }
   }
 
   @override
@@ -61,27 +192,7 @@ class _HardwareStoreDialogState extends State<HardwareStoreDialog> {
     }
   }
 
-  Future<void> _openWhatsApp(String message) async {
-    final encoded = Uri.encodeComponent(message);
-    final nativeUri = Uri.parse('whatsapp://send?phone=918100463128&text=$encoded');
-    final webUri = Uri.parse('https://wa.me/918100463128?text=$encoded');
-
-    try {
-      final launchedNative = await launchUrl(nativeUri, mode: LaunchMode.externalApplication);
-      if (launchedNative) return;
-    } catch (_) {}
-
-    try {
-      final launchedWeb = await launchUrl(webUri, mode: LaunchMode.externalApplication);
-      if (launchedWeb) return;
-    } catch (_) {}
-
-    try {
-      await launchUrl(webUri);
-    } catch (e) {
-      debugPrint('Could not launch WhatsApp: $e');
-    }
-  }
+  Future<void> _openWhatsApp(String message) => HardwareStoreDialog._openWhatsAppDirect(message);
 
   Future<void> _launchCall(String phone) async {
     final uri = Uri.parse('tel:$phone');
@@ -96,7 +207,16 @@ class _HardwareStoreDialogState extends State<HardwareStoreDialog> {
     }
   }
 
-  void _showOrderDialog(HardwareProduct item) {
+  Future<void> _showOrderDialog(HardwareProduct item) async {
+    final token = await AuthService.getToken();
+    if (token == null || token.trim().isEmpty) {
+      if (mounted) {
+        Navigator.pop(context);
+        HardwareStoreDialog.showLoginRequiredDialog(context);
+      }
+      return;
+    }
+    if (!mounted) return;
     HardwareOrderInquiryDialog.show(
       context,
       item: item,

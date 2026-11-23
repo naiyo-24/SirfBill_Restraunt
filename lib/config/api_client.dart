@@ -4,7 +4,6 @@ import 'package:dio/io.dart';
 import 'package:flutter/foundation.dart';
 import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../router/app_router.dart' as import_router;
 import 'api_constants.dart';
 
 class ApiClient {
@@ -94,25 +93,11 @@ class ApiClient {
               reqHost.contains('naiyo24.com') ||
               reqHost.contains('vwings247.me');
 
-          if (isBackend && e.response?.statusCode == 401 && !e.requestOptions.path.contains('auth')) {
+          if (isBackend && e.response?.statusCode == 401) {
             // ignore: avoid_print
             print(
-              'Unauthorized: Token expired or invalid. Logging out and redirecting.',
+              'Unauthorized [401] on: ${e.requestOptions.path} - Access restricted or token unauthorized for this resource.',
             );
-            
-            // Clear auth data and redirect
-            SharedPreferences.getInstance().then((prefs) {
-              prefs.remove('access_token');
-              prefs.remove('user_id');
-              prefs.remove('user_role');
-              prefs.remove('selected_shop_id');
-            });
-
-            // Need to import goRouter from app_router.dart to navigate
-            try {
-              // We'll import app_router at the top of the file
-              import_router.goRouter.go('/dashboard');
-            } catch (_) {}
           }
 
           return handler.next(e);

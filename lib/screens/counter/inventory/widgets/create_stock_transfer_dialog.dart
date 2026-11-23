@@ -4,14 +4,7 @@ import '../models/inventory_models.dart';
 import '../models/stock_transfer_models.dart';
 import '../services/inventory_api_service.dart';
 import '../services/stock_transfer_api_service.dart';
-
-class _TransferItemRow {
-  Ingredient? ingredient;
-  final TextEditingController qtyCtrl = TextEditingController();
-  String inputUom = 'PURCHASE';
-
-  double get quantity => double.tryParse(qtyCtrl.text.trim()) ?? 0.0;
-}
+import 'transfer_line_item_card.dart';
 
 class CreateStockTransferDialog extends StatefulWidget {
   final VoidCallback onCreated;
@@ -44,7 +37,7 @@ class _CreateStockTransferDialogState extends State<CreateStockTransferDialog> {
   final _driverPhoneCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
 
-  final List<_TransferItemRow> _items = [_TransferItemRow()];
+  final List<TransferItemInput> _items = [TransferItemInput()];
   bool _isLoading = true;
   bool _isSaving = false;
 
@@ -96,7 +89,7 @@ class _CreateStockTransferDialogState extends State<CreateStockTransferDialog> {
     }
   }
 
-  void _addItem() => setState(() => _items.add(_TransferItemRow()));
+  void _addItem() => setState(() => _items.add(TransferItemInput()));
 
   void _removeItem(int index) {
     if (_items.length > 1) {
@@ -338,26 +331,49 @@ class _CreateStockTransferDialogState extends State<CreateStockTransferDialog> {
 
   Widget _buildLogisticsSection(bool isDark, Color borderColor) {
     final isStation = _transferType == StockTransferType.interStation;
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(10), border: Border.all(color: borderColor)),
-      child: isStation
-          ? Row(
-              children: [
-                Expanded(child: TextField(controller: _driverNameCtrl, decoration: const InputDecoration(labelText: 'Transferred By (Name)', hintText: 'e.g. Ramesh Chef / Staff Name'))),
-                const SizedBox(width: 12),
-                Expanded(child: TextField(controller: _driverPhoneCtrl, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Contact Phone', hintText: '+91 98301 23456'))),
-              ],
-            )
-          : Row(
-              children: [
-                Expanded(child: TextField(controller: _vehicleCtrl, decoration: const InputDecoration(labelText: 'Vehicle / Van Number', hintText: 'WB-02-AK-9821'))),
-                const SizedBox(width: 10),
-                Expanded(child: TextField(controller: _driverNameCtrl, decoration: const InputDecoration(labelText: 'Driver Name', hintText: 'Ramesh Kumar'))),
-                const SizedBox(width: 10),
-                Expanded(child: TextField(controller: _driverPhoneCtrl, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Driver Phone', hintText: '+91 98301 23456'))),
-              ],
-            ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isSmall = constraints.maxWidth < 480;
+        return Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(10), border: Border.all(color: borderColor)),
+          child: isStation
+              ? (isSmall
+                  ? Column(
+                      children: [
+                        TextField(controller: _driverNameCtrl, decoration: const InputDecoration(labelText: 'Transferred By (Name)', hintText: 'e.g. Ramesh Chef / Staff Name')),
+                        const SizedBox(height: 10),
+                        TextField(controller: _driverPhoneCtrl, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Contact Phone', hintText: '+91 98301 23456')),
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        Expanded(child: TextField(controller: _driverNameCtrl, decoration: const InputDecoration(labelText: 'Transferred By (Name)', hintText: 'e.g. Ramesh Chef / Staff Name'))),
+                        const SizedBox(width: 12),
+                        Expanded(child: TextField(controller: _driverPhoneCtrl, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Contact Phone', hintText: '+91 98301 23456'))),
+                      ],
+                    ))
+              : (isSmall
+                  ? Column(
+                      children: [
+                        TextField(controller: _vehicleCtrl, decoration: const InputDecoration(labelText: 'Vehicle / Van Number', hintText: 'WB-02-AK-9821')),
+                        const SizedBox(height: 10),
+                        TextField(controller: _driverNameCtrl, decoration: const InputDecoration(labelText: 'Driver Name', hintText: 'Ramesh Kumar')),
+                        const SizedBox(height: 10),
+                        TextField(controller: _driverPhoneCtrl, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Driver Phone', hintText: '+91 98301 23456')),
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        Expanded(child: TextField(controller: _vehicleCtrl, decoration: const InputDecoration(labelText: 'Vehicle / Van Number', hintText: 'WB-02-AK-9821'))),
+                        const SizedBox(width: 10),
+                        Expanded(child: TextField(controller: _driverNameCtrl, decoration: const InputDecoration(labelText: 'Driver Name', hintText: 'Ramesh Kumar'))),
+                        const SizedBox(width: 10),
+                        Expanded(child: TextField(controller: _driverPhoneCtrl, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Driver Phone', hintText: '+91 98301 23456'))),
+                      ],
+                    )),
+        );
+      },
     );
   }
 
@@ -368,12 +384,22 @@ class _CreateStockTransferDialogState extends State<CreateStockTransferDialog> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text('Transfer Commodities (Dual-UOM)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+            const Expanded(
+              child: Text(
+                'Transfer Commodities (Dual-UOM)',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 8),
             TextButton.icon(
               onPressed: _addItem,
               icon: const Icon(Icons.add, size: 16),
               label: const Text('Add Line Item'),
-              style: TextButton.styleFrom(foregroundColor: const Color(0xFF10B981)),
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFF10B981),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              ),
             ),
           ],
         ),
@@ -381,56 +407,14 @@ class _CreateStockTransferDialogState extends State<CreateStockTransferDialog> {
         ..._items.asMap().entries.map((entry) {
           final index = entry.key;
           final item = entry.value;
-          return Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(color: isDark ? const Color(0xFF1E293B) : Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: borderColor)),
-            child: Row(
-              children: [
-                Expanded(
-                  flex: 4,
-                  child: DropdownButtonFormField<Ingredient>(
-                    initialValue: item.ingredient,
-                    isExpanded: true,
-                    decoration: const InputDecoration(labelText: 'Select Commodity *', isDense: true),
-                    items: _ingredients.map((ing) => DropdownMenuItem(value: ing, child: Text('${ing.name} (${ing.formattedStock})'))).toList(),
-                    onChanged: (val) => setState(() => item.ingredient = val),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  flex: 2,
-                  child: TextField(
-                    controller: item.qtyCtrl,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    decoration: InputDecoration(
-                      labelText: 'Qty (${item.inputUom == 'PURCHASE' ? item.ingredient?.purchaseUom ?? 'UOM' : item.ingredient?.recipeUom ?? 'UOM'})',
-                      isDense: true,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  flex: 2,
-                  child: DropdownButton<String>(
-                    value: item.inputUom,
-                    isDense: true,
-                    underline: const SizedBox(),
-                    items: [
-                      DropdownMenuItem(value: 'PURCHASE', child: Text(item.ingredient?.purchaseUom ?? 'Purchase')),
-                      DropdownMenuItem(value: 'RECIPE', child: Text(item.ingredient?.recipeUom ?? 'Recipe')),
-                    ],
-                    onChanged: (val) {
-                      if (val != null) setState(() => item.inputUom = val);
-                    },
-                  ),
-                ),
-                IconButton(
-                  onPressed: () => _removeItem(index),
-                  icon: const Icon(Icons.remove_circle_outline, color: Colors.redAccent, size: 20),
-                ),
-              ],
-            ),
+          return TransferLineItemCard(
+            index: index,
+            item: item,
+            ingredients: _ingredients,
+            isDark: isDark,
+            borderColor: borderColor,
+            onRemove: () => _removeItem(index),
+            onChanged: () => setState(() {}),
           );
         }),
       ],

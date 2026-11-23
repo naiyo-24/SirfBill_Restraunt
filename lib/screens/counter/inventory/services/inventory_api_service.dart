@@ -418,8 +418,8 @@ class InventoryApiService {
     final targetOutlet = (shopId != null && shopId.isNotEmpty) ? shopId : await getResolvedOutletId();
     try {
       final res = await ApiClient().dio.get(
-        '/api/admin/purchases/',
-        queryParameters: {if (targetOutlet.isNotEmpty) 'shop_id': targetOutlet},
+        '/api/restaurant/procurement/purchase-orders',
+        queryParameters: {if (targetOutlet.isNotEmpty) 'outlet_id': targetOutlet},
       );
       if (res.statusCode == 200 && res.data is List) {
         return (res.data as List).map((b) => PurchaseOrder.fromPurchaseBill(b)).toList();

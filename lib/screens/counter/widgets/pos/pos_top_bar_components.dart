@@ -8,6 +8,7 @@ class PosBranchSelector extends StatelessWidget {
   final String? currentShopId;
   final String branchName;
   final ValueChanged<Shop> onSelectShop;
+  final bool isMobile;
 
   const PosBranchSelector({
     super.key,
@@ -15,6 +16,7 @@ class PosBranchSelector extends StatelessWidget {
     required this.currentShopId,
     required this.branchName,
     required this.onSelectShop,
+    this.isMobile = false,
   });
 
   @override
@@ -23,41 +25,40 @@ class PosBranchSelector extends StatelessWidget {
     final borderColor = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
 
     final content = Container(
-      height: 54,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      height: isMobile ? 38 : 54,
+      padding: EdgeInsets.symmetric(horizontal: isMobile ? 10 : 16),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: borderColor, width: 1.4),
+        borderRadius: BorderRadius.circular(isMobile ? 10 : 14),
+        border: Border.all(color: borderColor, width: isMobile ? 1.2 : 1.4),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            padding: const EdgeInsets.all(7),
+            padding: EdgeInsets.all(isMobile ? 4 : 7),
             decoration: BoxDecoration(
               color: const Color(0xFF3B82F6).withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(isMobile ? 6 : 10),
             ),
-            child: const Icon(Icons.storefront_rounded, size: 19, color: Color(0xFF3B82F6)),
+            child: Icon(Icons.storefront_rounded, size: isMobile ? 16 : 19, color: const Color(0xFF3B82F6)),
           ),
-          const SizedBox(width: 10),
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 180),
+          SizedBox(width: isMobile ? 5 : 10),
+          Flexible(
             child: Text(
               branchName,
               overflow: TextOverflow.ellipsis,
               maxLines: 1,
               style: TextStyle(
                 fontWeight: FontWeight.w700,
-                fontSize: 14.5,
+                fontSize: isMobile ? 12 : 14.5,
                 color: isDark ? Colors.white : const Color(0xFF0F172A),
               ),
             ),
           ),
           if (shops.length > 1) ...[
-            const SizedBox(width: 6),
-            const Icon(Icons.keyboard_arrow_down_rounded, size: 20, color: Color(0xFF94A3B8)),
+            const SizedBox(width: 3),
+            Icon(Icons.keyboard_arrow_down_rounded, size: isMobile ? 15 : 20, color: const Color(0xFF94A3B8)),
           ],
         ],
       ),
@@ -119,31 +120,31 @@ class PosSearchBox extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return SizedBox(
-      width: isMobile ? 240 : 340,
-      height: 54,
+      width: isMobile ? double.infinity : 340,
+      height: isMobile ? 42 : 54,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 16),
         decoration: BoxDecoration(
           color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(isMobile ? 10 : 14),
           border: Border.all(
             color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-            width: 1.4,
+            width: isMobile ? 1.2 : 1.4,
           ),
         ),
         child: Row(
           children: [
-            const Icon(Icons.search_rounded, size: 22, color: Color(0xFF94A3B8)),
-            const SizedBox(width: 12),
+            Icon(Icons.search_rounded, size: isMobile ? 19 : 22, color: const Color(0xFF94A3B8)),
+            SizedBox(width: isMobile ? 8 : 12),
             Expanded(
               child: TextField(
                 onChanged: onChanged,
-                style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w500),
-                decoration: const InputDecoration(
+                style: TextStyle(fontSize: isMobile ? 13 : 14.5, fontWeight: FontWeight.w500),
+                decoration: InputDecoration(
                   isDense: true,
                   border: InputBorder.none,
-                  hintText: 'Search food name or code (e.g. PBM)...',
-                  hintStyle: TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
+                  hintText: isMobile ? 'Search food name or code (e.g. PBM)...' : 'Search food name or code (e.g. PBM)...',
+                  hintStyle: TextStyle(color: const Color(0xFF94A3B8), fontSize: isMobile ? 12.5 : 14),
                 ),
               ),
             ),
@@ -158,11 +159,13 @@ class PosSearchBox extends StatelessWidget {
 class PosOrderTypeSelector extends StatelessWidget {
   final OrderType selectedType;
   final ValueChanged<OrderType> onSelectType;
+  final bool isMobile;
 
   const PosOrderTypeSelector({
     super.key,
     required this.selectedType,
     required this.onSelectType,
+    this.isMobile = false,
   });
 
   @override
@@ -170,11 +173,11 @@ class PosOrderTypeSelector extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      height: 54,
-      padding: const EdgeInsets.all(5),
+      height: isMobile ? 38 : 54,
+      padding: EdgeInsets.all(isMobile ? 3 : 5),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(isMobile ? 10 : 14),
         border: Border.all(
           color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
           width: 1.2,
@@ -184,27 +187,30 @@ class PosOrderTypeSelector extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           PosOrderTypePill(
-            label: 'Dine-in',
+            label: isMobile ? 'Dine-In' : 'Dine-in',
             icon: Icons.table_restaurant_rounded,
             isSelected: selectedType == OrderType.dineIn,
             onTap: () => onSelectType(OrderType.dineIn),
             activeColor: const Color(0xFF3B82F6),
+            isMobile: isMobile,
           ),
-          const SizedBox(width: 5),
+          SizedBox(width: isMobile ? 3 : 5),
           PosOrderTypePill(
             label: 'Takeaway',
             icon: Icons.shopping_bag_rounded,
             isSelected: selectedType == OrderType.takeaway,
             onTap: () => onSelectType(OrderType.takeaway),
             activeColor: const Color(0xFF10B981),
+            isMobile: isMobile,
           ),
-          const SizedBox(width: 5),
+          SizedBox(width: isMobile ? 3 : 5),
           PosOrderTypePill(
             label: 'Delivery',
             icon: Icons.moped_rounded,
             isSelected: selectedType == OrderType.delivery,
             onTap: () => onSelectType(OrderType.delivery),
             activeColor: const Color(0xFFF59E0B),
+            isMobile: isMobile,
           ),
         ],
       ),
@@ -219,6 +225,7 @@ class PosOrderTypePill extends StatelessWidget {
   final bool isSelected;
   final VoidCallback onTap;
   final Color activeColor;
+  final bool isMobile;
 
   const PosOrderTypePill({
     super.key,
@@ -227,6 +234,7 @@ class PosOrderTypePill extends StatelessWidget {
     required this.isSelected,
     required this.onTap,
     required this.activeColor,
+    this.isMobile = false,
   });
 
   @override
@@ -234,21 +242,24 @@ class PosOrderTypePill extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return InkWell(
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(isMobile ? 8 : 10),
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+        padding: EdgeInsets.symmetric(
+          horizontal: isMobile ? 6 : 18,
+          vertical: isMobile ? 4 : 10,
+        ),
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: isSelected ? activeColor : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(isMobile ? 8 : 10),
           boxShadow: isSelected
               ? [
                   BoxShadow(
                     color: activeColor.withValues(alpha: 0.38),
-                    blurRadius: 10,
-                    offset: const Offset(0, 3),
+                    blurRadius: isMobile ? 6 : 10,
+                    offset: const Offset(0, 2),
                   ),
                 ]
               : null,
@@ -258,14 +269,14 @@ class PosOrderTypePill extends StatelessWidget {
           children: [
             Icon(
               icon,
-              size: 19,
+              size: isMobile ? 13 : 19,
               color: isSelected ? Colors.white : const Color(0xFF64748B),
             ),
-            const SizedBox(width: 7),
+            SizedBox(width: isMobile ? 3 : 7),
             Text(
               label,
               style: TextStyle(
-                fontSize: 14.5,
+                fontSize: isMobile ? 11 : 14.5,
                 fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
                 color: isSelected ? Colors.white : (isDark ? Colors.white70 : const Color(0xFF475569)),
               ),

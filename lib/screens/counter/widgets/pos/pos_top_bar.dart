@@ -160,6 +160,75 @@ class _PosTopBarState extends ConsumerState<PosTopBar> {
     final screenWidth = MediaQuery.of(context).size.width;
     final isMobile = screenWidth < 768;
 
+    if (isMobile) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: barBg,
+          border: Border(bottom: BorderSide(color: borderColor, width: 1.5)),
+          boxShadow: [
+            BoxShadow(
+              color: isDark ? Colors.black38 : const Color(0xFF0F172A).withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Row 1: Compact Outlet + Compact Order Type Switcher + Refresh
+            Row(
+              children: [
+                Expanded(
+                  child: PosBranchSelector(
+                    shops: _shops,
+                    currentShopId: _currentShopId,
+                    branchName: _branchName,
+                    onSelectShop: _selectShop,
+                    isMobile: true,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                PosOrderTypeSelector(
+                  selectedType: posState.orderType,
+                  onSelectType: posNotifier.setOrderType,
+                  isMobile: true,
+                ),
+                if (widget.onRefresh != null) ...[
+                  const SizedBox(width: 4),
+                  InkWell(
+                    borderRadius: BorderRadius.circular(8),
+                    onTap: widget.onRefresh,
+                    child: Container(
+                      width: 34,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: borderColor, width: 1.2),
+                      ),
+                      child: const Center(
+                        child: Icon(Icons.refresh_rounded, size: 17, color: Color(0xFF10B981)),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: 6),
+
+            // Row 2: Full-width Modern Search Bar
+            PosSearchBox(
+              onChanged: (val) => _onSearchChanged(val, ref),
+              isMobile: true,
+            ),
+          ],
+        ),
+      );
+    }
+
     return Container(
       height: 82,
       width: double.infinity,
