@@ -45,6 +45,6 @@ class ApiConstants {
     }
 
     // 4. Default fallback matching .env
-    return 'http://206.189.131.105:8033';
+    return 'https://resbillback.naiyo24.com';
   }
 }

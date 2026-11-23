@@ -13,7 +13,7 @@ jobs:
   build-windows:
     runs-on: windows-latest
     env:
-      RELEASE_TAG: v1.0.52
+      RELEASE_TAG: v1.0.53
 
     steps:
       - name: Checkout Code
@@ -38,7 +38,7 @@ jobs:
       - name: Create .env File
         shell: pwsh
         run: |
-          Set-Content -Path ".env" -Value "API_BASE_URL=http://192.168.0.159:8000"
+          Set-Content -Path ".env" -Value "API_BASE_URL=https://resbillback.naiyo24.com"
 
       - name: Pre-fetch PDFium Binaries
         shell: pwsh
@@ -70,7 +70,7 @@ jobs:
           }
           $cleanVersion = $tagName.TrimStart('v')
           echo "RESOLVED_TAG=$tagName" >> $env:GITHUB_ENV
-          flutter build windows --release --build-name=$cleanVersion --build-number=1
+          flutter build windows --release --build-name=$cleanVersion --build-number=1 --dart-define=API_BASE_URL=https://resbillback.naiyo24.com
 
       - name: Copy .env into Flutter Release Directory
         shell: pwsh
