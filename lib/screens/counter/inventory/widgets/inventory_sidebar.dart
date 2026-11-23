@@ -11,6 +11,7 @@ class InventorySidebar extends StatelessWidget {
   final Map<InventorySection, int>? badgeCounts;
   final bool isStandalone;
   final VoidCallback? onBackToDashboard;
+  final bool isDesktop;
 
   const InventorySidebar({
     super.key,
@@ -22,6 +23,7 @@ class InventorySidebar extends StatelessWidget {
     this.badgeCounts,
     this.isStandalone = false,
     this.onBackToDashboard,
+    this.isDesktop = true,
   });
 
   bool get _isCollapsed => isCollapsed == true;
@@ -50,25 +52,31 @@ class InventorySidebar extends StatelessWidget {
           right: BorderSide(color: borderColor, width: 1),
         ),
       ),
-      child: Column(
-        children: [
-          _buildUnifiedHeader(context, isDark),
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              children: [
-                for (int i = 0; i < entries.length; i++)
-                  _buildGroup(context, entries[i].key, entries[i].value, isDark, i == 0),
-              ],
-            ),
+      child: ClipRect(
+        child: SafeArea(
+          top: !isDesktop,
+          bottom: !isDesktop,
+          child: Column(
+            children: [
+              _buildUnifiedHeader(context, isDark),
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  children: [
+                    for (int i = 0; i < entries.length; i++)
+                      _buildGroup(context, entries[i].key, entries[i].value, isDark, i == 0),
+                  ],
+                ),
+              ),
+              Divider(color: borderColor, height: 1, thickness: 1),
+              InventorySidebarFooter(
+                isCollapsed: _isCollapsed,
+                onToggleCollapse: onToggleCollapse,
+                onLogout: onLogout,
+              ),
+            ],
           ),
-          Divider(color: borderColor, height: 1, thickness: 1),
-          InventorySidebarFooter(
-            isCollapsed: _isCollapsed,
-            onToggleCollapse: onToggleCollapse,
-            onLogout: onLogout,
-          ),
-        ],
+        ),
       ),
     );
   }

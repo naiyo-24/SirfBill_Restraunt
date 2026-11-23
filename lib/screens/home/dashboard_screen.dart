@@ -1,10 +1,11 @@
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/theme_provider.dart';
 import '../../services/windows_auto_updater.dart';
 import '../../widgets/restaurant_module_card.dart';
+import '../../widgets/exit_confirmation_dialog.dart';
 import 'widgets/dashboard_components.dart';
 import 'widgets/hardware_promo_banner.dart';
 
@@ -145,18 +146,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         ),
       );
     } else {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('access_token');
-      final role = (prefs.getString('user_role') ?? '').trim().toUpperCase();
-      final isAdmin = token != null && token.isNotEmpty &&
-          (role == 'ADMIN' || role == 'OWNER' || role == 'SUPER_ADMIN');
-
-      // Super Admin can access all modules instantly without re-prompt
-      if (isAdmin && mounted) {
-        context.go(module.nextRoute);
-        return;
-      }
-
       if (mounted) {
         final encodedRole = Uri.encodeComponent(module.title);
         final encodedRoute = Uri.encodeComponent(module.nextRoute);
@@ -179,6 +168,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     return PopScope(
       canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        ExitConfirmationDialog.show(
+          context: context,
+          title: 'Exit SirfBill?',
+          message: 'Are you sure you want to close and exit the application?',
+          confirmText: 'Exit App',
+          icon: Icons.power_settings_new_rounded,
+        ).then((confirmed) {
+          if (confirmed) {
+            SystemNavigator.pop();
+          }
+        });
+      },
       child: Scaffold(
         backgroundColor: isDark
             ? const Color(0xFF0B132B)

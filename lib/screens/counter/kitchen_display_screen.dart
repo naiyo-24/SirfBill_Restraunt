@@ -15,6 +15,7 @@ import 'widgets/kitchen/kitchen_report_export_helper.dart';
 import 'widgets/kitchen/kot_receipt_preview_modal.dart';
 import 'widgets/kitchen/new_order_alert_modal.dart';
 import '../../models/restaurant_pos_models.dart';
+import '../../widgets/exit_confirmation_dialog.dart';
 
 class KitchenDisplayScreen extends ConsumerStatefulWidget {
   final bool isStandalone;
@@ -194,7 +195,30 @@ class _KitchenDisplayScreenState extends ConsumerState<KitchenDisplayScreen> {
       }
     }
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        ExitConfirmationDialog.show(
+          context: context,
+          title: 'Exit Kitchen Display?',
+          message: widget.isStandalone
+              ? 'Are you sure you want to exit KDS and return to the main dashboard?'
+              : 'Are you sure you want to return to the POS billing counter?',
+        ).then((confirmed) async {
+          if (confirmed && context.mounted) {
+            if (widget.isStandalone) {
+              await AppSessionManager.resetSession(ref: ref);
+              if (context.mounted) {
+                context.go('/dashboard');
+              }
+            } else {
+              context.go('/counter/billing');
+            }
+          }
+        });
+      },
+      child: Scaffold(
       backgroundColor: screenBg,
       body: SafeArea(
         top: widget.isStandalone,
@@ -368,6 +392,7 @@ class _KitchenDisplayScreenState extends ConsumerState<KitchenDisplayScreen> {
           ),
         ],
       ),
+    ),
     ),
   );
 }

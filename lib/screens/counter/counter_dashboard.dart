@@ -11,6 +11,7 @@ import '../../services/app_session_manager.dart';
 import '../../services/shop_settings_service.dart';
 import '../../services/windows_auto_updater.dart';
 import '../../providers/theme_provider.dart';
+import '../../widgets/exit_confirmation_dialog.dart';
 
 import 'widgets/dashboard/counter_dashboard_header.dart';
 import 'widgets/dashboard/counter_dashboard_sidebar.dart';
@@ -210,6 +211,29 @@ class _CounterDashboardState extends ConsumerState<CounterDashboard> {
 
     return PopScope(
       canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
+          _scaffoldKey.currentState?.closeDrawer();
+          return;
+        }
+        if (widget.navigationShell.currentIndex != 0) {
+          widget.navigationShell.goBranch(0);
+          return;
+        }
+        ExitConfirmationDialog.show(
+          context: context,
+          title: 'Exit POS Billing?',
+          message: 'Are you sure you want to exit the POS terminal and return to the main dashboard?',
+        ).then((confirmed) async {
+          if (confirmed && context.mounted) {
+            await AppSessionManager.resetSession(ref: ref);
+            if (context.mounted) {
+              context.go('/dashboard');
+            }
+          }
+        });
+      },
       child: Scaffold(
         key: _scaffoldKey,
         backgroundColor: Colors.white,

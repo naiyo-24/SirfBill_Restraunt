@@ -11,6 +11,7 @@ import '../counter/customers_screen.dart';
 import '../counter/reports_screen.dart';
 import 'widgets/crm_reports_sidebar.dart';
 import 'widgets/crm_reports_header.dart';
+import '../../widgets/exit_confirmation_dialog.dart';
 
 class RestaurantCrmReportsScreen extends ConsumerStatefulWidget {
   final int initialTabIndex;
@@ -147,6 +148,29 @@ class _RestaurantCrmReportsScreenState
 
     return PopScope(
       canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
+          _scaffoldKey.currentState?.closeDrawer();
+          return;
+        }
+        if (_selectedIndex != 0) {
+          setState(() => _selectedIndex = 0);
+          return;
+        }
+        ExitConfirmationDialog.show(
+          context: context,
+          title: 'Exit CRM & Reports?',
+          message: 'Are you sure you want to return to the main dashboard?',
+        ).then((confirmed) async {
+          if (confirmed && context.mounted) {
+            await AppSessionManager.resetSession(ref: ref);
+            if (context.mounted) {
+              context.go('/dashboard');
+            }
+          }
+        });
+      },
       child: Scaffold(
         key: _scaffoldKey,
         backgroundColor: Colors.white,

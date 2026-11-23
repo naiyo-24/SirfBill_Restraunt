@@ -29,6 +29,7 @@ import 'widgets/inventory_top_bar.dart';
 import 'widgets/low_stock_notification_dialog.dart';
 import 'widgets/receive_stock_transfer_dialog.dart';
 import 'widgets/stock_transfer_details_dialog.dart';
+import '../../../widgets/exit_confirmation_dialog.dart';
 
 class RestaurantInventoryScreen extends StatefulWidget {
   final InventorySection initialSection;
@@ -61,7 +62,6 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
   List<StockTransferHeader>? _incomingTransfers = [];
   List<StockTransferHeader>? _outboundVarianceTransfers = [];
   bool _isSidebarCollapsed = false;
-
   List<Ingredient> get _safeLowStock => _lowStockItems ?? const [];
   List<StockTransferHeader> get _safeIncoming => _incomingTransfers ?? const [];
   List<StockTransferHeader> get _safeVariances => _outboundVarianceTransfers ?? const [];
@@ -90,9 +90,7 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
       final allShops = await ShopService.getShops(allBranches: true);
       final prefs = await SharedPreferences.getInstance();
       final assignedOutletId = prefs.getString('assigned_outlet_id');
-      final savedId = (assignedOutletId != null && assignedOutletId.isNotEmpty)
-          ? assignedOutletId
-          : prefs.getString('selected_shop_id');
+      final savedId = (assignedOutletId != null && assignedOutletId.isNotEmpty) ? assignedOutletId : prefs.getString('selected_shop_id');
       final savedName = prefs.getString('assigned_outlet_name');
 
       final isAdmin = role == 'ADMIN' || role == 'OWNER' || role == 'SUPER_ADMIN';
@@ -124,25 +122,19 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
         final items = await InventoryApiService.getIngredients(outletId: resolvedOutlet);
         lowItems = items.where((i) => i.isLowStock || i.isOutOfStock).toList();
         lowStockCount = lowItems.length;
-      } catch (e) {
-        debugPrint('[InventoryScreen] Failed to load low stock items: $e');
-      }
+      } catch (_) {}
 
       List<StockTransferHeader> incoming = [];
       try {
         final transfers = await StockTransferApiService.getTransfers(outletId: resolvedOutlet, status: 'IN_TRANSIT');
         incoming = transfers.where((t) => t.toOutletId == resolvedOutlet).toList();
-      } catch (e) {
-        debugPrint('[InventoryScreen] Failed to load in-transit transfers: $e');
-      }
+      } catch (_) {}
 
       List<StockTransferHeader> outboundVariances = [];
       try {
         final completed = await StockTransferApiService.getTransfers(outletId: resolvedOutlet, status: 'COMPLETED');
         outboundVariances = completed.where((t) => t.fromOutletId == resolvedOutlet && t.hasVariance).toList();
-      } catch (e) {
-        debugPrint('[InventoryScreen] Failed to load variance transfers: $e');
-      }
+      } catch (_) {}
 
       if (mounted) {
         setState(() {
@@ -225,28 +217,22 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
     }
   }
 
-  Future<void> _handleLogout() async {
-    final confirm = await showDialog<bool>(
+  Future<void> _handleExit({bool isLogout = false}) async {
+    final confirmed = await ExitConfirmationDialog.show(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(children: [Icon(Icons.logout_rounded, color: Color(0xFFEF4444)), SizedBox(width: 8), Text('Sign Out of Inventory')]),
-        content: const Text('Are you sure you want to log out of the culinary inventory module and return to the dashboard?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444), foregroundColor: Colors.white),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Logout'),
-          ),
-        ],
-      ),
+      title: isLogout ? 'Sign Out of Inventory?' : 'Exit Inventory?',
+      message: isLogout
+          ? 'Are you sure you want to log out of culinary inventory and return to dashboard?'
+          : 'Are you sure you want to return to the main dashboard?',
+      confirmText: isLogout ? 'Logout' : 'Exit',
     );
-    if (confirm == true && mounted) {
+    if (confirmed == true && mounted) {
       await AuthService.logout();
       if (mounted) context.go('/dashboard');
     }
   }
+
+  void _handleLogout() => _handleExit(isLogout: true);
 
   @override
   Widget build(BuildContext context) {
@@ -262,11 +248,24 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
           onLogout: _handleLogout,
           badgeCounts: _badgeCounts,
           isStandalone: widget.isStandalone,
-          onBackToDashboard: () => context.go('/dashboard'),
+          onBackToDashboard: _handleExit,
+          isDesktop: isDesktop && !isDrawer,
         );
 
     return PopScope(
       canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
+          _scaffoldKey.currentState?.closeDrawer();
+          return;
+        }
+        if (_currentSection != widget.initialSection) {
+          setState(() => _currentSection = widget.initialSection);
+          return;
+        }
+        _handleExit();
+      },
       child: Scaffold(
         key: _scaffoldKey,
         backgroundColor: isDark ? const Color(0xFF0F172A) : Colors.white,
@@ -291,7 +290,7 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
                   setState(() => _refreshKeyCounter++);
                   _loadUserInfo();
                 },
-                onBackToDashboard: () => context.go('/dashboard'),
+                onBackToDashboard: _handleExit,
                 lowStockCount: _safeLowStock.length + _safeIncoming.length + _safeVariances.length,
                 onOpenNotifications: _openLowStockNotifications,
               ),

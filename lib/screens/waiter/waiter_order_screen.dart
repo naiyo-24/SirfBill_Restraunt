@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sirfbill_restaurant/services/auth_service.dart';
 
 import '../../models/restaurant_pos_models.dart';
 import '../../providers/kitchen_display_provider.dart';
@@ -17,6 +19,7 @@ import 'widgets/waiter_table_strip.dart';
 import 'widgets/waiter_category_strip.dart';
 import 'widgets/waiter_menu_card.dart';
 import 'widgets/waiter_cart_panel.dart';
+import '../../widgets/exit_confirmation_dialog.dart';
 
 /// Touch-optimized Waiter Order Taking Screen
 /// Designed specifically for Waitstaff / Captains to select tables,
@@ -1053,7 +1056,28 @@ class _WaiterOrderScreenState extends ConsumerState<WaiterOrderScreen> {
 
     final safeTab = _mobileTabIndex.clamp(0, 1);
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (_mobileTabIndex != 0) {
+          setState(() => _mobileTabIndex = 0);
+          return;
+        }
+        ExitConfirmationDialog.show(
+          context: context,
+          title: 'Exit Waiter Mode?',
+          message: 'Are you sure you want to return to the main dashboard?',
+        ).then((confirmed) async {
+          if (confirmed && context.mounted) {
+            await AuthService.logout();
+            if (context.mounted) {
+              context.go('/dashboard');
+            }
+          }
+        });
+      },
+      child: Scaffold(
       backgroundColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
       appBar: WaiterAppBar(
         waiterName: _waiterName,
@@ -1202,6 +1226,7 @@ class _WaiterOrderScreenState extends ConsumerState<WaiterOrderScreen> {
                     ),
                   ],
                 )),
+      ),
     );
   }
 }

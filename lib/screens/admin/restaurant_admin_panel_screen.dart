@@ -19,6 +19,7 @@ import 'widgets/admin_outlets_tab.dart';
 import 'widgets/admin_users_tab.dart';
 import 'widgets/admin_subscription_tab.dart';
 import 'widgets/admin_dialogs.dart';
+import '../../widgets/exit_confirmation_dialog.dart';
 import '../home/widgets/hardware_store_dialog.dart';
 
 class RestaurantAdminPanelScreen extends ConsumerStatefulWidget {
@@ -62,25 +63,12 @@ class _RestaurantAdminPanelScreenState extends ConsumerState<RestaurantAdminPane
 
   bool _handleKeyEvent(KeyEvent event) {
     if (event is KeyDownEvent) {
-      if (event.logicalKey == LogicalKeyboardKey.f1) {
-        setState(() => _selectedIndex = 0);
-        return true;
-      } else if (event.logicalKey == LogicalKeyboardKey.f2) {
-        setState(() => _selectedIndex = 1);
-        return true;
-      } else if (event.logicalKey == LogicalKeyboardKey.f3) {
-        setState(() => _selectedIndex = 2);
-        return true;
-      } else if (event.logicalKey == LogicalKeyboardKey.f4) {
-        setState(() => _selectedIndex = 3);
-        return true;
-      } else if (event.logicalKey == LogicalKeyboardKey.f5) {
-        HardwareStoreDialog.show(context);
-        return true;
-      } else if (event.logicalKey == LogicalKeyboardKey.f6) {
-        context.go('/dashboard');
-        return true;
-      }
+      if (event.logicalKey == LogicalKeyboardKey.f1) { setState(() => _selectedIndex = 0); return true; }
+      if (event.logicalKey == LogicalKeyboardKey.f2) { setState(() => _selectedIndex = 1); return true; }
+      if (event.logicalKey == LogicalKeyboardKey.f3) { setState(() => _selectedIndex = 2); return true; }
+      if (event.logicalKey == LogicalKeyboardKey.f4) { setState(() => _selectedIndex = 3); return true; }
+      if (event.logicalKey == LogicalKeyboardKey.f5) { HardwareStoreDialog.show(context); return true; }
+      if (event.logicalKey == LogicalKeyboardKey.f6) { _handleLogout(); return true; }
     }
     return false;
   }
@@ -345,6 +333,27 @@ class _RestaurantAdminPanelScreenState extends ConsumerState<RestaurantAdminPane
 
     return PopScope(
       canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
+          _scaffoldKey.currentState?.closeDrawer();
+          return;
+        }
+        if (_selectedIndex != 0) {
+          setState(() => _selectedIndex = 0);
+          return;
+        }
+        ExitConfirmationDialog.show(
+          context: context,
+          title: 'Exit Admin Panel?',
+          message: 'Are you sure you want to exit the admin panel and return to the dashboard?',
+        ).then((confirmed) async {
+          if (confirmed && context.mounted) {
+            await AppSessionManager.resetSession(ref: ref);
+            if (context.mounted) context.go('/dashboard');
+          }
+        });
+      },
       child: Scaffold(
         key: _scaffoldKey,
         backgroundColor: Colors.white,

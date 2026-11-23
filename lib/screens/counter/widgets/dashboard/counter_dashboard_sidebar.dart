@@ -169,7 +169,7 @@ class CounterDashboardSidebar extends StatelessWidget {
                                   isDesktop: isDesktop,
                                   customTextColor: const Color(0xFF10B981),
                                   customIconColor: const Color(0xFF10B981),
-                                  onTap: () => context.go('/dashboard'),
+                                  onTap: onLogout,
                                 ),
                                 const SizedBox(height: 8),
                                 Divider(
