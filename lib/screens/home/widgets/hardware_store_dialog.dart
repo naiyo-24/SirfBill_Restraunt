@@ -10,17 +10,7 @@ import 'hardware_store_product_card.dart';
 class HardwareStoreDialog extends StatefulWidget {
   const HardwareStoreDialog({super.key});
 
-  static Future<void> show(BuildContext context) async {
-    final token = await AuthService.getToken();
-    final isLoggedIn = token != null && token.trim().isNotEmpty;
-
-    if (!context.mounted) return;
-
-    if (!isLoggedIn) {
-      await showLoginRequiredDialog(context);
-      return;
-    }
-
+  static Future<void> show(BuildContext context) {
     return showDialog(
       context: context,
       builder: (ctx) => const HardwareStoreDialog(),
@@ -114,10 +104,13 @@ class HardwareStoreDialog extends StatefulWidget {
             ),
             onPressed: () {
               Navigator.pop(ctx);
+              if (Navigator.of(context).canPop()) {
+                Navigator.of(context).pop();
+              }
               if (!isAlreadyOnLogin) {
-                context.push('/role_login?roleName=Admin&nextRoute=/admin', extra: {
+                context.push('/role_login?roleName=Admin&nextRoute=/admin', extra: const {
                   'roleName': 'Admin',
-                  'themeColor': const Color(0xFF6366F1),
+                  'themeColor': Color(0xFF6366F1),
                   'nextRoute': '/admin',
                 });
               }
@@ -135,11 +128,7 @@ class HardwareStoreDialog extends StatefulWidget {
     final webUri = Uri.parse('https://wa.me/918100463128?text=$encoded');
     try {
       if (await launchUrl(nativeUri, mode: LaunchMode.externalApplication)) return;
-    } catch (_) {}
-    try {
       if (await launchUrl(webUri, mode: LaunchMode.externalApplication)) return;
-    } catch (_) {}
-    try {
       await launchUrl(webUri);
     } catch (e) {
       debugPrint('Could not launch WhatsApp: $e');
@@ -210,10 +199,7 @@ class _HardwareStoreDialogState extends State<HardwareStoreDialog> {
   Future<void> _showOrderDialog(HardwareProduct item) async {
     final token = await AuthService.getToken();
     if (token == null || token.trim().isEmpty) {
-      if (mounted) {
-        Navigator.pop(context);
-        HardwareStoreDialog.showLoginRequiredDialog(context);
-      }
+      if (mounted) HardwareStoreDialog.showLoginRequiredDialog(context);
       return;
     }
     if (!mounted) return;
@@ -351,15 +337,9 @@ class _HardwareStoreDialogState extends State<HardwareStoreDialog> {
                             children: [
                               Icon(Icons.inventory_2_outlined, size: 48, color: subtitleColor),
                               const SizedBox(height: 12),
-                              Text(
-                                'No hardware products found in backend catalog',
-                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: textColor),
-                              ),
+                              Text('No hardware products found in backend catalog', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: textColor)),
                               const SizedBox(height: 6),
-                              Text(
-                                'Products are loaded directly from the backend server database.',
-                                style: TextStyle(fontSize: 12, color: subtitleColor),
-                              ),
+                              Text('Products are loaded directly from the backend server database.', style: TextStyle(fontSize: 12, color: subtitleColor)),
                               const SizedBox(height: 16),
                               OutlinedButton.icon(
                                 onPressed: _loadCatalog,
@@ -385,17 +365,15 @@ class _HardwareStoreDialogState extends State<HardwareStoreDialog> {
                                 mainAxisExtent: 275,
                               ),
                               itemCount: filteredProducts.length,
-                              itemBuilder: (context, index) {
-                                return HardwareStoreProductCard(
-                                  product: filteredProducts[index],
-                                  isDark: isDark,
-                                  cardBg: cardBg,
-                                  textColor: textColor,
-                                  subtitleColor: subtitleColor,
-                                  borderColor: borderColor,
-                                  onInquire: _showOrderDialog,
-                                );
-                              },
+                              itemBuilder: (context, index) => HardwareStoreProductCard(
+                                product: filteredProducts[index],
+                                isDark: isDark,
+                                cardBg: cardBg,
+                                textColor: textColor,
+                                subtitleColor: subtitleColor,
+                                borderColor: borderColor,
+                                onInquire: _showOrderDialog,
+                              ),
                             );
                           },
                         ),
@@ -464,16 +442,30 @@ class _HardwareStoreDialogState extends State<HardwareStoreDialog> {
     );
   }
 
+  Future<void> _handleCall() async {
+    final token = await AuthService.getToken();
+    if (token == null || token.trim().isEmpty) {
+      if (mounted) HardwareStoreDialog.showLoginRequiredDialog(context);
+      return;
+    }
+    _launchCall(supportPhone);
+  }
+
+  Future<void> _handleWhatsApp() async {
+    final token = await AuthService.getToken();
+    if (token == null || token.trim().isEmpty) {
+      if (mounted) HardwareStoreDialog.showLoginRequiredDialog(context);
+      return;
+    }
+    _openWhatsApp('Hello SirfBill Hardware Desk, I need assistance choosing POS equipment for my restaurant.');
+  }
+
   Widget _buildCallBtn() {
     return OutlinedButton.icon(
       icon: const Icon(Icons.phone, size: 14),
       label: const Text('Call Support', style: TextStyle(fontSize: 12)),
-      style: OutlinedButton.styleFrom(
-        foregroundColor: const Color(0xFF10B981),
-        side: const BorderSide(color: Color(0xFF10B981)),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      ),
-      onPressed: () => _launchCall(supportPhone),
+      style: OutlinedButton.styleFrom(foregroundColor: const Color(0xFF10B981), side: const BorderSide(color: Color(0xFF10B981)), padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
+      onPressed: _handleCall,
     );
   }
 
@@ -481,12 +473,8 @@ class _HardwareStoreDialogState extends State<HardwareStoreDialog> {
     return ElevatedButton.icon(
       icon: const Icon(Icons.chat_bubble_outline_rounded, size: 14),
       label: const Text('WhatsApp Desk', style: TextStyle(fontSize: 12)),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFF25D366),
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      ),
-      onPressed: () => _openWhatsApp('Hello SirfBill Hardware Desk, I need assistance choosing POS equipment for my restaurant.'),
+      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF25D366), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8)),
+      onPressed: _handleWhatsApp,
     );
   }
 }

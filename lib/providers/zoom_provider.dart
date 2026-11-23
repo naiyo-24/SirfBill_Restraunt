@@ -13,19 +13,9 @@ class ZoomNotifier extends Notifier<double> {
 
   @override
   double build() {
-    _loadSavedZoom();
     return 1.0;
   }
 
-  Future<void> _loadSavedZoom() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final saved = prefs.getDouble(_prefKey);
-      if (saved != null && saved >= minZoom && saved <= maxZoom) {
-        state = double.parse(saved.toStringAsFixed(2));
-      }
-    } catch (_) {}
-  }
 
   Future<void> setZoom(double newZoom) async {
     final clamped = double.parse(newZoom.clamp(minZoom, maxZoom).toStringAsFixed(2));

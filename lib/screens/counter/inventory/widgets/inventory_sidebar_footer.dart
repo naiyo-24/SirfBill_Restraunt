@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../providers/theme_provider.dart';
-import '../../../../providers/zoom_provider.dart';
 import '../../../home/widgets/hardware_store_dialog.dart';
 import '../../widgets/about/about_us_dialog.dart';
 
@@ -22,7 +21,6 @@ class InventorySidebarFooter extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final borderColor = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
     final textColor = isDark ? Colors.white : const Color(0xFF1E293B);
     final subtitleColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
 
@@ -70,78 +68,6 @@ class InventorySidebarFooter extends ConsumerWidget {
           labelColor: textColor,
         ),
 
-        // Screen Zoom Control (Desktop & Web only - hidden on phone screens)
-        if (MediaQuery.sizeOf(context).width >= 650)
-          AnimatedCrossFade(
-          duration: const Duration(milliseconds: 200),
-          crossFadeState: _isCollapsed ? CrossFadeState.showFirst : CrossFadeState.showSecond,
-          firstChild: const SizedBox(height: 6),
-          secondChild: Consumer(
-            builder: (context, ref, _) {
-              final zoom = ref.watch(zoomProvider);
-              final pct = (zoom * 100).round();
-
-              return Center(
-                child: Container(
-                  width: 236.0,
-                  margin: const EdgeInsets.fromLTRB(10, 4, 10, 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: borderColor),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.zoom_in_rounded, size: 16, color: Color(0xFF3B82F6)),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          'Zoom $pct%',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: textColor,
-                          ),
-                          overflow: TextOverflow.clip,
-                          maxLines: 1,
-                        ),
-                      ),
-                      IconButton(
-                        constraints: const BoxConstraints(maxWidth: 24, maxHeight: 24),
-                        padding: EdgeInsets.zero,
-                        icon: const Icon(Icons.remove_rounded, size: 14),
-                        tooltip: 'Zoom Out (Ctrl -)',
-                        onPressed: () => ref.read(zoomProvider.notifier).zoomOut(),
-                      ),
-                      InkWell(
-                        onTap: () => ref.read(zoomProvider.notifier).resetZoom(),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                          child: Text(
-                            '100%',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: pct == 100 ? const Color(0xFF10B981) : const Color(0xFF64748B),
-                            ),
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        constraints: const BoxConstraints(maxWidth: 24, maxHeight: 24),
-                        padding: EdgeInsets.zero,
-                        icon: const Icon(Icons.add_rounded, size: 14),
-                        tooltip: 'Zoom In (Ctrl +)',
-                        onPressed: () => ref.read(zoomProvider.notifier).zoomIn(),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
       ],
     );
   }

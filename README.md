@@ -14,7 +14,7 @@
     <img src="https://img.shields.io/badge/FastAPI-0.110+-009688?logo=fastapi&logoColor=white" alt="FastAPI">
     <img src="https://img.shields.io/badge/PostgreSQL-15+-4169E1?logo=postgresql&logoColor=white" alt="PostgreSQL">
     <img src="https://img.shields.io/badge/Platform-Android%20%7C%20Windows%20%7C%20Web%20%7C%20macOS-blue" alt="Platforms">
-    <img src="https://img.shields.io/badge/Version-1.0.53%2B53-emerald" alt="Version">
+    <img src="https://img.shields.io/badge/Version-1.0.54%2B54-emerald" alt="Version">
   </p>
 </div>
 
