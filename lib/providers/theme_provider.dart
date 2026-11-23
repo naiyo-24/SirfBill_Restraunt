@@ -11,21 +11,20 @@ class ThemeNotifier extends Notifier<ThemeMode> {
 
   @override
   ThemeMode build() {
-    _loadTheme();
+    // Application always opens in Light Mode by default on every launch
+    _clearSavedDarkTheme();
     return ThemeMode.light;
   }
 
-  Future<void> _loadTheme() async {
-    final prefs = await SharedPreferences.getInstance();
-    final isDark = prefs.getBool(_themeKey) ?? false;
-    state = isDark ? ThemeMode.dark : ThemeMode.light;
+  Future<void> _clearSavedDarkTheme() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_themeKey, false);
+    } catch (_) {}
   }
 
-  Future<void> toggleTheme() async {
-    final isDark = state == ThemeMode.dark;
-    state = isDark ? ThemeMode.light : ThemeMode.dark;
-    
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_themeKey, !isDark);
+  void toggleTheme() {
+    // Allows toggling during active session, but app will restart in light mode
+    state = state == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
   }
 }
