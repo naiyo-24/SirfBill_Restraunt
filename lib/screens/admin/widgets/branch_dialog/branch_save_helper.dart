@@ -280,11 +280,11 @@ class BranchSaveHelper {
       // Automatically provision station logins for POS, Kitchen, Inventory, CRM, Waiter
       final cleanCode = newShop.code.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').toLowerCase();
       final stations = [
-        {'key': 'pos', 'role': 'cashier', 'user': 'pos_$cleanCode@sirfbill.com', 'title': 'POS Cashier'},
-        {'key': 'kitchen', 'role': 'chef', 'user': 'kitchen_$cleanCode@sirfbill.com', 'title': 'Kitchen KDS'},
-        {'key': 'inventory', 'role': 'inventory', 'user': 'inventory_$cleanCode@sirfbill.com', 'title': 'Inventory Manager'},
-        {'key': 'crm', 'role': 'manager', 'user': 'crm_$cleanCode@sirfbill.com', 'title': 'Store CRM & Reports'},
-        {'key': 'waiter', 'role': 'waiter', 'user': 'waiter_$cleanCode@sirfbill.com', 'title': 'Waiter Captain'},
+        {'key': 'pos', 'role': 'cashier', 'user': '${cleanCode}_pos', 'pass': '${cleanCode}_pos@123', 'title': 'POS Cashier'},
+        {'key': 'kitchen', 'role': 'chef', 'user': '${cleanCode}_kds', 'pass': '${cleanCode}_kds@123', 'title': 'Kitchen KDS'},
+        {'key': 'inventory', 'role': 'inventory', 'user': '${cleanCode}_inv', 'pass': '${cleanCode}_inv@123', 'title': 'Inventory Manager'},
+        {'key': 'crm', 'role': 'manager', 'user': '${cleanCode}_crm', 'pass': '${cleanCode}_crm@123', 'title': 'Store CRM & Reports'},
+        {'key': 'waiter', 'role': 'waiter', 'user': '${cleanCode}_waiter', 'pass': '${cleanCode}_waiter@123', 'title': 'Waiter Captain'},
       ];
 
       final prefs = await SharedPreferences.getInstance();
@@ -293,11 +293,11 @@ class BranchSaveHelper {
       for (final station in stations) {
         try {
           await prefs.setString('$outletPrefix${station['key']}_user', station['user']!);
-          await prefs.setString('$outletPrefix${station['key']}_pass', '123456');
+          await prefs.setString('$outletPrefix${station['key']}_pass', station['pass']!);
 
           await AdminStaffService.createStaffUser(
             username: station['user']!,
-            password: '123456',
+            password: station['pass']!,
             name: '${newShop.name} ${station['title']}',
             role: station['role']!,
             branchId: newShop.id,

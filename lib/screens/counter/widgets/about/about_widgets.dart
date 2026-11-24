@@ -228,7 +228,7 @@ class AboutHeroHeader extends StatelessWidget {
                     FutureBuilder<PackageInfo>(
                       future: PackageInfo.fromPlatform(),
                       builder: (context, snapshot) {
-                        final version = snapshot.hasData ? snapshot.data!.version : '1.0.57';
+                        final version = snapshot.hasData ? snapshot.data!.version : '1.0.58';
                         return Container(
                           padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                           decoration: BoxDecoration(

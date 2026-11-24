@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../../../config/api_constants.dart';
 import '../../../../services/shop_service.dart';
 import '../../../../services/admin_staff_service.dart';
+import 'outlet_edit_credential_dialog.dart';
+import 'outlet_modal_header.dart';
+import 'outlet_profile_tab.dart';
+import 'outlet_station_card.dart';
 
 class OutletDetailsModal extends StatefulWidget {
   final Shop outlet;
@@ -35,12 +38,6 @@ class _OutletDetailsModalState extends State<OutletDetailsModal> with SingleTick
   List<RestaurantStaffUser> _outletUsers = [];
   Map<String, String> _customPasswords = {};
   Map<String, String> _customUsernames = {};
-
-  // Controllers for editing a credential
-  final _usernameCtrl = TextEditingController();
-  final _passwordCtrl = TextEditingController();
-  String _editingRole = '';
-  String _editingKey = '';
   bool _isSavingCredentials = false;
 
   @override
@@ -53,8 +50,6 @@ class _OutletDetailsModalState extends State<OutletDetailsModal> with SingleTick
   @override
   void dispose() {
     _tabController.dispose();
-    _usernameCtrl.dispose();
-    _passwordCtrl.dispose();
     super.dispose();
   }
 
@@ -67,8 +62,8 @@ class _OutletDetailsModalState extends State<OutletDetailsModal> with SingleTick
     try {
       final prefs = await SharedPreferences.getInstance();
       final outletPrefix = 'outlet_cred_${widget.outlet.id}_';
-      
-      final keys = ['pos', 'kitchen', 'inventory', 'crm'];
+
+      final keys = ['pos', 'kitchen', 'inventory', 'crm', 'waiter'];
       final savedPasswords = <String, String>{};
       final savedUsernames = <String, String>{};
       for (final k in keys) {
@@ -77,15 +72,12 @@ class _OutletDetailsModalState extends State<OutletDetailsModal> with SingleTick
         final u = prefs.getString('$outletPrefix${k}_user');
         if (u != null && u.isNotEmpty) savedUsernames[k] = u;
       }
-      _customPasswords = savedPasswords;
-      _customUsernames = savedUsernames;
 
       final allStaff = await AdminStaffService.getStaffUsers();
       final branchCode = _cleanCode(widget.outlet.code);
       final outletName = widget.outlet.name.trim().toLowerCase();
       final outletId = widget.outlet.id.trim().toLowerCase();
-      
-      // Filter users provisioned for this branch
+
       final matched = allStaff.where((u) {
         final un = u.username.toLowerCase();
         final uBranch = (u.branchId ?? '').toLowerCase();
@@ -95,141 +87,80 @@ class _OutletDetailsModalState extends State<OutletDetailsModal> with SingleTick
             (branchCode.isNotEmpty && un.contains(branchCode));
       }).toList();
 
+      for (final u in matched) {
+        final un = u.username.toLowerCase();
+        if ((un.contains('pos') || un.contains('cashier')) && !savedUsernames.containsKey('pos')) {
+          savedUsernames['pos'] = u.username;
+        } else if ((un.contains('kds') || un.contains('kitchen') || un.contains('chef')) && !savedUsernames.containsKey('kitchen')) {
+          savedUsernames['kitchen'] = u.username;
+        } else if ((un.contains('inv') || un.contains('stock') || un.contains('inventory')) && !savedUsernames.containsKey('inventory')) {
+          savedUsernames['inventory'] = u.username;
+        } else if ((un.contains('crm') || un.contains('report')) && !savedUsernames.containsKey('crm')) {
+          savedUsernames['crm'] = u.username;
+        } else if ((un.contains('waiter') || un.contains('captain')) && !savedUsernames.containsKey('waiter')) {
+          savedUsernames['waiter'] = u.username;
+        }
+      }
+
+      _customPasswords = savedPasswords;
+      _customUsernames = savedUsernames;
       _outletUsers = matched;
     } catch (_) {
-      // Graceful fallback
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
   void _openEditCredentialSheet(String moduleTitle, String moduleKey, String defaultUsername, String defaultPassword, String role) {
-    _usernameCtrl.text = _customUsernames[moduleKey] ?? defaultUsername;
-    _passwordCtrl.text = _customPasswords[moduleKey] ?? defaultPassword;
-    _editingRole = role;
-    _editingKey = moduleKey;
+    OutletEditCredentialDialog.show(
+      context,
+      moduleTitle: moduleTitle,
+      initialUsername: _customUsernames[moduleKey] ?? defaultUsername,
+      initialPassword: _customPasswords[moduleKey] ?? defaultPassword,
+      onSave: (newUsername, newPassword) async {
+        setState(() => _isSavingCredentials = true);
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          final outletPrefix = 'outlet_cred_${widget.outlet.id}_';
+          if (moduleKey.isNotEmpty) {
+            await prefs.setString('$outletPrefix${moduleKey}_pass', newPassword);
+            await prefs.setString('$outletPrefix${moduleKey}_user', newUsername);
+            _customPasswords[moduleKey] = newPassword;
+            _customUsernames[moduleKey] = newUsername;
+          }
 
-    showDialog(
-      context: context,
-      builder: (ctx) {
-        bool obscurePassword = true;
-        return StatefulBuilder(
-          builder: (ctx, setDialogState) => AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            title: Row(
-              children: [
-                const Icon(Icons.key_rounded, color: Color(0xFF6366F1)),
-                const SizedBox(width: 8),
-                Text('Update $moduleTitle Login', style: const TextStyle(fontSize: 15)),
-              ],
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Change the username or login password for this outlet station:',
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                ),
-                const SizedBox(height: 14),
-                TextField(
-                  controller: _usernameCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Login User ID / Email *',
-                    prefixIcon: Icon(Icons.person_rounded, size: 18),
-                    border: OutlineInputBorder(),
-                    isDense: true,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _passwordCtrl,
-                  obscureText: obscurePassword,
-                  decoration: InputDecoration(
-                    labelText: 'New Password *',
-                    prefixIcon: const Icon(Icons.lock_rounded, size: 18),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                        size: 18,
-                      ),
-                      onPressed: () {
-                        setDialogState(() {
-                          obscurePassword = !obscurePassword;
-                        });
-                      },
-                    ),
-                    border: const OutlineInputBorder(),
-                    isDense: true,
-                  ),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Cancel'),
+          await AdminStaffService.createStaffUser(
+            username: newUsername,
+            password: newPassword,
+            name: '${widget.outlet.name} $moduleTitle',
+            role: role,
+            branchId: widget.outlet.id,
+          );
+
+          await _loadOutletCredentials();
+          widget.onCredentialsUpdated();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('$moduleTitle login credentials updated successfully!'),
+                backgroundColor: const Color(0xFF10B981),
+                behavior: SnackBarBehavior.floating,
               ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF6366F1),
-                  foregroundColor: Colors.white,
-                ),
-                onPressed: () async {
-                  Navigator.pop(ctx);
-                  setState(() => _isSavingCredentials = true);
-                  final newUsername = _usernameCtrl.text.trim();
-                  final newPassword = _passwordCtrl.text.trim();
-                  try {
-                    // Save locally in SharedPreferences immediately
-                    final prefs = await SharedPreferences.getInstance();
-                    final outletPrefix = 'outlet_cred_${widget.outlet.id}_';
-                    if (_editingKey.isNotEmpty) {
-                      await prefs.setString('$outletPrefix${_editingKey}_pass', newPassword);
-                      await prefs.setString('$outletPrefix${_editingKey}_user', newUsername);
-                      _customPasswords[_editingKey] = newPassword;
-                      _customUsernames[_editingKey] = newUsername;
-                    }
-
-                    // Sync with backend API
-                    await AdminStaffService.createStaffUser(
-                      username: newUsername,
-                      password: newPassword,
-                      name: '${widget.outlet.name} $moduleTitle',
-                      role: _editingRole,
-                      branchId: widget.outlet.id,
-                    );
-
-                    await _loadOutletCredentials();
-                    widget.onCredentialsUpdated();
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('$moduleTitle login credentials updated successfully!'),
-                          backgroundColor: const Color(0xFF10B981),
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
-                    }
-                  } catch (e) {
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Failed to update credentials: $e'),
-                          backgroundColor: const Color(0xFFEF4444),
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
-                    }
-                  } finally {
-                    if (mounted) setState(() => _isSavingCredentials = false);
-                  }
-                },
-                child: const Text('Save & Apply'),
+            );
+          }
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Failed to update credentials: $e'),
+                backgroundColor: const Color(0xFFEF4444),
+                behavior: SnackBarBehavior.floating,
               ),
-            ],
-          ),
-        );
+            );
+          }
+        } finally {
+          if (mounted) setState(() => _isSavingCredentials = false);
+        }
       },
     );
   }
@@ -264,8 +195,8 @@ class _OutletDetailsModalState extends State<OutletDetailsModal> with SingleTick
         'subtitle': 'Billing Counter, KOTs, Dine-in & Payments',
         'icon': Icons.restaurant_menu_rounded,
         'color': const Color(0xFF10B981),
-        'userId': _customUsernames['pos'] ?? 'pos_$cleanCode@sirfbill.com',
-        'pass': _customPasswords['pos'] ?? '123456',
+        'userId': _customUsernames['pos'] ?? '${cleanCode}_pos',
+        'pass': _customPasswords['pos'] ?? '${cleanCode}_pos@123',
         'role': 'cashier',
       },
       {
@@ -274,9 +205,9 @@ class _OutletDetailsModalState extends State<OutletDetailsModal> with SingleTick
         'subtitle': 'Live Chef Station & Order Routing',
         'icon': Icons.soup_kitchen_rounded,
         'color': const Color(0xFFF97316),
-        'userId': _customUsernames['kitchen'] ?? 'kitchen_$cleanCode@sirfbill.com',
-        'pass': _customPasswords['kitchen'] ?? '123456',
-        'role': 'chef',
+        'userId': _customUsernames['kitchen'] ?? '${cleanCode}_kds',
+        'pass': _customPasswords['kitchen'] ?? '${cleanCode}_kds@123',
+        'role': 'kitchen',
       },
       {
         'key': 'inventory',
@@ -284,9 +215,9 @@ class _OutletDetailsModalState extends State<OutletDetailsModal> with SingleTick
         'subtitle': 'Branch Stock, Recipes, Ingredients & POs',
         'icon': Icons.inventory_2_rounded,
         'color': const Color(0xFF3B82F6),
-        'userId': _customUsernames['inventory'] ?? 'inventory_$cleanCode@sirfbill.com',
-        'pass': _customPasswords['inventory'] ?? '123456',
-        'role': 'inventory',
+        'userId': _customUsernames['inventory'] ?? '${cleanCode}_inv',
+        'pass': _customPasswords['inventory'] ?? '${cleanCode}_inv@123',
+        'role': 'manager',
       },
       {
         'key': 'crm',
@@ -294,8 +225,8 @@ class _OutletDetailsModalState extends State<OutletDetailsModal> with SingleTick
         'subtitle': 'Customer Loyalty, Daily Revenue & Branch Audits',
         'icon': Icons.groups_rounded,
         'color': const Color(0xFF8B5CF6),
-        'userId': _customUsernames['crm'] ?? 'crm_$cleanCode@sirfbill.com',
-        'pass': _customPasswords['crm'] ?? '123456',
+        'userId': _customUsernames['crm'] ?? '${cleanCode}_crm',
+        'pass': _customPasswords['crm'] ?? '${cleanCode}_crm@123',
         'role': 'manager',
       },
       {
@@ -304,8 +235,8 @@ class _OutletDetailsModalState extends State<OutletDetailsModal> with SingleTick
         'subtitle': 'Table Order Taking & Automated KOT Dispatch',
         'icon': Icons.room_service_rounded,
         'color': const Color(0xFFF59E0B),
-        'userId': _customUsernames['waiter'] ?? 'waiter_$cleanCode@sirfbill.com',
-        'pass': _customPasswords['waiter'] ?? '123456',
+        'userId': _customUsernames['waiter'] ?? '${cleanCode}_waiter',
+        'pass': _customPasswords['waiter'] ?? '${cleanCode}_waiter@123',
         'role': 'waiter',
       },
     ];
@@ -330,95 +261,12 @@ class _OutletDetailsModalState extends State<OutletDetailsModal> with SingleTick
         child: Column(
           children: [
             // Modal Header
-            Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: isMobile ? 14 : 22,
-                vertical: isMobile ? 12 : 16,
-              ),
-              decoration: BoxDecoration(
-                border: Border(bottom: BorderSide(color: borderColor)),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF6366F1).withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: const Color(0xFF6366F1).withValues(alpha: 0.25)),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(9),
-                      child: (widget.outlet.logoUrl != null && widget.outlet.logoUrl!.trim().isNotEmpty)
-                          ? Image.network(
-                              widget.outlet.logoUrl!.startsWith('http://') || widget.outlet.logoUrl!.startsWith('https://')
-                                  ? widget.outlet.logoUrl!
-                                  : '${ApiConstants.baseUrl}${widget.outlet.logoUrl!.startsWith('/') ? '' : '/'}${widget.outlet.logoUrl}',
-                              fit: BoxFit.contain,
-                              errorBuilder: (_, __, ___) => const Icon(
-                                Icons.store_mall_directory_rounded,
-                                color: Color(0xFF6366F1),
-                                size: 22,
-                              ),
-                            )
-                          : const Icon(Icons.store_mall_directory_rounded, color: Color(0xFF6366F1), size: 22),
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Flexible(
-                              child: Text(
-                                widget.outlet.name,
-                                style: TextStyle(
-                                  fontSize: isMobile ? 15 : 17,
-                                  fontWeight: FontWeight.w800,
-                                  color: textColor,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF10B981).withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                widget.outlet.code,
-                                style: const TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w800,
-                                  color: Color(0xFF10B981),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          '${widget.outlet.location}, ${widget.outlet.city} • Outlet ID: ${widget.outlet.id}',
-                          style: TextStyle(fontSize: 11.5, color: subtitleColor),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: Icon(Icons.close_rounded, color: subtitleColor),
-                    splashRadius: 20,
-                  ),
-                ],
-              ),
+            OutletModalHeader(
+              outlet: widget.outlet,
+              isMobile: isMobile,
+              borderColor: borderColor,
+              textColor: textColor,
+              subtitleColor: subtitleColor,
             ),
 
             // Tab Bar
@@ -474,10 +322,8 @@ class _OutletDetailsModalState extends State<OutletDetailsModal> with SingleTick
                             final color = m['color'] as Color;
                             final defaultId = m['userId'] as String;
                             final role = m['role'] as String;
-
                             final moduleKey = m['key'] as String;
 
-                            // Match dynamic user specifically for this module
                             final matchingStaff = _outletUsers.firstWhere(
                               (u) {
                                 final un = u.username.toLowerCase();
@@ -509,148 +355,38 @@ class _OutletDetailsModalState extends State<OutletDetailsModal> with SingleTick
                                 ? matchingStaff.password!
                                 : (m['pass'] as String);
 
-                            return Container(
-                              padding: const EdgeInsets.all(14),
-                              decoration: BoxDecoration(
-                                color: cardBg,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: borderColor),
-                              ),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(10),
-                                    decoration: BoxDecoration(
-                                      color: color.withValues(alpha: 0.12),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: Icon(m['icon'] as IconData, color: color, size: 22),
-                                  ),
-                                  const SizedBox(width: 14),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          m['title'] as String,
-                                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: textColor),
-                                        ),
-                                        Text(
-                                          m['subtitle'] as String,
-                                          style: TextStyle(fontSize: 11, color: subtitleColor),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Wrap(
-                                          spacing: 8,
-                                          runSpacing: 6,
-                                          crossAxisAlignment: WrapCrossAlignment.center,
-                                          children: [
-                                            // User ID Pill
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                              decoration: BoxDecoration(
-                                                color: isDark ? const Color(0xFF0F172A) : Colors.white,
-                                                borderRadius: BorderRadius.circular(6),
-                                                border: Border.all(color: borderColor),
-                                              ),
-                                              child: Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  Text('User ID: ', style: TextStyle(fontSize: 11, color: subtitleColor)),
-                                                  ConstrainedBox(
-                                                    constraints: BoxConstraints(maxWidth: isMobile ? 120 : 200),
-                                                    child: Text(
-                                                      activeUser,
-                                                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: textColor),
-                                                      overflow: TextOverflow.ellipsis,
-                                                    ),
-                                                  ),
-                                                  const SizedBox(width: 4),
-                                                  InkWell(
-                                                    onTap: () => _copyToClipboard(activeUser, 'User ID'),
-                                                    child: Icon(Icons.copy_rounded, size: 12, color: subtitleColor),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                            // Password Pill
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                              decoration: BoxDecoration(
-                                                color: isDark ? const Color(0xFF0F172A) : Colors.white,
-                                                borderRadius: BorderRadius.circular(6),
-                                                border: Border.all(color: borderColor),
-                                              ),
-                                              child: Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  Text('Password: ', style: TextStyle(fontSize: 11, color: subtitleColor)),
-                                                  Text(activePass, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: textColor)),
-                                                  const SizedBox(width: 4),
-                                                  InkWell(
-                                                    onTap: () => _copyToClipboard(activePass, 'Password'),
-                                                    child: Icon(Icons.copy_rounded, size: 12, color: subtitleColor),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  // Changeable Button
-                                  OutlinedButton.icon(
-                                    onPressed: () => _openEditCredentialSheet(
-                                      m['title'] as String,
-                                      m['key'] as String,
-                                      activeUser,
-                                      m['pass'] as String,
-                                      role,
-                                    ),
-                                    icon: const Icon(Icons.edit_rounded, size: 14),
-                                    label: const Text('Change', style: TextStyle(fontSize: 12)),
-                                    style: OutlinedButton.styleFrom(
-                                      foregroundColor: const Color(0xFF6366F1),
-                                      side: const BorderSide(color: Color(0xFF6366F1)),
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                    ),
-                                  ),
-                                ],
+                            return OutletStationCard(
+                              title: m['title'] as String,
+                              subtitle: m['subtitle'] as String,
+                              icon: m['icon'] as IconData,
+                              color: color,
+                              activeUser: activeUser,
+                              activePass: activePass,
+                              cardBg: cardBg,
+                              borderColor: borderColor,
+                              textColor: textColor,
+                              subtitleColor: subtitleColor,
+                              isDark: isDark,
+                              isMobile: isMobile,
+                              onCopy: _copyToClipboard,
+                              onEdit: () => _openEditCredentialSheet(
+                                m['title'] as String,
+                                moduleKey,
+                                activeUser,
+                                activePass,
+                                role,
                               ),
                             );
                           },
                         ),
 
                   // TAB 2: BRANCH PROFILE OVERVIEW
-                  SingleChildScrollView(
-                    padding: const EdgeInsets.all(22),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildDetailTile('Branch Name', widget.outlet.name, textColor, subtitleColor, borderColor, cardBg),
-                        _buildDetailTile('Branch Code', widget.outlet.code, textColor, subtitleColor, borderColor, cardBg),
-                        _buildDetailTile('Physical Address', widget.outlet.location, textColor, subtitleColor, borderColor, cardBg),
-                        _buildDetailTile('City & Region', widget.outlet.city, textColor, subtitleColor, borderColor, cardBg),
-                        _buildDetailTile('Contact Phone', widget.outlet.contact, textColor, subtitleColor, borderColor, cardBg),
-                        _buildDetailTile('Operational Status', widget.outlet.status.toUpperCase(), textColor, subtitleColor, borderColor, cardBg),
-                        _buildDetailTile('Primary Branch Flag', widget.outlet.isPrimary ? 'YES (HQ Outlet)' : 'NO', textColor, subtitleColor, borderColor, cardBg),
-                        if (widget.outlet.bankAccountName != null && widget.outlet.bankAccountName!.isNotEmpty)
-                          _buildDetailTile('Account Holder Name', widget.outlet.bankAccountName!, textColor, subtitleColor, borderColor, cardBg),
-                        if (widget.outlet.bankName != null && widget.outlet.bankName!.isNotEmpty)
-                          _buildDetailTile('Bank Name', widget.outlet.bankName!, textColor, subtitleColor, borderColor, cardBg),
-                        if (widget.outlet.bankAccount != null && widget.outlet.bankAccount!.isNotEmpty)
-                          _buildDetailTile('Bank Account Number', widget.outlet.bankAccount!, textColor, subtitleColor, borderColor, cardBg),
-                        if (widget.outlet.bankIfsc != null && widget.outlet.bankIfsc!.isNotEmpty)
-                          _buildDetailTile('Bank IFSC Code', widget.outlet.bankIfsc!, textColor, subtitleColor, borderColor, cardBg),
-                        if (widget.outlet.bankBranch != null && widget.outlet.bankBranch!.isNotEmpty)
-                          _buildDetailTile('Bank Branch', widget.outlet.bankBranch!, textColor, subtitleColor, borderColor, cardBg),
-                        if (widget.outlet.upiId != null && widget.outlet.upiId!.isNotEmpty)
-                          _buildDetailTile('UPI ID / VPA', widget.outlet.upiId!, textColor, subtitleColor, borderColor, cardBg),
-                      ],
-                    ),
+                  OutletProfileTab(
+                    outlet: widget.outlet,
+                    textColor: textColor,
+                    subtitleColor: subtitleColor,
+                    borderColor: borderColor,
+                    cardBg: cardBg,
                   ),
                 ],
               ),
@@ -691,34 +427,6 @@ class _OutletDetailsModalState extends State<OutletDetailsModal> with SingleTick
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildDetailTile(String label, String value, Color textColor, Color subtitleColor, Color borderColor, Color cardBg) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: cardBg,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: borderColor),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: subtitleColor)),
-          const SizedBox(width: 8),
-          Flexible(
-            child: Text(
-              value,
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: textColor),
-              textAlign: TextAlign.end,
-              overflow: TextOverflow.ellipsis,
-              maxLines: 2,
-            ),
-          ),
-        ],
       ),
     );
   }

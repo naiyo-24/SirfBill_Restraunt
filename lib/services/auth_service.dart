@@ -128,33 +128,33 @@ class AuthService {
     final r = role.trim().toUpperCase();
     final m = moduleTitle.toLowerCase();
     final u = (username ?? '').toLowerCase();
-    final n = (name ?? '').toLowerCase();
 
     // Universal super access for owners/super admins
     if (r == 'ADMIN' || r == 'OWNER' || r == 'SUPER_ADMIN' || r == 'SUPERADMIN') {
       return true;
     }
 
-    final isInventoryUser = u.contains('inv') || u.contains('stock') || n.contains('inventory') || n.contains('stock');
-    final isPosUser = u.contains('pos') || u.contains('cashier') || n.contains('pos') || n.contains('cashier');
-    final isKitchenUser = u.contains('kitchen') || u.contains('chef') || u.contains('kds') || n.contains('kitchen') || n.contains('chef');
-    final isWaiterUser = u.contains('waiter') || u.contains('captain') || n.contains('waiter') || n.contains('captain');
-    final isCrmUser = u.contains('crm') || u.contains('report') || n.contains('crm') || n.contains('report');
+    // Inspect ONLY username (not restaurant display name, which may contain words like 'Kitchen')
+    final isInventoryUser = u.contains('_inv') || u.startsWith('inv_') || u.contains('inventory') || u.contains('stock');
+    final isPosUser = u.contains('_pos') || u.startsWith('pos_') || u.contains('cashier') || u.contains('billing');
+    final isKitchenUser = u.contains('_kds') || u.startsWith('kds_') || u.contains('_kitchen') || u.startsWith('kitchen_') || u.contains('chef');
+    final isWaiterUser = u.contains('_waiter') || u.startsWith('waiter_') || u.contains('captain') || u.contains('server');
+    final isCrmUser = u.contains('_crm') || u.startsWith('crm_') || u.contains('report') || u.contains('loyalty');
 
-    if (m.contains('inventory') || m.contains('stock') || m.contains('purchase')) {
-      if (isPosUser || isKitchenUser || isWaiterUser || isCrmUser) return false;
-      return r == 'INVENTORY' || r == 'STOCK' || (r == 'MANAGER' && isInventoryUser);
-    } else if (m.contains('pos') || m.contains('billing')) {
+    if (m.contains('pos') || m.contains('billing')) {
       if (isInventoryUser || isKitchenUser || isWaiterUser || isCrmUser) return false;
       return r == 'CASHIER' || r == 'POS' || (r == 'MANAGER' && !isInventoryUser && !isCrmUser);
     } else if (m.contains('kitchen') || m.contains('chef') || m.contains('kds')) {
       if (isInventoryUser || isPosUser || isWaiterUser || isCrmUser) return false;
       return r == 'CHEF' || r == 'KITCHEN' || r == 'KDS';
+    } else if (m.contains('inventory') || m.contains('stock') || m.contains('purchase')) {
+      if (isPosUser || isKitchenUser || isWaiterUser || isCrmUser) return false;
+      return r == 'INVENTORY' || r == 'STOCK' || (r == 'MANAGER' && isInventoryUser);
     } else if (m.contains('waiter') || m.contains('captain') || m.contains('server')) {
       if (isInventoryUser || isPosUser || isKitchenUser || isCrmUser) return false;
       return r == 'WAITER' || r == 'CAPTAIN' || r == 'SERVER';
     } else if (m.contains('crm') || m.contains('report')) {
-      if (isInventoryUser || isKitchenUser || isWaiterUser) return false;
+      if (isInventoryUser || isKitchenUser || isWaiterUser || isPosUser) return false;
       return r == 'MANAGER' || r == 'CRM' || isCrmUser;
     } else if (m.contains('admin')) {
       return r == 'ADMIN' || r == 'OWNER' || r == 'SUPER_ADMIN';
@@ -238,18 +238,33 @@ class AuthService {
       }
     }
 
-    // 3. Default station patterns (password: 123456)
-    if (cleanPass == '123456') {
+    // 3. Default station patterns (passwords: 123456, <user>@123)
+    final isDefaultPass = cleanPass == '123456' ||
+        cleanPass == '$cleanEmail@123' ||
+        cleanPass.endsWith('@123');
+
+    if (isDefaultPass) {
       String? detectedModuleKey;
-      if (cleanEmail.startsWith('inventory_') || cleanEmail.startsWith('inv_')) {
+      if (cleanEmail.startsWith('inventory_') ||
+          cleanEmail.startsWith('inv_') ||
+          cleanEmail.endsWith('_inv') ||
+          cleanEmail.endsWith('_inventory')) {
         detectedModuleKey = 'inventory';
-      } else if (cleanEmail.startsWith('pos_') || cleanEmail.startsWith('billing_')) {
+      } else if (cleanEmail.startsWith('pos_') ||
+          cleanEmail.startsWith('billing_') ||
+          cleanEmail.endsWith('_pos')) {
         detectedModuleKey = 'pos';
-      } else if (cleanEmail.startsWith('kitchen_') || cleanEmail.startsWith('chef_')) {
+      } else if (cleanEmail.startsWith('kitchen_') ||
+          cleanEmail.startsWith('chef_') ||
+          cleanEmail.endsWith('_kds') ||
+          cleanEmail.endsWith('_kitchen')) {
         detectedModuleKey = 'kitchen';
-      } else if (cleanEmail.startsWith('waiter_') || cleanEmail.startsWith('captain_')) {
+      } else if (cleanEmail.startsWith('waiter_') ||
+          cleanEmail.startsWith('captain_') ||
+          cleanEmail.endsWith('_waiter')) {
         detectedModuleKey = 'waiter';
-      } else if (cleanEmail.startsWith('crm_')) {
+      } else if (cleanEmail.startsWith('crm_') ||
+          cleanEmail.endsWith('_crm')) {
         detectedModuleKey = 'crm';
       }
 
@@ -276,10 +291,12 @@ class AuthService {
   static String _friendlyModuleName(String key) {
     switch (key.toLowerCase()) {
       case 'inventory':
+      case 'inv':
         return 'Inventory & Purchase';
       case 'pos':
         return 'Restaurant POS';
       case 'kitchen':
+      case 'kds':
         return 'Kitchen Display';
       case 'crm':
         return 'CRM & Reports';
@@ -293,10 +310,12 @@ class AuthService {
   static String _mapModuleKeyToRole(String key) {
     switch (key.toLowerCase()) {
       case 'inventory':
+      case 'inv':
         return 'INVENTORY';
       case 'pos':
         return 'CASHIER';
       case 'kitchen':
+      case 'kds':
         return 'CHEF';
       case 'crm':
         return 'MANAGER';

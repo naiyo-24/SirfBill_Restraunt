@@ -327,15 +327,54 @@ class _SubscriptionCheckoutDialogState extends State<SubscriptionCheckoutDialog>
                         ),
                         const SizedBox(height: 12),
                         const Text(
-                          'Official Razorpay Checkout window is open...',
+                          'Razorpay Checkout window is open...',
                           style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
                         ),
                         const SizedBox(height: 4),
                         const Text(
-                          'Complete your payment in the Razorpay popup.',
+                          'Complete your payment in the browser window.\nThis screen will automatically update once verified.',
                           style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
+                          textAlign: TextAlign.center,
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 14),
+                        ElevatedButton.icon(
+                          onPressed: () async {
+                            final status = await SubscriptionApiService.fetchSubscriptionStatus();
+                            if (status.isActive && status.daysRemaining > 14) {
+                              if (mounted) {
+                                setState(() {
+                                  _isProcessing = false;
+                                  _isSuccess = true;
+                                });
+                                await Future.delayed(const Duration(milliseconds: 700));
+                                if (mounted) {
+                                  widget.onSuccess(status);
+                                  // ignore: use_build_context_synchronously
+                                  Navigator.pop(context);
+                                }
+                              }
+                            } else {
+                              if (mounted) {
+                                // ignore: use_build_context_synchronously
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Payment not detected yet. Please ensure payment is completed in the Razorpay window.'),
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              }
+                            }
+                          },
+                          icon: const Icon(Icons.verified_rounded, size: 16),
+                          label: const Text('I Have Completed Payment — Verify Now', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF10B981),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
                         TextButton(
                           onPressed: () => setState(() => _isProcessing = false),
                           child: const Text('Cancel / Re-open Window', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),

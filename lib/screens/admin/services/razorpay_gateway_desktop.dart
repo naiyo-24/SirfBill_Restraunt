@@ -34,6 +34,7 @@ Future<Map<String, String>?> launchOfficialRazorpay({
             amount: amount,
             planName: planName,
             orderId: orderId,
+            paymentLinkUrl: paymentLinkUrl,
             port: port,
             userName: userName ?? 'Restaurant Admin',
             userEmail: userEmail ?? 'admin@sirfbill.com',
@@ -46,6 +47,7 @@ Future<Map<String, String>?> launchOfficialRazorpay({
             '';
         final rzpOrderId = uri.queryParameters['razorpay_order_id'] ??
             uri.queryParameters['order_id'] ??
+            uri.queryParameters['razorpay_payment_link_id'] ??
             (orderId ?? '');
         final signature = uri.queryParameters['razorpay_signature'] ??
             uri.queryParameters['signature'] ??
@@ -70,7 +72,7 @@ Future<Map<String, String>?> launchOfficialRazorpay({
         await request.response.close();
         if (!completer.isCompleted) {
           completer.complete({
-            'payment_id': paymentId,
+            'payment_id': paymentId.isNotEmpty ? paymentId : 'pay_verified',
             'order_id': rzpOrderId,
             'signature': signature,
           });
@@ -88,31 +90,54 @@ Future<Map<String, String>?> launchOfficialRazorpay({
       }
     });
 
-    // Open official Razorpay hosted payment link (rzp.io) to avoid localhost website domain check
-    final targetUrl = (paymentLinkUrl != null && paymentLinkUrl.isNotEmpty)
+    // On mobile devices (Android/iOS), launch official hosted payment link for native UPI apps (GPay/PhonePe).
+    // On desktop EXE (Windows/macOS/Linux), launch local server with embedded Razorpay modal & instant auto-redirect.
+    final isMobile = Platform.isAndroid || Platform.isIOS;
+    final targetUrl = (isMobile && paymentLinkUrl != null && paymentLinkUrl.isNotEmpty)
         ? paymentLinkUrl
         : 'http://127.0.0.1:$port/';
     await launchUrl(Uri.parse(targetUrl), mode: LaunchMode.externalApplication);
 
-    // Automatic polling verification every 3 seconds
-    Timer.periodic(const Duration(seconds: 3), (timer) async {
+    // Multi-channel polling verification every 2 seconds
+    Timer.periodic(const Duration(seconds: 2), (timer) async {
       if (completer.isCompleted) {
         timer.cancel();
         return;
       }
+
+      // Channel 1: Query backend order status
       if (orderId != null && orderId.isNotEmpty) {
-        final check = await SubscriptionApiService.checkOrderStatus(orderId);
-        if (check != null && check['paid'] == true) {
+        try {
+          final check = await SubscriptionApiService.checkOrderStatus(orderId);
+          if (check != null && (check['paid'] == true || check['status'] == 'PAID')) {
+            timer.cancel();
+            if (!completer.isCompleted) {
+              completer.complete({
+                'payment_id': check['payment_id']?.toString() ?? 'pay_verified',
+                'order_id': orderId,
+              });
+            }
+            await server?.close();
+            return;
+          }
+        } catch (_) {}
+      }
+
+      // Channel 2: Query tenant subscription status directly
+      try {
+        final subStatus = await SubscriptionApiService.fetchSubscriptionStatus();
+        if (subStatus.isActive && subStatus.daysRemaining > 14) {
           timer.cancel();
           if (!completer.isCompleted) {
             completer.complete({
-              'payment_id': 'pay_verified',
-              'order_id': orderId,
+              'payment_id': 'pay_verified_status',
+              'order_id': orderId ?? 'order_verified',
             });
           }
           await server?.close();
+          return;
         }
-      }
+      } catch (_) {}
     });
 
     Timer(const Duration(minutes: 10), () {
@@ -134,6 +159,7 @@ String _generateRazorpayHtml({
   required double amount,
   required String planName,
   String? orderId,
+  String? paymentLinkUrl,
   required int port,
   required String userName,
   required String userEmail,
@@ -141,6 +167,9 @@ String _generateRazorpayHtml({
 }) {
   final paise = (amount * 100).round();
   final orderField = (orderId != null && orderId.isNotEmpty) ? 'order_id: "$orderId",' : '';
+  final fallbackLinkHtml = (paymentLinkUrl != null && paymentLinkUrl.isNotEmpty)
+      ? '<p style="margin-top: 16px;"><a href="$paymentLinkUrl" style="color: #38BDF8; font-size: 13px; text-decoration: underline;">Click here to open Razorpay Hosted Checkout directly</a></p>'
+      : '';
 
   return '''
 <!DOCTYPE html>
@@ -151,9 +180,10 @@ String _generateRazorpayHtml({
   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 </head>
 <body style="background: #0C2340; color: white; display: flex; align-items: center; justify-content: center; height: 100vh; font-family: sans-serif; margin: 0;">
-  <div style="text-align: center; padding: 20px;">
+  <div style="text-align: center; padding: 24px; max-width: 440px;">
     <h2>Opening Razorpay Secure Gateway...</h2>
     <p style="color: #94A3B8; font-size: 14px;">Please complete the payment in the official Razorpay window.</p>
+    $fallbackLinkHtml
   </div>
   <script>
     var rzp = new Razorpay({
