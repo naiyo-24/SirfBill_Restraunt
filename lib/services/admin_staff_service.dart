@@ -66,6 +66,7 @@ class AdminStaffService {
       if (res.statusCode == 200 && res.data != null) {
         final List list = res.data is List ? res.data : (res.data['users'] ?? []);
         final apiUsers = list.map((j) => RestaurantStaffUser.fromJson(j)).toList();
+        if (apiUsers.isNotEmpty) return apiUsers;
         return _mergeUsers(apiUsers, localUsers);
       }
     } catch (_) {}
