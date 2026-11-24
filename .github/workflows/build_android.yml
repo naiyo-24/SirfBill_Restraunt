@@ -1,0 +1,81 @@
+name: Build SirfBill Restaurant Android APK
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: v1.0.58
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Get Flutter Dependencies
+        run: flutter pub get
+
+      - name: Create .env File
+        run: |
+          echo "API_BASE_URL=https://resbillback.naiyo24.com" > .env
+
+      - name: Build Flutter Android APK (Release)
+        run: |
+          flutter build apk --release
+
+      - name: Prepare APK Release Artifact
+        run: |
+          TAG_NAME="${{ github.ref_name }}"
+          if [[ -z "$TAG_NAME" || "$TAG_NAME" == "main" ]]; then
+            TAG_NAME="${{ env.RELEASE_TAG }}"
+          fi
+          echo "TAG_NAME=$TAG_NAME" >> $GITHUB_ENV
+          APK_SRC="build/app/outputs/flutter-apk/app-release.apk"
+          APK_DEST="Sirfbill_Restaurant_${TAG_NAME}.apk"
+          if [ -f "$APK_SRC" ]; then
+            cp "$APK_SRC" "$APK_DEST"
+            echo "Created $APK_DEST from $APK_SRC"
+          else
+            echo "Error: $APK_SRC not found!"
+            exit 1
+          fi
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sirfbill-restaurant-apk
+          path: Sirfbill_Restaurant_*.apk
+          if-no-files-found: error
+
+      - name: Attach APK to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG_NAME }}
+          files: |
+            Sirfbill_Restaurant_*.apk
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
