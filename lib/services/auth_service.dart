@@ -318,6 +318,8 @@ class AuthService {
     await prefs.remove('role_login_name');
     await prefs.remove('assigned_outlet_id');
     await prefs.remove('assigned_outlet_name');
+    await prefs.remove('selected_shop_id');
+    await prefs.remove('local_staff_users_db');
     await InventoryService.clearShopId();
     AppImageCacheManager.instance.clearMemoryCache();
   }
