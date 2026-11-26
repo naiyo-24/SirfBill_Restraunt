@@ -80,6 +80,9 @@ lib/generated_plugin_registrant.dart
 app.*.symbols
 app.*.map.json
 
+# Compiled binaries
+*.apk
+
 # Environment & Secrets
 .env
 .env.*
