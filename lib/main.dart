@@ -26,8 +26,10 @@ class AppScrollBehavior extends MaterialScrollBehavior {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  if (kIsWeb) {
-    debugDefaultTargetPlatformOverride = getSafeWebPlatform();
+  if (kIsWeb && kDebugMode) {
+    try {
+      debugDefaultTargetPlatformOverride = getSafeWebPlatform();
+    } catch (_) {}
   }
   PaintingBinding.instance.imageCache.maximumSize = 1000;
   PaintingBinding.instance.imageCache.maximumSizeBytes = 250 << 20; // 250 MB

@@ -7,6 +7,7 @@ import '../../services/windows_auto_updater.dart';
 import '../../services/app_session_manager.dart';
 import 'widgets/role_login_feature_panel.dart';
 import 'widgets/role_login_form_card.dart';
+import 'widgets/branch_subscription_expired_dialog.dart';
 import '../home/widgets/hardware_store_dialog.dart';
 
 class RoleLoginScreen extends ConsumerStatefulWidget {
@@ -62,34 +63,102 @@ class _RoleLoginScreenState extends ConsumerState<RoleLoginScreen> {
       }
     } catch (e) {
       if (mounted) {
-        showDialog(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            title: const Row(
-              children: [
-                Icon(Icons.error_outline, color: Colors.red),
-                SizedBox(width: 8),
-                Text('Login Failed', style: TextStyle(color: Colors.red)),
-              ],
-            ),
-            content: Text(e.toString().replaceAll('Exception: ', '')),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: Text(
-                  'OK',
-                  style: TextStyle(
-                    color: Theme.of(context).brightness == Brightness.dark ? Colors.white : const Color(0xFF1E293B),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
+        if (e is BranchSubscriptionExpiredException) {
+          BranchSubscriptionExpiredDialog.show(
+            context,
+            outletId: e.outletId,
+            outletName: e.outletName,
+            message: e.message,
+            onRenewed: () => _login(rawEmail, rawPass),
+          );
+        } else {
+          final errStr = e.toString().replaceAll('Exception: ', '').trim();
+          final isSubExp = errStr.toLowerCase().contains('subscription') ||
+              errStr.toLowerCase().contains('unpaid') ||
+              errStr.toLowerCase().contains('license');
+          if (isSubExp) {
+            BranchSubscriptionExpiredDialog.show(
+              context,
+              message: errStr,
+              onRenewed: () => _login(rawEmail, rawPass),
+            );
+          } else {
+            _showModernErrorDialog(context, errStr);
+          }
+        }
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _showModernErrorDialog(BuildContext context, String message) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardBg = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final subtitleColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 380),
+          padding: const EdgeInsets.all(22),
+          decoration: BoxDecoration(
+            color: cardBg,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.12),
+                blurRadius: 24,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEF4444).withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.error_outline_rounded, color: Color(0xFFEF4444), size: 28),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                'Login Failed',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textColor),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                message,
+                style: TextStyle(fontSize: 12.5, color: subtitleColor, height: 1.4),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                height: 42,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1E293B),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: const Text('Try Again', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override

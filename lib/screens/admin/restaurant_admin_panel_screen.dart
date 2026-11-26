@@ -195,23 +195,19 @@ class _RestaurantAdminPanelScreenState extends ConsumerState<RestaurantAdminPane
         );
         _loadAdminData();
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Outlet "${branch.name}" deleted successfully.'),
-              backgroundColor: const Color(0xFF10B981),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('Outlet "${branch.name}" deleted successfully.'),
+            backgroundColor: const Color(0xFF10B981),
+            behavior: SnackBarBehavior.floating,
+          ));
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Failed to delete outlet: $e'),
-              backgroundColor: const Color(0xFFEF4444),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('Failed to delete outlet: $e'),
+            backgroundColor: const Color(0xFFEF4444),
+            behavior: SnackBarBehavior.floating,
+          ));
         }
       }
     }
@@ -288,22 +284,18 @@ class _RestaurantAdminPanelScreenState extends ConsumerState<RestaurantAdminPane
       final success = await AdminStaffService.deleteStaffUser(user.id);
       if (mounted) {
         if (success) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Staff user "${user.name}" deleted successfully.'),
-              backgroundColor: const Color(0xFF10B981),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('Staff user "${user.name}" deleted successfully.'),
+            backgroundColor: const Color(0xFF10B981),
+            behavior: SnackBarBehavior.floating,
+          ));
           _loadAdminData();
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Failed to delete user "${user.name}".'),
-              backgroundColor: const Color(0xFFEF4444),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('Failed to delete user "${user.name}".'),
+            backgroundColor: const Color(0xFFEF4444),
+            behavior: SnackBarBehavior.floating,
+          ));
         }
       }
     }
@@ -477,6 +469,8 @@ class _RestaurantAdminPanelScreenState extends ConsumerState<RestaurantAdminPane
                                     subtitleColor: subtitleColor,
                                     isDark: isDark,
                                     initialStatus: _subscriptionStatus,
+                                    initialOutletId: _activeShopId,
+                                    initialBranches: _branches,
                                     onStatusChanged: (st) => setState(() => _subscriptionStatus = st),
                                   ),
                                 ],

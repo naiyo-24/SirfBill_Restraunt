@@ -90,6 +90,37 @@ class Shop {
     );
   }
 
+  Map<String, dynamic>? get subscriptionData {
+    if (rawJson != null && rawJson!['extra_data'] is Map) {
+      final extra = rawJson!['extra_data'] as Map;
+      if (extra['subscription'] is Map) {
+        return Map<String, dynamic>.from(extra['subscription'] as Map);
+      }
+    }
+    if (rawJson != null && rawJson!['subscription'] is Map) {
+      return Map<String, dynamic>.from(rawJson!['subscription'] as Map);
+    }
+    return null;
+  }
+
+  bool get isSubscribed {
+    final sub = subscriptionData;
+    if (sub == null) return false;
+    return sub['is_active'] == true;
+  }
+
+  String get subscriptionStatus {
+    final sub = subscriptionData;
+    if (sub == null) return 'UNPAID';
+    return (sub['status'] ?? 'UNPAID').toString().toUpperCase();
+  }
+
+  int get subscriptionDaysRemaining {
+    final sub = subscriptionData;
+    if (sub == null) return 0;
+    return (sub['days_remaining'] is num) ? (sub['days_remaining'] as num).toInt() : 0;
+  }
+
   Map<String, dynamic> toMap() {
     return {
       'id': id,

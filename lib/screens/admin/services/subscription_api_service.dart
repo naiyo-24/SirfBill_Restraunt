@@ -257,9 +257,15 @@ class SubscriptionApiService {
   }
 
   /// GET /api/subscriptions/history
-  static Future<List<SubscriptionInvoiceItem>> fetchInvoiceHistory() async {
+  static Future<List<SubscriptionInvoiceItem>> fetchInvoiceHistory({String? outletId}) async {
     try {
-      final response = await ApiClient().dio.get('/api/subscriptions/history');
+      final resolvedId = await getResolvedOutletId(outletId: outletId);
+      final response = await ApiClient().dio.get(
+        '/api/subscriptions/history',
+        queryParameters: {
+          if (resolvedId.isNotEmpty) 'outlet_id': resolvedId,
+        },
+      );
       if (response.statusCode == 200 && response.data != null) {
         final dynamic data = response.data;
         List<dynamic> list = [];
@@ -297,5 +303,28 @@ class SubscriptionApiService {
       debugPrint('[SubscriptionApiService] grantTrial error: $e');
       return false;
     }
+  }
+
+  /// GET /api/subscriptions/branches
+  /// Returns list of all branches with their individual subscription status
+  static Future<List<Map<String, dynamic>>> fetchBranchSubscriptions({String? outletId}) async {
+    try {
+      final resolvedId = await getResolvedOutletId(outletId: outletId);
+      final response = await ApiClient().dio.get(
+        '/api/subscriptions/branches',
+        queryParameters: {
+          if (resolvedId.isNotEmpty) 'outlet_id': resolvedId,
+        },
+      );
+      if (response.statusCode == 200 && response.data != null) {
+        final dynamic data = response.data;
+        if (data is List) {
+          return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        }
+      }
+    } catch (e) {
+      debugPrint('[SubscriptionApiService] fetchBranchSubscriptions error: $e');
+    }
+    return [];
   }
 }

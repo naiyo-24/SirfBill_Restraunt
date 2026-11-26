@@ -74,7 +74,6 @@ migrate_working_dir/
 **/linux/flutter/ephemeral/
 
 # Web related
-lib/generated_plugin_registrant.dart
 
 # Symbolication & Obfuscation
 app.*.symbols

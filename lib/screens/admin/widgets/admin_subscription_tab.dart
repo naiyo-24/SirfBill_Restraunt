@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/subscription_plan_models.dart';
 import '../services/subscription_api_service.dart';
+import 'subscription_branch_selector.dart';
 import 'subscription_checkout_dialog.dart';
 import 'subscription_plan_card.dart';
 import 'subscription_executive_card.dart';
@@ -13,6 +14,8 @@ class AdminSubscriptionTab extends StatefulWidget {
   final Color subtitleColor;
   final bool isDark;
   final SubscriptionStatusModel? initialStatus;
+  final String? initialOutletId;
+  final List<dynamic>? initialBranches;
   final ValueChanged<SubscriptionStatusModel>? onStatusChanged;
 
   const AdminSubscriptionTab({
@@ -23,6 +26,8 @@ class AdminSubscriptionTab extends StatefulWidget {
     required this.subtitleColor,
     required this.isDark,
     this.initialStatus,
+    this.initialOutletId,
+    this.initialBranches,
     this.onStatusChanged,
   });
 
@@ -35,25 +40,65 @@ class _AdminSubscriptionTabState extends State<AdminSubscriptionTab> {
   SubscriptionStatusModel? _status;
   List<SubscriptionPlanItem> _plans = [];
   List<SubscriptionInvoiceItem> _invoices = [];
+  List<Map<String, dynamic>> _branches = [];
+  String? _selectedOutletId;
+  String? _selectedBranchName;
 
   @override
   void initState() {
     super.initState();
     _status = widget.initialStatus;
+    _selectedOutletId = widget.initialOutletId;
     _loadSubscriptionData();
   }
 
-  Future<void> _loadSubscriptionData() async {
+  Future<void> _loadSubscriptionData({String? targetOutletId}) async {
     setState(() => _isLoading = true);
     try {
-      final statusFuture = SubscriptionApiService.fetchSubscriptionStatus();
+      final reqOutletId = targetOutletId ?? _selectedOutletId ?? widget.initialOutletId;
+      final branches = await SubscriptionApiService.fetchBranchSubscriptions(outletId: reqOutletId);
+
+      List<Map<String, dynamic>> resolvedBranches = List.from(branches);
+      if (resolvedBranches.isEmpty && widget.initialBranches != null && widget.initialBranches!.isNotEmpty) {
+        for (final b in widget.initialBranches!) {
+          if (b is Map<String, dynamic>) {
+            resolvedBranches.add(b);
+          } else if (b != null) {
+            try {
+              resolvedBranches.add({
+                'outlet_id': (b as dynamic).id?.toString(),
+                'outlet_name': (b as dynamic).name?.toString(),
+                'outlet_code': (b as dynamic).code?.toString(),
+                'is_active': (b as dynamic).isSubscribed ?? false,
+                'status': (b as dynamic).subscriptionStatus ?? 'UNPAID',
+                'days_remaining': (b as dynamic).subscriptionDaysRemaining ?? 0,
+              });
+            } catch (_) {}
+          }
+        }
+      }
+
+      if (targetOutletId != null) {
+        _selectedOutletId = targetOutletId;
+      } else if (_selectedOutletId == null && resolvedBranches.isNotEmpty) {
+        _selectedOutletId = resolvedBranches.first['outlet_id']?.toString();
+      }
+
+      final activeBranch = resolvedBranches.firstWhere(
+        (b) => b['outlet_id']?.toString() == _selectedOutletId,
+        orElse: () => resolvedBranches.isNotEmpty ? resolvedBranches.first : <String, dynamic>{},
+      );
+      _selectedBranchName = activeBranch['outlet_name']?.toString();
+
+      final statusFuture = SubscriptionApiService.fetchSubscriptionStatus(outletId: _selectedOutletId);
       final plansFuture = SubscriptionApiService.fetchPlans();
-      final invoicesFuture = SubscriptionApiService.fetchInvoiceHistory();
+      final invoicesFuture = SubscriptionApiService.fetchInvoiceHistory(outletId: _selectedOutletId);
       final results = await Future.wait([statusFuture, plansFuture, invoicesFuture]);
 
       if (mounted) {
         final fetchedPlans = results[1] as List<SubscriptionPlanItem>;
         setState(() {
+          _branches = resolvedBranches;
           _status = results[0] as SubscriptionStatusModel;
           _plans = fetchedPlans.isNotEmpty ? List.from(fetchedPlans) : List.from(kMonthlySubscriptionPlans);
           _invoices = results[2] as List<SubscriptionInvoiceItem>;
@@ -78,6 +123,8 @@ class _AdminSubscriptionTabState extends State<AdminSubscriptionTab> {
       context,
       plan: plan,
       currentStatus: _status,
+      outletId: _selectedOutletId,
+      branchName: _selectedBranchName,
       cardBg: widget.cardBg,
       borderColor: widget.borderColor,
       textColor: widget.textColor,
@@ -86,7 +133,7 @@ class _AdminSubscriptionTabState extends State<AdminSubscriptionTab> {
       onSuccess: (newStatus) {
         setState(() => _status = newStatus);
         widget.onStatusChanged?.call(newStatus);
-        _loadSubscriptionData();
+        _loadSubscriptionData(targetOutletId: _selectedOutletId);
       },
     );
   }
@@ -113,6 +160,19 @@ class _AdminSubscriptionTabState extends State<AdminSubscriptionTab> {
           vertical: isMobile ? 14 : 20,
         ),
         children: [
+          if (_branches.length > 1)
+            SubscriptionBranchSelector(
+              branches: _branches,
+              selectedOutletId: _selectedOutletId,
+              onBranchSelected: (newId) {
+                _loadSubscriptionData(targetOutletId: newId);
+              },
+              cardBg: widget.cardBg,
+              borderColor: widget.borderColor,
+              textColor: widget.textColor,
+              subtitleColor: widget.subtitleColor,
+              isDark: widget.isDark,
+            ),
           SubscriptionExecutiveCard(
             status: status,
             currentPlan: currentPlan,
@@ -136,6 +196,7 @@ class _AdminSubscriptionTabState extends State<AdminSubscriptionTab> {
             borderColor: widget.borderColor,
             textColor: widget.textColor,
             subtitleColor: widget.subtitleColor,
+            branchName: _selectedBranchName,
           ),
           const SizedBox(height: 20),
           _buildBillingSupportCard(isMobile),
@@ -391,70 +452,30 @@ class _AdminSubscriptionTabState extends State<AdminSubscriptionTab> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.2)),
       ),
-      child: isMobile
-          ? Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Row(
-                  children: [
-                    Icon(Icons.headset_mic_rounded, color: Color(0xFF10B981), size: 18),
-                    SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        'Need Custom Enterprise Billing or Multi-Outlet Setup?',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () {},
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF10B981),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 9),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
-                    icon: const Icon(Icons.mail_outline_rounded, size: 14),
-                    label: const Text('Contact Desk', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                  ),
-                ),
-              ],
-            )
-          : Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Expanded(
-                  child: Row(
-                    children: [
-                      Icon(Icons.headset_mic_rounded, color: Color(0xFF10B981), size: 18),
-                      SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          'Need Custom Enterprise Billing or Multi-Outlet Setup?',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton.icon(
-                  onPressed: () {},
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF10B981),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                  icon: const Icon(Icons.mail_outline_rounded, size: 14),
-                  label: const Text('Contact Desk', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5)),
-                ),
-              ],
+      child: Row(
+        children: [
+          const Icon(Icons.headset_mic_rounded, color: Color(0xFF10B981), size: 18),
+          const SizedBox(width: 10),
+          const Expanded(
+            child: Text(
+              'Need Custom Enterprise Billing or Multi-Outlet Setup?',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
             ),
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton.icon(
+            onPressed: () {},
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF10B981),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            icon: const Icon(Icons.mail_outline_rounded, size: 14),
+            label: const Text('Contact Desk', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5)),
+          ),
+        ],
+      ),
     );
   }
 }

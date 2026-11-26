@@ -15,6 +15,7 @@ import '../screens/counter/inventory/inventory_screen.dart';
 import '../screens/admin/restaurant_admin_panel_screen.dart';
 import '../screens/waiter/waiter_order_screen.dart';
 import '../screens/crm/restaurant_crm_reports_screen.dart';
+import '../screens/customer/table_order_screen.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -24,14 +25,13 @@ final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>(
 
 final goRouter = GoRouter(
   navigatorKey: rootNavigatorKey,
-  initialLocation: '/splash',
   redirect: (BuildContext context, GoRouterState state) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('access_token');
     final isLoggedIn = token != null && token.isNotEmpty;
     
     final loc = state.matchedLocation;
-    final isPublicRoute = loc == '/role_login' || loc == '/splash' || loc == '/dashboard';
+    final isPublicRoute = loc == '/role_login' || loc == '/splash' || loc == '/dashboard' || loc == '/table-order' || loc.startsWith('/table-order');
 
     final fullUri = state.uri.path;
     if (fullUri.contains('/counter/inventory') || loc.contains('/counter/inventory')) {
@@ -69,7 +69,7 @@ final goRouter = GoRouter(
   routes: [
     GoRoute(
       path: '/',
-      redirect: (context, state) => '/dashboard',
+      redirect: (context, state) => '/splash',
     ),
     GoRoute(path: '/splash', builder: (context, state) => const SplashScreen()),
     GoRoute(
@@ -99,6 +99,16 @@ final goRouter = GoRouter(
     GoRoute(
       path: '/crm',
       builder: (context, state) => const RestaurantCrmReportsScreen(),
+    ),
+    GoRoute(
+      path: '/table-order',
+      builder: (context, state) {
+        final q = state.uri.queryParameters;
+        return TableOrderScreen(
+          outletId: q['outlet_id'],
+          tableId: q['table_id'],
+        );
+      },
     ),
     GoRoute(
       path: '/counter/customers',

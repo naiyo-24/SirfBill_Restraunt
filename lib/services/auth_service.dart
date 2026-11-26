@@ -5,6 +5,21 @@ import '../config/api_client.dart';
 import 'inventory_service.dart';
 import '../utils/app_image_cache_manager.dart';
 
+class BranchSubscriptionExpiredException implements Exception {
+  final String message;
+  final String? outletId;
+  final String? outletName;
+
+  const BranchSubscriptionExpiredException({
+    required this.message,
+    this.outletId,
+    this.outletName,
+  });
+
+  @override
+  String toString() => message;
+}
+
 class AuthService {
   static const String _tokenKey = 'access_token';
   static const String _userIdKey = 'user_id';
@@ -36,6 +51,19 @@ class AuthService {
           throw 'Access Denied: This account is not authorized to access $moduleTitle.';
         }
 
+        // 3. Strict Branch Subscription Check for operational modules (POS, Kitchen, Waiter, Inventory, CRM)
+        final isSubActive = data['is_subscription_active'] ?? data['subscription_active'];
+        final isModuleStation = moduleTitle != 'All Modules' && !moduleTitle.toLowerCase().contains('admin');
+        if (isSubActive == false && isModuleStation) {
+          final outletName = data['outlet']?['name']?.toString() ?? 'This branch';
+          final outletId = data['outlet_id']?.toString() ?? data['outlet']?['id']?.toString();
+          throw BranchSubscriptionExpiredException(
+            message: 'Subscription for "$outletName" has expired or is unpaid. Please renew the branch license to log in.',
+            outletId: outletId,
+            outletName: outletName,
+          );
+        }
+
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString(_tokenKey, data['access_token']);
         await prefs.setString(_userIdKey, data['user_id']);
@@ -53,6 +81,9 @@ class AuthService {
           if (assignedId != null && assignedId.isNotEmpty) {
             await InventoryService.setShopId(assignedId);
             await prefs.setString('assigned_outlet_id', assignedId);
+            if (isSubActive != null) {
+              await prefs.setBool('outlet_sub_active_$assignedId', isSubActive == true);
+            }
             if (data['outlet'] != null && data['outlet']['name'] != null) {
               await prefs.setString('assigned_outlet_name', data['outlet']['name'].toString());
             }
@@ -92,23 +123,48 @@ class AuthService {
 
         return true;
       } else {
-        final localMatched = await _tryLocalOutletLogin(cleanEmail, cleanPass, moduleTitle);
-        if (localMatched) return true;
         throw 'Invalid User ID or Password. Please try again.';
       }
     } on DioException catch (e) {
-      final localMatched = await _tryLocalOutletLogin(cleanEmail, cleanPass, moduleTitle);
-      if (localMatched) return true;
+      if (e.response != null) {
+        final statusCode = e.response?.statusCode;
+        final rawDetail = e.response?.data is Map ? e.response?.data['detail'] : null;
+        String msg = 'This branch subscription has expired. Please renew the branch license in Admin Settings to log in.';
+        String? outId;
+        String? outName;
+        if (rawDetail is Map) {
+          msg = rawDetail['message']?.toString() ?? msg;
+          outId = rawDetail['outlet_id']?.toString();
+          outName = rawDetail['outlet_name']?.toString();
+        } else if (rawDetail != null) {
+          msg = rawDetail.toString();
+        }
 
-      if (e.response != null && e.response?.data != null) {
-        throw e.response?.data['detail'] ??
-            'Invalid User ID or Password. Please try again.';
+        if (statusCode == 402) {
+          throw BranchSubscriptionExpiredException(message: msg, outletId: outId, outletName: outName);
+        }
+        if (statusCode == 403) {
+          throw msg.isNotEmpty ? msg : 'Access Denied: This account is not authorized to access $moduleTitle.';
+        }
+        if (statusCode == 401) {
+          throw 'Invalid User ID or Password. Please try again.';
+        }
+        if (msg.isNotEmpty) {
+          throw msg;
+        }
+      }
+
+      // Only attempt local login on connection error
+      final isConnError = e.type == DioExceptionType.connectionError ||
+          e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout;
+      if (isConnError) {
+        final localMatched = await _tryLocalOutletLogin(cleanEmail, cleanPass, moduleTitle);
+        if (localMatched) return true;
       }
       throw 'Unable to connect to the server. Please check your network connection.';
     } catch (e) {
-      if (e is String) rethrow;
-      final localMatched = await _tryLocalOutletLogin(cleanEmail, cleanPass, moduleTitle);
-      if (localMatched) return true;
+      if (e is String || e is BranchSubscriptionExpiredException) rethrow;
       throw 'Invalid User ID or Password. Please try again.';
     }
   }
@@ -186,6 +242,10 @@ class AuthService {
 
           if (!isRoleAuthorizedForModule(role, moduleTitle, username: cleanEmail, name: savedUser)) {
             throw 'Access Denied: This account is for ${_friendlyModuleName(moduleKey)} and cannot access $moduleTitle. Please enter credentials created for $moduleTitle.';
+          }
+
+          if (outletId.isNotEmpty && prefs.getBool('outlet_sub_active_$outletId') == false) {
+            throw 'Subscription for this branch has expired. Please renew the branch license in Admin Settings to log in.';
           }
 
           final token = 'station_local_token_${DateTime.now().millisecondsSinceEpoch}';
@@ -289,43 +349,24 @@ class AuthService {
   }
 
   static String _friendlyModuleName(String key) {
-    switch (key.toLowerCase()) {
-      case 'inventory':
-      case 'inv':
-        return 'Inventory & Purchase';
-      case 'pos':
-        return 'Restaurant POS';
-      case 'kitchen':
-      case 'kds':
-        return 'Kitchen Display';
-      case 'crm':
-        return 'CRM & Reports';
-      case 'waiter':
-        return 'Waiter / Captain';
-      default:
-        return key.toUpperCase();
-    }
+    final k = key.toLowerCase();
+    if (k == 'inventory' || k == 'inv') return 'Inventory & Purchase';
+    if (k == 'pos') return 'Restaurant POS';
+    if (k == 'kitchen' || k == 'kds') return 'Kitchen Display';
+    if (k == 'crm') return 'CRM & Reports';
+    if (k == 'waiter') return 'Waiter / Captain';
+    return key.toUpperCase();
   }
 
   static String _mapModuleKeyToRole(String key) {
-    switch (key.toLowerCase()) {
-      case 'inventory':
-      case 'inv':
-        return 'INVENTORY';
-      case 'pos':
-        return 'CASHIER';
-      case 'kitchen':
-      case 'kds':
-        return 'CHEF';
-      case 'crm':
-        return 'MANAGER';
-      case 'waiter':
-        return 'WAITER';
-      case 'admin':
-        return 'ADMIN';
-      default:
-        return 'CASHIER';
-    }
+    final k = key.toLowerCase();
+    if (k == 'inventory' || k == 'inv') return 'INVENTORY';
+    if (k == 'pos') return 'CASHIER';
+    if (k == 'kitchen' || k == 'kds') return 'CHEF';
+    if (k == 'crm') return 'MANAGER';
+    if (k == 'waiter') return 'WAITER';
+    if (k == 'admin') return 'ADMIN';
+    return 'CASHIER';
   }
 
   static Future<void> logout() async {
@@ -369,24 +410,12 @@ class AuthService {
 
   static String _normalizeRoleKey(String roleName) {
     final lower = roleName.trim().toLowerCase();
-    if (lower.contains('kitchen') || lower.contains('kds') || lower.contains('chef')) {
-      return 'kitchen';
-    }
-    if (lower.contains('waiter') || lower.contains('captain') || lower.contains('server')) {
-      return 'waiter';
-    }
-    if (lower.contains('inventory') || lower.contains('stock')) {
-      return 'inventory';
-    }
-    if (lower.contains('admin') || lower.contains('owner') || lower.contains('super')) {
-      return 'admin';
-    }
-    if (lower.contains('crm') || lower.contains('customer')) {
-      return 'crm';
-    }
-    if (lower.contains('pos') || lower.contains('billing') || lower.contains('counter') || lower.contains('cashier')) {
-      return 'pos';
-    }
+    if (lower.contains('kitchen') || lower.contains('kds') || lower.contains('chef')) return 'kitchen';
+    if (lower.contains('waiter') || lower.contains('captain') || lower.contains('server')) return 'waiter';
+    if (lower.contains('inventory') || lower.contains('stock')) return 'inventory';
+    if (lower.contains('admin') || lower.contains('owner') || lower.contains('super')) return 'admin';
+    if (lower.contains('crm') || lower.contains('customer')) return 'crm';
+    if (lower.contains('pos') || lower.contains('billing') || lower.contains('counter') || lower.contains('cashier')) return 'pos';
     return lower.replaceAll(RegExp(r'[^a-z0-9]'), '_');
   }
 

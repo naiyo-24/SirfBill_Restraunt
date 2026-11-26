@@ -104,13 +104,11 @@ class SubscriptionExecutiveCard extends StatelessWidget {
                             ],
                           ),
                         ),
-                        if (status.invoiceNumber != null || invoices.isNotEmpty)
+                        if (status.invoiceNumber != null && status.invoiceNumber!.isNotEmpty)
                           InkWell(
                             onTap: () {
-                              final invNum = status.invoiceNumber ?? (invoices.isNotEmpty ? invoices.first.invoiceId : null);
-                              if (invNum != null) {
-                                launchUrl(Uri.parse('${ApiConstants.baseUrl}/api/subscriptions/invoices/$invNum/view'), mode: LaunchMode.externalApplication);
-                              }
+                              final invNum = status.invoiceNumber!;
+                              launchUrl(Uri.parse('${ApiConstants.baseUrl}/api/subscriptions/invoices/$invNum/view'), mode: LaunchMode.externalApplication);
                             },
                             borderRadius: BorderRadius.circular(6),
                             child: Container(
@@ -126,7 +124,7 @@ class SubscriptionExecutiveCard extends StatelessWidget {
                                   const Icon(Icons.receipt_long_rounded, size: 11, color: Color(0xFF3395FF)),
                                   const SizedBox(width: 4),
                                   Text(
-                                    status.invoiceNumber ?? (invoices.isNotEmpty ? invoices.first.invoiceId : 'INV-SUB-PRO'),
+                                    status.invoiceNumber!,
                                     style: const TextStyle(fontSize: 10.5, color: Color(0xFF3395FF), fontWeight: FontWeight.bold, fontFamily: 'monospace'),
                                   ),
                                 ],
@@ -265,7 +263,7 @@ class SubscriptionExecutiveCard extends StatelessWidget {
                                 side: const BorderSide(color: Color(0xFF3395FF), width: 1.2),
                               ),
                             ),
-                          if (invoices.isNotEmpty)
+                          if (invoices.isNotEmpty && (status.hasSubscription || status.invoiceNumber != null))
                             OutlinedButton.icon(
                               onPressed: () {
                                 final uri = Uri.parse(invoices.first.getViewUrl(ApiConstants.baseUrl));

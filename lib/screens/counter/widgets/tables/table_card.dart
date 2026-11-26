@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../models/restaurant_pos_models.dart';
+import 'table_qr_dialog.dart';
 
 class TableCard extends StatelessWidget {
   final DiningTable table;
@@ -180,6 +181,15 @@ class TableCard extends StatelessWidget {
                         ),
                       ],
                     ),
+                  ),
+                  const SizedBox(width: 4),
+                  IconButton(
+                    onPressed: () => TableQrDialog.show(context, table),
+                    icon: const Icon(Icons.qr_code_rounded, size: 17),
+                    tooltip: 'Table QR Standee',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    color: const Color(0xFF6366F1),
                   ),
                   if (onEdit != null) ...[
                     const SizedBox(width: 2),

@@ -8,6 +8,8 @@ import '../services/razorpay_gateway_service.dart';
 class SubscriptionCheckoutDialog extends StatefulWidget {
   final SubscriptionPlanItem plan;
   final SubscriptionStatusModel? currentStatus;
+  final String? outletId;
+  final String? branchName;
   final Color cardBg;
   final Color borderColor;
   final Color textColor;
@@ -19,6 +21,8 @@ class SubscriptionCheckoutDialog extends StatefulWidget {
     super.key,
     required this.plan,
     this.currentStatus,
+    this.outletId,
+    this.branchName,
     required this.cardBg,
     required this.borderColor,
     required this.textColor,
@@ -31,6 +35,8 @@ class SubscriptionCheckoutDialog extends StatefulWidget {
     BuildContext context, {
     required SubscriptionPlanItem plan,
     SubscriptionStatusModel? currentStatus,
+    String? outletId,
+    String? branchName,
     required Color cardBg,
     required Color borderColor,
     required Color textColor,
@@ -44,6 +50,8 @@ class SubscriptionCheckoutDialog extends StatefulWidget {
       builder: (ctx) => SubscriptionCheckoutDialog(
         plan: plan,
         currentStatus: currentStatus,
+        outletId: outletId,
+        branchName: branchName,
         cardBg: cardBg,
         borderColor: borderColor,
         textColor: textColor,
@@ -84,6 +92,7 @@ class _SubscriptionCheckoutDialogState extends State<SubscriptionCheckoutDialog>
         planId: widget.plan.id,
         planCode: widget.plan.planCode,
         durationMonths: widget.plan.durationMonths,
+        outletId: widget.outletId,
       );
       final orderId = orderInfo?['order_id']?.toString();
       final paymentLinkUrl = orderInfo?['payment_link_url']?.toString();
@@ -101,7 +110,9 @@ class _SubscriptionCheckoutDialogState extends State<SubscriptionCheckoutDialog>
       // 2. Launch official Razorpay standard checkout
       final result = await launchOfficialRazorpay(
         amount: widget.plan.safeTotalPrice,
-        planName: '${widget.plan.name} (${widget.plan.billingCycle})',
+        planName: widget.branchName != null
+            ? '${widget.branchName} · ${widget.plan.name}'
+            : '${widget.plan.name} (${widget.plan.billingCycle})',
         orderId: orderId,
         paymentLinkUrl: paymentLinkUrl,
         userEmail: userEmail,
@@ -127,6 +138,7 @@ class _SubscriptionCheckoutDialogState extends State<SubscriptionCheckoutDialog>
         paymentReference: paymentId,
         orderId: result?['order_id'],
         signature: result?['signature'],
+        outletId: widget.outletId,
       );
 
       if (mounted) {
@@ -214,20 +226,25 @@ class _SubscriptionCheckoutDialogState extends State<SubscriptionCheckoutDialog>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Row(
+                          Row(
                             children: [
                               Text(
-                                'SirfBill Restaurant',
-                                style: TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.bold),
+                                widget.branchName != null && widget.branchName!.isNotEmpty
+                                    ? widget.branchName!
+                                    : 'SirfBill Restaurant',
+                                style: const TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.bold),
                               ),
-                              SizedBox(width: 6),
-                              Icon(Icons.verified_rounded, color: Color(0xFF3395FF), size: 14),
+                              const SizedBox(width: 6),
+                              const Icon(Icons.verified_rounded, color: Color(0xFF3395FF), size: 14),
                             ],
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            '${plan.name} · ${plan.durationDays} Days',
+                            widget.branchName != null
+                                ? 'Branch License · ${plan.name} (${plan.durationDays} Days)'
+                                : '${plan.name} · ${plan.durationDays} Days',
                             style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
                       ),
@@ -339,7 +356,7 @@ class _SubscriptionCheckoutDialogState extends State<SubscriptionCheckoutDialog>
                         const SizedBox(height: 14),
                         ElevatedButton.icon(
                           onPressed: () async {
-                            final status = await SubscriptionApiService.fetchSubscriptionStatus();
+                            final status = await SubscriptionApiService.fetchSubscriptionStatus(outletId: widget.outletId);
                             if (status.isActive && status.daysRemaining > 14) {
                               if (mounted) {
                                 setState(() {

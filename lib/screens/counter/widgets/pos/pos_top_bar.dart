@@ -6,7 +6,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../providers/restaurant_pos_provider.dart';
 import '../../../../services/shop_service.dart';
 import '../../../../services/inventory_service.dart';
+import '../../../../services/restaurant/customer_dining_service.dart';
 import 'pos_top_bar_components.dart';
+import 'pending_qr_orders_dialog.dart';
 
 /// Top App Bar for the POS Billing screen.
 /// Refactored into reusable presentation components:
@@ -32,11 +34,31 @@ class _PosTopBarState extends ConsumerState<PosTopBar> {
   String? _currentShopId;
   bool _isAdmin = false;
   Timer? _searchDebounce;
+  int _pendingQrCount = 0;
+  Timer? _qrPollingTimer;
 
   @override
   void dispose() {
     _searchDebounce?.cancel();
+    _qrPollingTimer?.cancel();
     super.dispose();
+  }
+
+  void _startQrPolling() {
+    _checkPendingQrOrders();
+    _qrPollingTimer?.cancel();
+    _qrPollingTimer = Timer.periodic(const Duration(seconds: 6), (_) {
+      _checkPendingQrOrders();
+    });
+  }
+
+  Future<void> _checkPendingQrOrders() async {
+    final oid = _currentShopId;
+    if (oid == null || oid.isEmpty) return;
+    final list = await CustomerDiningService.fetchPendingQrOrders(outletId: oid);
+    if (mounted && list.length != _pendingQrCount) {
+      setState(() => _pendingQrCount = list.length);
+    }
   }
 
   void _onSearchChanged(String val, WidgetRef ref) {
@@ -131,6 +153,7 @@ class _PosTopBarState extends ConsumerState<PosTopBar> {
           _currentShopId = currentShop?.id ?? savedShopId;
           _branchName = currentShop?.name ?? (shops.isNotEmpty ? shops.first.name : 'Main Branch');
         });
+        _startQrPolling();
       }
     } catch (_) {
       if (mounted) {
@@ -147,6 +170,7 @@ class _PosTopBarState extends ConsumerState<PosTopBar> {
       _currentShopId = shop.id;
       _branchName = shop.name;
     });
+    _startQrPolling();
     widget.onBranchChanged?.call();
   }
 
@@ -196,6 +220,39 @@ class _PosTopBarState extends ConsumerState<PosTopBar> {
                   onSelectType: posNotifier.setOrderType,
                   isMobile: true,
                 ),
+                if (_pendingQrCount > 0) ...[
+                  const SizedBox(width: 4),
+                  InkWell(
+                    borderRadius: BorderRadius.circular(8),
+                    onTap: () {
+                      PendingQrOrdersDialog.show(
+                        context,
+                        outletId: _currentShopId ?? '',
+                        onConfirmed: () {
+                          _checkPendingQrOrders();
+                          widget.onRefresh?.call();
+                        },
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF59E0B).withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFF59E0B), width: 1.4),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.notifications_active_rounded, size: 16, color: Color(0xFFD97706)),
+                          const SizedBox(width: 4),
+                          Text('$_pendingQrCount', style: const TextStyle(color: Color(0xFFD97706), fontWeight: FontWeight.bold, fontSize: 13)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
                 if (widget.onRefresh != null) ...[
                   const SizedBox(width: 4),
                   InkWell(
@@ -274,6 +331,47 @@ class _PosTopBarState extends ConsumerState<PosTopBar> {
                 onSelectType: posNotifier.setOrderType,
               ),
               const SizedBox(width: 14),
+
+              // Incoming QR Orders Notification Badge
+              if (_pendingQrCount > 0) ...[
+                Tooltip(
+                  message: '$_pendingQrCount Pending Table QR Order(s) awaiting confirmation',
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(14),
+                    onTap: () {
+                      PendingQrOrdersDialog.show(
+                        context,
+                        outletId: _currentShopId ?? '',
+                        onConfirmed: () {
+                          _checkPendingQrOrders();
+                          widget.onRefresh?.call();
+                        },
+                      );
+                    },
+                    child: Container(
+                      height: 54,
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF59E0B).withValues(alpha: 0.16),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFFF59E0B), width: 1.6),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.notifications_active_rounded, size: 20, color: Color(0xFFD97706)),
+                          const SizedBox(width: 8),
+                          Text(
+                            '$_pendingQrCount QR Order${_pendingQrCount > 1 ? "s" : ""}',
+                            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: Color(0xFFD97706)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 14),
+              ],
 
               // 4. Refresh Button
               if (widget.onRefresh != null) ...[

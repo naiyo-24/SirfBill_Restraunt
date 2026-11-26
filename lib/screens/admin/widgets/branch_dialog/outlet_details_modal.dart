@@ -387,6 +387,7 @@ class _OutletDetailsModalState extends State<OutletDetailsModal> with SingleTick
                     subtitleColor: subtitleColor,
                     borderColor: borderColor,
                     cardBg: cardBg,
+                    onRenewSuccess: widget.onCredentialsUpdated,
                   ),
                 ],
               ),

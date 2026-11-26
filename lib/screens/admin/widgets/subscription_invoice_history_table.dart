@@ -9,6 +9,7 @@ class SubscriptionInvoiceHistoryTable extends StatelessWidget {
   final Color borderColor;
   final Color textColor;
   final Color subtitleColor;
+  final String? branchName;
 
   const SubscriptionInvoiceHistoryTable({
     super.key,
@@ -17,6 +18,7 @@ class SubscriptionInvoiceHistoryTable extends StatelessWidget {
     required this.borderColor,
     required this.textColor,
     required this.subtitleColor,
+    this.branchName,
   });
 
   Future<void> _openInvoiceView(SubscriptionInvoiceItem inv) async {
@@ -56,7 +58,9 @@ class SubscriptionInvoiceHistoryTable extends StatelessWidget {
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        'Subscription & Tax Invoices',
+                        branchName != null && branchName!.isNotEmpty
+                            ? 'Subscription & Tax Invoices • $branchName'
+                            : 'Subscription & Tax Invoices',
                         style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w800, color: textColor),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -83,9 +87,14 @@ class SubscriptionInvoiceHistoryTable extends StatelessWidget {
                 children: [
                   Icon(Icons.receipt_long_outlined, size: 36, color: subtitleColor.withValues(alpha: 0.4)),
                   const SizedBox(height: 8),
-                  Text('No Invoices Recorded Yet', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: textColor)),
+                  Text(
+                    branchName != null && branchName!.isNotEmpty
+                        ? 'No Invoices for "$branchName"'
+                        : 'No Invoices Recorded Yet',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: textColor),
+                  ),
                   const SizedBox(height: 3),
-                  Text('GST tax invoices will appear here automatically upon Razorpay payment.', style: TextStyle(fontSize: 11.5, color: subtitleColor)),
+                  Text('GST tax invoices will appear here automatically upon branch license renewal.', style: TextStyle(fontSize: 11.5, color: subtitleColor)),
                 ],
               ),
             )
