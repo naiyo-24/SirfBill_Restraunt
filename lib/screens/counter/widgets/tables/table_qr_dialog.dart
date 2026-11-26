@@ -30,23 +30,14 @@ class TableQrDialog extends StatefulWidget {
 class _TableQrDialogState extends State<TableQrDialog> {
   String? _resolvedOutletId;
   late TextEditingController _hostController;
-  bool _isEditingHost = false;
 
   @override
   void initState() {
     super.initState();
-    String defaultHost = Uri.base.origin;
-    // If opened on localhost in browser, auto-resolve to LAN Wi-Fi IP so phones can connect
-    if (Uri.base.host == 'localhost' || Uri.base.host == '127.0.0.1') {
-      try {
-        final apiUri = Uri.parse(ApiConstants.baseUrl);
-        if (apiUri.host.isNotEmpty && apiUri.host != 'localhost' && apiUri.host != '127.0.0.1') {
-          final scheme = Uri.base.scheme.isNotEmpty ? Uri.base.scheme : 'http';
-          final port = Uri.base.hasPort ? ':${Uri.base.port}' : '';
-          defaultHost = '$scheme://${apiUri.host}$port';
-        }
-      } catch (_) {}
-    }
+    // Use frontend web origin on web, or clean customer menu domain on desktop (never expose backend URL)
+    String defaultHost = Uri.base.scheme.startsWith('http')
+        ? Uri.base.origin
+        : 'https://menu.sirfbill.com';
     _hostController = TextEditingController(text: defaultHost);
     _resolveOutletId();
   }
@@ -83,7 +74,6 @@ class _TableQrDialogState extends State<TableQrDialog> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cardBg = isDark ? const Color(0xFF1E293B) : Colors.white;
     final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
-    final isLocalhost = _currentHost.contains('localhost') || _currentHost.contains('127.0.0.1');
 
     return Dialog(
       backgroundColor: cardBg,
@@ -137,78 +127,7 @@ class _TableQrDialogState extends State<TableQrDialog> {
               ),
               const SizedBox(height: 14),
               const Divider(height: 1),
-              const SizedBox(height: 12),
-
-              // Network host mode banner
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: isLocalhost
-                      ? const Color(0xFFEF4444).withValues(alpha: 0.1)
-                      : const Color(0xFF10B981).withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: isLocalhost
-                        ? const Color(0xFFEF4444).withValues(alpha: 0.3)
-                        : const Color(0xFF10B981).withValues(alpha: 0.3),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      isLocalhost ? Icons.warning_amber_rounded : Icons.wifi_rounded,
-                      size: 18,
-                      color: isLocalhost ? const Color(0xFFEF4444) : const Color(0xFF10B981),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        isLocalhost
-                            ? 'Warning: "localhost" cannot be opened by mobile phones. Change to Wi-Fi IP to scan.'
-                            : 'Mobile Scannable: Using Wi-Fi IP for direct phone camera access.',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: isLocalhost ? const Color(0xFFEF4444) : const Color(0xFF047857),
-                        ),
-                      ),
-                    ),
-                    InkWell(
-                      onTap: () => setState(() => _isEditingHost = !_isEditingHost),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                        child: Text(
-                          _isEditingHost ? 'DONE' : 'CHANGE IP',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            color: isLocalhost ? const Color(0xFFEF4444) : const Color(0xFF10B981),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              if (_isEditingHost) ...[
-                const SizedBox(height: 10),
-                TextField(
-                  controller: _hostController,
-                  decoration: InputDecoration(
-                    labelText: 'Server Host / Wi-Fi IP Address',
-                    labelStyle: const TextStyle(fontSize: 12),
-                    hintText: 'http://192.168.0.159:53270',
-                    filled: true,
-                    fillColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  ),
-                  onChanged: (_) => setState(() {}),
-                ),
-              ],
-
-              const SizedBox(height: 14),
+              const SizedBox(height: 16),
 
               // QR Code Presentation Card
               Container(
@@ -250,7 +169,7 @@ class _TableQrDialogState extends State<TableQrDialog> {
               ),
               const SizedBox(height: 14),
 
-              // Ordering Link Box
+              // Private Link Copy Bar (URL hidden)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
@@ -260,10 +179,12 @@ class _TableQrDialogState extends State<TableQrDialog> {
                 ),
                 child: Row(
                   children: [
-                    Expanded(
+                    const Icon(Icons.lock_outline_rounded, size: 15, color: Color(0xFF10B981)),
+                    const SizedBox(width: 8),
+                    const Expanded(
                       child: Text(
-                        _orderUrl,
-                        style: const TextStyle(fontSize: 11, fontFamily: 'monospace', color: Color(0xFF6366F1)),
+                        'Private Table QR Link • Hidden for Security',
+                        style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -274,7 +195,7 @@ class _TableQrDialogState extends State<TableQrDialog> {
                         Clipboard.setData(ClipboardData(text: _orderUrl));
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('Table ordering link copied to clipboard!'),
+                            content: Text('Private table link copied to clipboard!'),
                             backgroundColor: Color(0xFF10B981),
                             behavior: SnackBarBehavior.floating,
                           ),
