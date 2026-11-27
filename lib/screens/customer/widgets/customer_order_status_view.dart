@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:printing/printing.dart';
 import '../../../../services/restaurant/customer_dining_service.dart';
-import '../../../../utils/pdf_generator.dart';
+import '../../../../utils/pdf_thermal_generator.dart';
 
 class CustomerOrderStatusView extends StatefulWidget {
   final Map<String, dynamic> initialOrder;
@@ -75,27 +75,26 @@ class _CustomerOrderStatusViewState extends State<CustomerOrderStatusView> {
       final discount = double.tryParse((_order['discount_amount'] ?? 0).toString()) ?? 0.0;
       final tax = double.tryParse((_order['tax_amount'] ?? 0).toString()) ?? 0.0;
       final grandTotal = double.tryParse((_order['grand_total'] ?? 0).toString()) ?? 0.0;
+      final tableCode = widget.tableInfo['table_code']?.toString() ?? 'T1';
+      final custName = _order['customer_name']?.toString() ?? 'Dine-in Guest';
 
-      final pdfBytes = await PdfGenerator.generateBill(
+      final pdfBytes = await PdfThermalGenerator.generateThermalBill(
         items: items,
         subtotal: subtotal,
         discount: discount,
         tax: tax,
         grandTotal: grandTotal,
+        roundedTotal: grandTotal.roundToDouble(),
         invoiceNumber: orderNumber,
-        customerName: _order['customer_name']?.toString() ?? 'Dine-in Guest',
+        customerName: '$custName • Table $tableCode',
         customerPhone: _order['customer_phone']?.toString(),
-        paymentMethod: _order['payment_method']?.toString() ?? 'PAID',
-        format: 'A4',
-        shopSettings: {
-          'name': widget.tableInfo['outlet_name']?.toString() ?? 'SirfBill Restaurant',
-          'address': widget.tableInfo['outlet_address']?.toString() ?? '',
-          'phone': widget.tableInfo['outlet_phone']?.toString() ?? '',
-          if (widget.tableInfo['outlet_logo'] != null) 'logo_url': widget.tableInfo['outlet_logo'].toString(),
-        },
+        shopName: widget.tableInfo['outlet_name']?.toString() ?? 'SirfBill Restaurant',
+        address: widget.tableInfo['outlet_address']?.toString() ?? '',
+        phone: widget.tableInfo['outlet_phone']?.toString() ?? '',
+        shopGstNo: '',
       );
 
-      await Printing.sharePdf(bytes: pdfBytes, filename: 'Bill_$orderNumber.pdf');
+      await Printing.sharePdf(bytes: pdfBytes, filename: 'Receipt_$orderNumber.pdf');
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
