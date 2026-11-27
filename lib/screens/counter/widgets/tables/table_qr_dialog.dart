@@ -150,13 +150,12 @@ class _TableQrDialogState extends State<TableQrDialog> {
                     ClipRRect(
                       borderRadius: BorderRadius.circular(12),
                       child: Image.network(
-                        _qrImageUrl,
+                        'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${Uri.encodeComponent(_orderUrl)}',
                         width: 200,
                         height: 200,
                         fit: BoxFit.contain,
                         errorBuilder: (_, __, ___) {
-                          final fallback = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${Uri.encodeComponent(_orderUrl)}';
-                          return Image.network(fallback, width: 200, height: 200);
+                          return Image.network(_qrImageUrl, width: 200, height: 200, fit: BoxFit.contain);
                         },
                       ),
                     ),
