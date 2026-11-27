@@ -267,3 +267,4 @@ class HardwareStoreProductCard extends StatelessWidget {
     );
   }
 }
+

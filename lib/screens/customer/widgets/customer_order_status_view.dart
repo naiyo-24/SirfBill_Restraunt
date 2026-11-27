@@ -1,8 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:printing/printing.dart';
+import '../../../../models/restaurant_pos_models.dart';
 import '../../../../services/restaurant/customer_dining_service.dart';
-import '../../../../utils/pdf_thermal_generator.dart';
+import '../../../../utils/restaurant_bill_pdf_generator.dart';
 
 class CustomerOrderStatusView extends StatefulWidget {
   final Map<String, dynamic> initialOrder;
@@ -61,14 +62,20 @@ class _CustomerOrderStatusViewState extends State<CustomerOrderStatusView> {
       final items = rawLines.map((ln) {
         final qty = (ln['quantity'] is num) ? (ln['quantity'] as num).toInt() : 1;
         final unitPrice = double.tryParse((ln['unit_price'] ?? 0).toString()) ?? 0.0;
-        final lineTotal = double.tryParse((ln['line_total'] ?? (unitPrice * qty)).toString()) ?? (unitPrice * qty);
-        return <String, dynamic>{
-          'name': ln['item_name']?.toString() ?? 'Item',
-          'qty': qty,
-          'quantity': qty,
-          'price': unitPrice,
-          'total': lineTotal,
-        };
+        final taxRate = double.tryParse((ln['tax_rate'] ?? 5.0).toString()) ?? 5.0;
+        final itemId = ln['item_id']?.toString() ?? ln['id']?.toString() ?? '';
+        final itemName = ln['item_name']?.toString() ?? 'Item';
+        return PosCartItem(
+          item: PosMenuItem(
+            id: itemId,
+            name: itemName,
+            price: unitPrice,
+            categoryId: 'all',
+            taxPercent: taxRate,
+          ),
+          quantity: qty,
+          notes: ln['special_instructions']?.toString(),
+        );
       }).toList();
 
       final subtotal = double.tryParse((_order['subtotal'] ?? 0).toString()) ?? 0.0;
@@ -78,20 +85,23 @@ class _CustomerOrderStatusViewState extends State<CustomerOrderStatusView> {
       final tableCode = widget.tableInfo['table_code']?.toString() ?? 'T1';
       final custName = _order['customer_name']?.toString() ?? 'Dine-in Guest';
 
-      final pdfBytes = await PdfThermalGenerator.generateThermalBill(
+      final pdfBytes = await RestaurantBillPdfGenerator.generateBillPdf(
+        orderNumber: orderNumber,
+        orderType: _order['order_type']?.toString() ?? 'DINE_IN',
+        tableLabel: tableCode,
+        customerName: custName,
+        customerPhone: _order['customer_phone']?.toString(),
         items: items,
         subtotal: subtotal,
         discount: discount,
         tax: tax,
         grandTotal: grandTotal,
-        roundedTotal: grandTotal.roundToDouble(),
-        invoiceNumber: orderNumber,
-        customerName: '$custName • Table $tableCode',
-        customerPhone: _order['customer_phone']?.toString(),
         shopName: widget.tableInfo['outlet_name']?.toString() ?? 'SirfBill Restaurant',
         address: widget.tableInfo['outlet_address']?.toString() ?? '',
         phone: widget.tableInfo['outlet_phone']?.toString() ?? '',
-        shopGstNo: '',
+        shopGstNo: widget.tableInfo['outlet_gst']?.toString() ?? '',
+        fssaiNo: widget.tableInfo['outlet_fssai']?.toString() ?? '',
+        logoUrl: widget.tableInfo['outlet_logo']?.toString(),
       );
 
       await Printing.sharePdf(bytes: pdfBytes, filename: 'Receipt_$orderNumber.pdf');

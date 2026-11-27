@@ -189,6 +189,7 @@ class KitchenDisplayNotifier extends Notifier<KitchenDisplayState> {
 
       for (int i = 0; i < backendOrders.length; i++) {
         final order = backendOrders[i];
+        if (order.status == OrderStatus.cancelled) continue;
 
         // Resolve table details if present
         String? resolvedTable = order.tableLabel;
@@ -232,15 +233,13 @@ class KitchenDisplayNotifier extends Notifier<KitchenDisplayState> {
           kotStatus = _ticketStatusMap[order.id]!;
         } else if (order.status == OrderStatus.completed && !hasNewItems) {
           final ageHours = DateTime.now().difference(order.createdAt).inHours;
-          final isRecentOrder = ageHours < 12;
-          if (isRecentOrder) {
-            // When an order is settled upfront via "Settle & Pay" (whether Dine-In or Takeaway),
-            // billing payment is COMPLETED, but the kitchen has not cooked/served the food yet!
-            // It must remain active (newOrder) in the kitchen until staff preps/serves it.
+          final isUpfrontTakeawayOrDelivery =
+              order.orderType != OrderType.dineIn && ageHours < 2;
+          if (isUpfrontTakeawayOrDelivery) {
             kotStatus = KotStatus.newOrder;
             _ticketStatusMap[order.id] = KotStatus.newOrder;
           } else {
-            // Historical completed orders (> 12h) are considered served
+            // Completed dine-in orders (settled at billing) & older orders are already served
             kotStatus = KotStatus.served;
             _ticketStatusMap[order.id] = KotStatus.served;
           }
@@ -259,7 +258,7 @@ class KitchenDisplayNotifier extends Notifier<KitchenDisplayState> {
               kotStatus = isRecentOrder ? KotStatus.newOrder : KotStatus.served;
               break;
             case OrderStatus.completed:
-              if (isRecentOrder) {
+              if (order.orderType != OrderType.dineIn && ageHours < 2) {
                 kotStatus = KotStatus.newOrder;
                 _ticketStatusMap[order.id] = KotStatus.newOrder;
               } else {
