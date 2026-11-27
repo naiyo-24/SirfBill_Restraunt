@@ -1,4 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import '../utils/url_cleaner_stub.dart'
+    if (dart.library.js_interop) '../utils/url_cleaner_web.dart';
 import 'package:go_router/go_router.dart';
 
 import '../screens/splash/splash_screen.dart';
@@ -104,9 +107,25 @@ final goRouter = GoRouter(
       path: '/table-order',
       builder: (context, state) {
         final q = state.uri.queryParameters;
+        String? outletId = q['outlet_id'];
+        String? tableId = q['table_id'];
+
+        final token = q['t'];
+        if ((outletId == null || tableId == null) && token != null && token.isNotEmpty) {
+          try {
+            final decoded = utf8.decode(base64Url.decode(base64Url.normalize(token)));
+            final data = jsonDecode(decoded) as Map<String, dynamic>;
+            outletId ??= data['o']?.toString();
+            tableId ??= data['t']?.toString();
+          } catch (_) {}
+        }
+
+        // Hide query parameters from the browser address bar
+        cleanTableOrderUrl();
+
         return TableOrderScreen(
-          outletId: q['outlet_id'],
-          tableId: q['table_id'],
+          outletId: outletId,
+          tableId: tableId,
         );
       },
     ),

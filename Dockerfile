@@ -33,8 +33,8 @@ RUN set -eux; \
     pip3 install --no-cache-dir fonttools; \
     fi
 
-# Build the web release
-RUN flutter build web --release --no-tree-shake-icons
+# Build the web release (ensure .env exists for pubspec asset bundling)
+RUN test -f .env || touch .env && flutter build web --release --no-tree-shake-icons
 
 # Production image
 FROM nginx:stable-alpine
@@ -45,5 +45,5 @@ COPY nginx/nginx.conf /etc/nginx/conf.d/default.conf
 # Copy built web app
 COPY --from=build /app/build/web /usr/share/nginx/html
 
-EXPOSE 5194
+EXPOSE 5195
 CMD ["nginx", "-g", "daemon off;"]

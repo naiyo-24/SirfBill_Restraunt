@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -64,7 +65,8 @@ class _TableQrDialogState extends State<TableQrDialog> {
   String get _orderUrl {
     final base = _currentHost;
     final oid = _resolvedOutletId ?? '';
-    return '$base/#/table-order?outlet_id=$oid&table_id=${widget.table.id}';
+    final token = base64Url.encode(utf8.encode(jsonEncode({'o': oid, 't': widget.table.id})));
+    return '$base/#/table-order?t=$token';
   }
 
   String get _qrImageUrl {
