@@ -34,21 +34,12 @@ class _TableQrDialogState extends State<TableQrDialog> {
   @override
   void initState() {
     super.initState();
-    // Use frontend web origin on web, or clean customer menu domain on desktop (never expose backend URL)
+    // Use frontend web origin on web, or hosted customer menu URL on desktop (never expose backend URL)
     String defaultHost = Uri.base.scheme.startsWith('http')
         ? Uri.base.origin
-        : 'https://menu.sirfbill.com';
+        : 'https://sirfbillrestaurant.naiyo24.com';
     if (Uri.base.host == 'localhost' || Uri.base.host == '127.0.0.1') {
-      String lanIp = '192.168.0.159';
-      try {
-        final apiUri = Uri.parse(ApiConstants.baseUrl);
-        if (apiUri.host.startsWith('192.168.') ||
-            apiUri.host.startsWith('10.') ||
-            apiUri.host.startsWith('172.')) {
-          lanIp = apiUri.host;
-        }
-      } catch (_) {}
-      defaultHost = 'http://$lanIp:53270';
+      defaultHost = 'https://sirfbillrestaurant.naiyo24.com';
     }
     _hostController = TextEditingController(text: defaultHost);
     _resolveOutletId();
