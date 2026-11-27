@@ -389,6 +389,7 @@ class _RestaurantAdminPanelScreenState extends ConsumerState<RestaurantAdminPane
                 currentTime: _currentTime,
                 userName: _userName.isNotEmpty ? _userName : 'Admin',
                 userRole: 'Administrator',
+                onRefresh: _loadAdminData,
                 onMenuPressed: () {
                   if (isDesktop) {
                     setState(() => _isSidebarExpanded = !_isSidebarExpanded);

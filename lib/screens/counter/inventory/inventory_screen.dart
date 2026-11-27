@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../services/auth_service.dart';
@@ -252,7 +253,20 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
           isDesktop: isDesktop && !isDrawer,
         );
 
-    return PopScope(
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.f1): () => _onSectionSelected(InventorySection.dashboard),
+        const SingleActivator(LogicalKeyboardKey.f2): () => _onSectionSelected(InventorySection.ingredients),
+        const SingleActivator(LogicalKeyboardKey.f3): () => _onSectionSelected(InventorySection.recipeManagement),
+        const SingleActivator(LogicalKeyboardKey.f4): () => _onSectionSelected(InventorySection.purchaseOrders),
+        const SingleActivator(LogicalKeyboardKey.f5): () => _onSectionSelected(InventorySection.stockManagement),
+        const SingleActivator(LogicalKeyboardKey.f6): () => _onSectionSelected(InventorySection.goodsReceived),
+        const SingleActivator(LogicalKeyboardKey.f7): () => _onSectionSelected(InventorySection.wastage),
+        const SingleActivator(LogicalKeyboardKey.f8): () => _onSectionSelected(InventorySection.reports),
+      },
+      child: Focus(
+        autofocus: true,
+        child: PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
@@ -331,6 +345,8 @@ class _RestaurantInventoryScreenState extends State<RestaurantInventoryScreen> {
           ),
         ),
       ),
+    ),
+    ),
     );
   }
 

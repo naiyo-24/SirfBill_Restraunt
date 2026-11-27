@@ -11,6 +11,7 @@ class AdminTopHeader extends StatelessWidget {
   final VoidCallback onMenuPressed;
   final VoidCallback onLogout;
   final ValueChanged<int> onSelectTab;
+  final VoidCallback? onRefresh;
 
   const AdminTopHeader({
     super.key,
@@ -21,6 +22,7 @@ class AdminTopHeader extends StatelessWidget {
     required this.onMenuPressed,
     required this.onLogout,
     required this.onSelectTab,
+    this.onRefresh,
   });
 
   String _formatDate(DateTime date) {
@@ -275,6 +277,55 @@ class AdminTopHeader extends StatelessWidget {
                     ),
                   ),
                   SizedBox(width: isNarrow ? 4 : 8),
+
+              if (onRefresh != null) ...[
+                Tooltip(
+                  message: 'Refresh Data',
+                  child: InkWell(
+                    onTap: onRefresh,
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      height: 38,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isDesktop ? 10 : 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? const Color(0xFF1E293B)
+                            : const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isDark
+                              ? const Color(0xFF334155)
+                              : const Color(0xFFE2E8F0),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.refresh_rounded,
+                            color: isDark ? Colors.white : const Color(0xFF334155),
+                            size: 18,
+                          ),
+                          if (isDesktop) ...[
+                            const SizedBox(width: 5),
+                            Text(
+                              'Refresh',
+                              style: TextStyle(
+                                color: isDark ? Colors.white : const Color(0xFF334155),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(width: isNarrow ? 4 : 8),
+              ],
 
               // Buy Hardware Top Bar Pill
               Tooltip(

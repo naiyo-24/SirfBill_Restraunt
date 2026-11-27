@@ -296,6 +296,19 @@ class _BillingScreenState extends ConsumerState<BillingScreen> {
   Widget build(BuildContext context) {
     final posState = ref.watch(restaurantPosProvider);
     final posNotifier = ref.read(restaurantPosProvider.notifier);
+
+    ref.listen<String?>(
+      restaurantPosProvider.select((s) => s.selectedTableId),
+      (prev, next) {
+        if (next != null && next.isNotEmpty && next != prev && mounted) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              _handleSelectTable(next, posNotifier, showFeedback: false);
+            }
+          });
+        }
+      },
+    );
     final tableState = ref.watch(restaurantTableProvider);
     final liveTables = tableState.tables.isNotEmpty ? tableState.tables : _tables;
     final isDark = Theme.of(context).brightness == Brightness.dark;

@@ -54,11 +54,8 @@ class InventoryTopBar extends StatelessWidget {
     final activeBg = const Color(0xFF10B981).withValues(alpha: 0.15);
     final activeBorder = const Color(0xFF10B981).withValues(alpha: 0.5);
 
-    return InkWell(
-      onTap: () => onSelectSection(section),
-      borderRadius: BorderRadius.circular(6),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+    return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
         decoration: BoxDecoration(
           color: isSelected ? activeBg : Colors.transparent,
           borderRadius: BorderRadius.circular(6),
@@ -99,8 +96,7 @@ class InventoryTopBar extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
+      );
   }
 
   @override
@@ -152,19 +148,17 @@ class InventoryTopBar extends StatelessWidget {
           ),
 
           // Logo / Branding
-          Flexible(
-            child: Image.asset(
-              isDark ? 'assets/LOGO_DM.png' : 'assets/LOGO.png',
-              height: isDesktop ? 46 : 30,
-              fit: BoxFit.contain,
-              errorBuilder: (_, __, ___) => const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.inventory_2_rounded, color: Color(0xFF10B981), size: 24),
-                  SizedBox(width: 6),
-                  Text('SirfBill', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                ],
-              ),
+          Image.asset(
+            isDark ? 'assets/LOGO_DM.png' : 'assets/LOGO.png',
+            height: isDesktop ? 46 : 30,
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.inventory_2_rounded, color: Color(0xFF10B981), size: 24),
+                SizedBox(width: 6),
+                Text('SirfBill', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              ],
             ),
           ),
 
@@ -202,15 +196,15 @@ class InventoryTopBar extends StatelessWidget {
             ),
           ],
 
-          const Spacer(),
-
           // Middle F1-F8 Quick Shortcuts
           if (showMiddlePills) ...[
-            Flexible(
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Center(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                   decoration: BoxDecoration(
                     color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
                     borderRadius: BorderRadius.circular(20),
@@ -238,7 +232,7 @@ class InventoryTopBar extends StatelessWidget {
                       _buildShortcutChip(
                         context: context,
                         keyLabel: 'F3',
-                        title: 'Recipe (BOM)',
+                        title: 'BOM',
                         section: InventorySection.recipeManagement,
                         isDark: isDark,
                       ),
@@ -280,10 +274,12 @@ class InventoryTopBar extends StatelessWidget {
                     ],
                   ),
                 ),
+                ),
               ),
             ),
+            const SizedBox(width: 12),
+          ] else
             const Spacer(),
-          ],
 
           // Right side Bell + Calendar + Profile Pills
           Row(

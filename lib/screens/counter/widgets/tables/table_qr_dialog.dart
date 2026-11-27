@@ -38,6 +38,18 @@ class _TableQrDialogState extends State<TableQrDialog> {
     String defaultHost = Uri.base.scheme.startsWith('http')
         ? Uri.base.origin
         : 'https://menu.sirfbill.com';
+    if (Uri.base.host == 'localhost' || Uri.base.host == '127.0.0.1') {
+      String lanIp = '192.168.0.185';
+      try {
+        final apiUri = Uri.parse(ApiConstants.baseUrl);
+        if (apiUri.host.startsWith('192.168.') ||
+            apiUri.host.startsWith('10.') ||
+            apiUri.host.startsWith('172.')) {
+          lanIp = apiUri.host;
+        }
+      } catch (_) {}
+      defaultHost = 'http://$lanIp:53270';
+    }
     _hostController = TextEditingController(text: defaultHost);
     _resolveOutletId();
   }
