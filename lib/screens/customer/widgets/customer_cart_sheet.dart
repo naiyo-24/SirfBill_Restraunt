@@ -4,6 +4,8 @@ class CustomerCartSheet extends StatefulWidget {
   final Map<String, dynamic> tableInfo;
   final Map<String, int> cart;
   final List<Map<String, dynamic>> menuItems;
+  final String? initialCustomerName;
+  final String? initialCustomerPhone;
   final ValueChanged<Map<String, int>> onCartUpdated;
   final Future<void> Function({
     required String customerName,
@@ -16,6 +18,8 @@ class CustomerCartSheet extends StatefulWidget {
     required this.tableInfo,
     required this.cart,
     required this.menuItems,
+    this.initialCustomerName,
+    this.initialCustomerPhone,
     required this.onCartUpdated,
     required this.onPlaceOrder,
   });
@@ -25,6 +29,8 @@ class CustomerCartSheet extends StatefulWidget {
     required Map<String, dynamic> tableInfo,
     required Map<String, int> cart,
     required List<Map<String, dynamic>> menuItems,
+    String? initialCustomerName,
+    String? initialCustomerPhone,
     required ValueChanged<Map<String, int>> onCartUpdated,
     required Future<void> Function({
       required String customerName,
@@ -40,6 +46,8 @@ class CustomerCartSheet extends StatefulWidget {
         tableInfo: tableInfo,
         cart: cart,
         menuItems: menuItems,
+        initialCustomerName: initialCustomerName,
+        initialCustomerPhone: initialCustomerPhone,
         onCartUpdated: onCartUpdated,
         onPlaceOrder: onPlaceOrder,
       ),
@@ -55,6 +63,19 @@ class _CustomerCartSheetState extends State<CustomerCartSheet> {
   final _phoneController = TextEditingController();
   final _notesController = TextEditingController();
   bool _isSubmitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialCustomerName != null &&
+        widget.initialCustomerName!.trim().isNotEmpty &&
+        widget.initialCustomerName!.trim().toLowerCase() != 'dine-in guest') {
+      _nameController.text = widget.initialCustomerName!.trim();
+    }
+    if (widget.initialCustomerPhone != null && widget.initialCustomerPhone!.trim().isNotEmpty) {
+      _phoneController.text = widget.initialCustomerPhone!.trim();
+    }
+  }
 
   @override
   void dispose() {

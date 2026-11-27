@@ -1,17 +1,21 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:printing/printing.dart';
 import '../../../../services/restaurant/customer_dining_service.dart';
+import '../../../../utils/pdf_generator.dart';
 
 class CustomerOrderStatusView extends StatefulWidget {
   final Map<String, dynamic> initialOrder;
   final Map<String, dynamic> tableInfo;
   final VoidCallback onOrderMore;
+  final VoidCallback? onStartNewOrder;
 
   const CustomerOrderStatusView({
     super.key,
     required this.initialOrder,
     required this.tableInfo,
     required this.onOrderMore,
+    this.onStartNewOrder,
   });
 
   @override
@@ -21,6 +25,7 @@ class CustomerOrderStatusView extends StatefulWidget {
 class _CustomerOrderStatusViewState extends State<CustomerOrderStatusView> {
   late Map<String, dynamic> _order;
   Timer? _statusTimer;
+  bool _isDownloadingBill = false;
 
   @override
   void initState() {
@@ -47,15 +52,73 @@ class _CustomerOrderStatusViewState extends State<CustomerOrderStatusView> {
     });
   }
 
+  Future<void> _downloadBillPdf() async {
+    if (_isDownloadingBill) return;
+    setState(() => _isDownloadingBill = true);
+    try {
+      final orderNumber = _order['order_number']?.toString() ?? 'BILL';
+      final rawLines = (_order['lines'] is List) ? (_order['lines'] as List) : [];
+      final items = rawLines.map((ln) {
+        final qty = (ln['quantity'] is num) ? (ln['quantity'] as num).toInt() : 1;
+        final unitPrice = double.tryParse((ln['unit_price'] ?? 0).toString()) ?? 0.0;
+        final lineTotal = double.tryParse((ln['line_total'] ?? (unitPrice * qty)).toString()) ?? (unitPrice * qty);
+        return <String, dynamic>{
+          'name': ln['item_name']?.toString() ?? 'Item',
+          'qty': qty,
+          'quantity': qty,
+          'price': unitPrice,
+          'total': lineTotal,
+        };
+      }).toList();
+
+      final subtotal = double.tryParse((_order['subtotal'] ?? 0).toString()) ?? 0.0;
+      final discount = double.tryParse((_order['discount_amount'] ?? 0).toString()) ?? 0.0;
+      final tax = double.tryParse((_order['tax_amount'] ?? 0).toString()) ?? 0.0;
+      final grandTotal = double.tryParse((_order['grand_total'] ?? 0).toString()) ?? 0.0;
+
+      final pdfBytes = await PdfGenerator.generateBill(
+        items: items,
+        subtotal: subtotal,
+        discount: discount,
+        tax: tax,
+        grandTotal: grandTotal,
+        invoiceNumber: orderNumber,
+        customerName: _order['customer_name']?.toString() ?? 'Dine-in Guest',
+        customerPhone: _order['customer_phone']?.toString(),
+        paymentMethod: _order['payment_method']?.toString() ?? 'PAID',
+        format: 'A4',
+        shopSettings: {
+          'name': widget.tableInfo['outlet_name']?.toString() ?? 'SirfBill Restaurant',
+          'address': widget.tableInfo['outlet_address']?.toString() ?? '',
+          'phone': widget.tableInfo['outlet_phone']?.toString() ?? '',
+          if (widget.tableInfo['outlet_logo'] != null) 'logo_url': widget.tableInfo['outlet_logo'].toString(),
+        },
+      );
+
+      await Printing.sharePdf(bytes: pdfBytes, filename: 'Bill_$orderNumber.pdf');
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not download bill: $e'), backgroundColor: const Color(0xFFEF4444)),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isDownloadingBill = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final status = (_order['status'] ?? 'PENDING_CONFIRMATION').toString().toUpperCase();
+    final paymentStatus = (_order['payment_status'] ?? '').toString().toUpperCase();
     final orderNumber = _order['order_number']?.toString() ?? 'ORD';
     final grandTotal = double.tryParse((_order['grand_total'] ?? 0).toString()) ?? 0.0;
     final lines = (_order['lines'] is List) ? (_order['lines'] as List) : [];
 
-    final isConfirmed = status != 'PENDING_CONFIRMATION' && status != 'CANCELLED';
+    final isSettled = status == 'COMPLETED' || status == 'PAID' || paymentStatus == 'PAID';
+    final isServed = status == 'SERVED';
     final isCancelled = status.contains('CANCEL') || status.contains('REJECT');
+    final isConfirmed = !isSettled && !isCancelled && status != 'PENDING_CONFIRMATION';
 
     final tableCode = widget.tableInfo['table_code']?.toString() ?? 'T1';
     final section = widget.tableInfo['section']?.toString() ?? '1st Floor';
@@ -65,11 +128,21 @@ class _CustomerOrderStatusViewState extends State<CustomerOrderStatusView> {
     String statusTitle;
     String statusSubtitle;
 
-    if (isCancelled) {
+    if (isSettled) {
+      themeColor = const Color(0xFF059669);
+      icon = Icons.celebration_rounded;
+      statusTitle = 'Thank You for Dining With Us!';
+      statusSubtitle = 'Your bill has been settled. We hope you enjoyed your meal and look forward to serving you again!';
+    } else if (isCancelled) {
       themeColor = const Color(0xFFEF4444);
       icon = Icons.cancel_outlined;
       statusTitle = 'Order Declined';
       statusSubtitle = 'The counter could not accept this order. Please call a waiter for assistance.';
+    } else if (isServed) {
+      themeColor = const Color(0xFF059669);
+      icon = Icons.restaurant_rounded;
+      statusTitle = 'Served at Your Table!';
+      statusSubtitle = 'Enjoy your meal! You can add more food items anytime.';
     } else if (isConfirmed) {
       themeColor = const Color(0xFF10B981);
       icon = Icons.soup_kitchen_rounded;
@@ -84,6 +157,30 @@ class _CustomerOrderStatusViewState extends State<CustomerOrderStatusView> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: isSettled
+            ? null
+            : IconButton(
+                icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF0F172A)),
+                onPressed: widget.onOrderMore,
+                tooltip: 'Back to Menu',
+              ),
+        automaticallyImplyLeading: false,
+        title: Text(
+          isSettled ? 'Bill Settled' : 'Order $orderNumber',
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+        ),
+        actions: [
+          if (!isSettled)
+            TextButton.icon(
+              onPressed: widget.onOrderMore,
+              icon: const Icon(Icons.restaurant_menu_rounded, size: 16, color: Color(0xFF059669)),
+              label: const Text('Menu', style: TextStyle(color: Color(0xFF059669), fontWeight: FontWeight.w700)),
+            ),
+        ],
+      ),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(20),
@@ -189,19 +286,48 @@ class _CustomerOrderStatusViewState extends State<CustomerOrderStatusView> {
             ),
             const SizedBox(height: 24),
 
-            // Add more items button
-            SizedBox(
-              height: 48,
-              child: OutlinedButton.icon(
-                onPressed: widget.onOrderMore,
-                icon: const Icon(Icons.add_shopping_cart_rounded, size: 18),
-                label: const Text('Add More Food Items', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFF6366F1),
-                  side: const BorderSide(color: Color(0xFF6366F1), width: 1.2),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            // Download Bill + Add more items / Back to menu buttons
+            if (isSettled) ...[
+              SizedBox(
+                height: 48,
+                child: ElevatedButton.icon(
+                  onPressed: _isDownloadingBill ? null : _downloadBillPdf,
+                  icon: _isDownloadingBill
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Icon(Icons.download_rounded, size: 19),
+                  label: Text(_isDownloadingBill ? 'Generating PDF...' : 'Download Bill (PDF)', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0F172A),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
                 ),
               ),
+              const SizedBox(height: 12),
+            ],
+            SizedBox(
+              height: 48,
+              child: isSettled
+                  ? OutlinedButton.icon(
+                      onPressed: widget.onStartNewOrder ?? widget.onOrderMore,
+                      icon: const Icon(Icons.restaurant_menu_rounded, size: 18),
+                      label: const Text('Back to Menu', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF059669),
+                        side: const BorderSide(color: Color(0xFF059669), width: 1.2),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    )
+                  : OutlinedButton.icon(
+                      onPressed: widget.onOrderMore,
+                      icon: const Icon(Icons.add_shopping_cart_rounded, size: 18),
+                      label: const Text('Add More Food Items', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF059669),
+                        side: const BorderSide(color: Color(0xFF059669), width: 1.2),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
             ),
           ],
         ),

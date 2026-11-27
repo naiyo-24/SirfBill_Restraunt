@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import '../../config/api_constants.dart';
 import '../../services/restaurant/customer_dining_service.dart';
 import 'widgets/customer_menu_card.dart';
 import 'widgets/customer_cart_sheet.dart';
+import 'widgets/customer_dish_detail_sheet.dart';
+import 'widgets/customer_menu_filters.dart';
+import 'widgets/customer_menu_header.dart';
 import 'widgets/customer_order_status_view.dart';
 
 class TableOrderScreen extends StatefulWidget {
@@ -30,11 +35,33 @@ class _TableOrderScreenState extends State<TableOrderScreen> {
 
   final Map<String, int> _cart = {};
   Map<String, dynamic>? _activePlacedOrder;
+  Map<String, dynamic>? _lastOrder;
+  String? _savedCustomerName;
+  String? _savedCustomerPhone;
+  final ScrollController _scrollController = ScrollController();
+  int _visibleCount = 12;
 
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     _loadData();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 250) {
+      final total = _filteredItems.length;
+      if (_visibleCount < total) {
+        setState(() => _visibleCount = (_visibleCount + 12).clamp(12, total));
+      }
+    }
   }
 
   Future<void> _loadData() async {
@@ -59,6 +86,12 @@ class _TableOrderScreenState extends State<TableOrderScreen> {
 
     final outId = widget.outletId ?? tableData['outlet_id']?.toString() ?? '';
     final menuData = await CustomerDiningService.fetchMenu(outId);
+
+    Map<String, dynamic>? existingOrder;
+    final activeOrdId = tableData['active_order_id']?.toString();
+    if (activeOrdId != null && activeOrdId.isNotEmpty) {
+      existingOrder = await CustomerDiningService.fetchOrderStatus(activeOrdId);
+    }
 
     List<Map<String, dynamic>> allItems = [];
     final Set<String> catSet = {'All'};
@@ -86,6 +119,11 @@ class _TableOrderScreenState extends State<TableOrderScreen> {
         _tableInfo = tableData;
         _menuItems = allItems;
         _categories = catSet.toList();
+        if (existingOrder != null) {
+          _lastOrder = existingOrder;
+          _savedCustomerName = existingOrder['customer_name']?.toString();
+          _savedCustomerPhone = existingOrder['customer_phone']?.toString();
+        }
         _isLoading = false;
       });
     }
@@ -156,6 +194,9 @@ class _TableOrderScreenState extends State<TableOrderScreen> {
       if (placed != null && mounted) {
         setState(() {
           _activePlacedOrder = placed;
+          _lastOrder = placed;
+          if (customerName.trim().isNotEmpty) _savedCustomerName = customerName.trim();
+          if (customerPhone.trim().isNotEmpty) _savedCustomerPhone = customerPhone.trim();
           _cart.clear();
         });
       }
@@ -210,174 +251,80 @@ class _TableOrderScreenState extends State<TableOrderScreen> {
         initialOrder: _activePlacedOrder!,
         tableInfo: _tableInfo!,
         onOrderMore: () => setState(() => _activePlacedOrder = null),
+        onStartNewOrder: () => setState(() {
+          _activePlacedOrder = null;
+          _lastOrder = null;
+          _savedCustomerName = null;
+          _savedCustomerPhone = null;
+        }),
       );
     }
 
     final outletName = _tableInfo?['outlet_name']?.toString() ?? 'SirfBill Restaurant';
     final outletAddress = _tableInfo?['outlet_address']?.toString() ?? '';
+    final rawLogo = _tableInfo?['outlet_logo']?.toString().trim() ?? '';
+    final outletLogo = rawLogo.isEmpty
+        ? ''
+        : (rawLogo.startsWith('http') ? rawLogo : '${ApiConstants.baseUrl}${rawLogo.startsWith('/') ? '' : '/'}$rawLogo');
     final tableCode = _tableInfo?['table_code']?.toString() ?? 'T1';
     final section = _tableInfo?['section']?.toString() ?? 'Main Hall';
     final items = _filteredItems;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF1F5F9),
-      appBar: PreferredSize(
-        preferredSize: Size.fromHeight(outletAddress.isNotEmpty ? 92 : 76),
-        child: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF0F172A), Color(0xFF064E3B)],
-            ),
-            borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
-            boxShadow: [
-              BoxShadow(color: Color(0x260F172A), blurRadius: 12, offset: Offset(0, 4)),
-            ],
-          ),
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  if (Navigator.of(context).canPop()) ...[
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 22),
-                      onPressed: () => Navigator.of(context).pop(),
-                      tooltip: 'Back to POS',
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                    ),
-                    const SizedBox(width: 8),
-                  ],
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          outletName,
-                          style: const TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w900,
-                            color: Colors.white,
-                            letterSpacing: -0.3,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        if (outletAddress.isNotEmpty) ...[
-                          const SizedBox(height: 2),
-                          Text(
-                            outletAddress,
-                            style: const TextStyle(fontSize: 10.5, color: Color(0xFFCBD5E1)),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                        const SizedBox(height: 3),
-                        const Row(
-                          children: [
-                            Icon(Icons.verified_rounded, size: 12, color: Color(0xFF34D399)),
-                            SizedBox(width: 4),
-                            Text(
-                              'Digital Table Menu • Contactless Dining',
-                              style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: Color(0xFF34D399)),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF10B981).withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFF34D399).withValues(alpha: 0.5)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.table_restaurant_rounded, size: 14, color: Color(0xFF34D399)),
-                        const SizedBox(width: 5),
-                        Text(
-                          '$tableCode • $section',
-                          style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: Colors.white),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
+      appBar: CustomerMenuHeader(
+        outletName: outletName,
+        outletAddress: outletAddress,
+        outletLogo: outletLogo,
+        tableCode: tableCode,
+        section: section,
       ),
       body: Column(
         children: [
-          // Search & Veg filter
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    onChanged: (val) => setState(() => _searchQuery = val.trim()),
-                    decoration: InputDecoration(
-                      hintText: 'Search food dishes...',
-                      hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
-                      prefixIcon: const Icon(Icons.search_rounded, size: 20, color: Color(0xFF64748B)),
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                FilterChip(
-                  label: const Text('Veg', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                  selected: _vegOnly,
-                  onSelected: (val) => setState(() => _vegOnly = val),
-                  selectedColor: const Color(0xFF10B981).withValues(alpha: 0.15),
-                  checkmarkColor: const Color(0xFF10B981),
-                  labelStyle: TextStyle(color: _vegOnly ? const Color(0xFF10B981) : const Color(0xFF64748B)),
-                ),
-              ],
-            ),
+          CustomerMenuFilters(
+            categories: _categories,
+            selectedCategory: _selectedCategory,
+            vegOnly: _vegOnly,
+            onSearchChanged: (q) => setState(() {
+              _searchQuery = q;
+              _visibleCount = 12;
+            }),
+            onVegChanged: (val) => setState(() {
+              _vegOnly = val;
+              _visibleCount = 12;
+            }),
+            onCategorySelected: (c) => setState(() {
+              _selectedCategory = c;
+              _visibleCount = 12;
+            }),
           ),
 
-          // Categories horizontal bar
-          SizedBox(
-            height: 38,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              itemCount: _categories.length,
-              itemBuilder: (context, idx) {
-                final c = _categories[idx];
-                final isSel = c == _selectedCategory;
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: ChoiceChip(
-                    label: Text(c),
-                    selected: isSel,
-                    onSelected: (_) => setState(() => _selectedCategory = c),
-                    selectedColor: const Color(0xFF6366F1),
-                    labelStyle: TextStyle(
-                      color: isSel ? Colors.white : const Color(0xFF475569),
-                      fontWeight: isSel ? FontWeight.bold : FontWeight.w500,
-                      fontSize: 12,
+          if (_lastOrder != null)
+            GestureDetector(
+              onTap: () => setState(() => _activePlacedOrder = _lastOrder),
+              child: Container(
+                margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFECFDF5),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.4)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.receipt_long_rounded, size: 18, color: Color(0xFF059669)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Active Order ${_lastOrder!['order_number'] ?? ''} • Tap to View Status',
+                        style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: Color(0xFF065F46)),
+                      ),
                     ),
-                  ),
-                );
-              },
+                    const Icon(Icons.arrow_forward_ios_rounded, size: 13, color: Color(0xFF059669)),
+                  ],
+                ),
+              ),
             ),
-          ),
-          const SizedBox(height: 6),
 
           // Menu items list
           Expanded(
@@ -386,24 +333,39 @@ class _TableOrderScreenState extends State<TableOrderScreen> {
                     child: Text('No dishes found in this category.', style: TextStyle(color: Color(0xFF94A3B8))),
                   )
                 : ListView.builder(
-                    itemCount: items.length,
+                    controller: _scrollController,
+                    scrollCacheExtent: const ScrollCacheExtent.pixels(250),
+                    itemCount: items.length > _visibleCount ? _visibleCount + 1 : items.length,
                     padding: const EdgeInsets.only(bottom: 90),
                     itemBuilder: (context, idx) {
+                      if (idx >= _visibleCount) {
+                        return const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 18),
+                          child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF10B981))),
+                        );
+                      }
                       final item = items[idx];
                       final itemId = item['id']?.toString() ?? '';
                       final qty = _cart[itemId] ?? 0;
+                      void updateQty(int newQty) {
+                        setState(() {
+                          if (newQty <= 0) {
+                            _cart.remove(itemId);
+                          } else {
+                            _cart[itemId] = newQty;
+                          }
+                        });
+                      }
                       return CustomerMenuCard(
                         item: item,
                         quantity: qty,
-                        onQuantityChanged: (newQty) {
-                          setState(() {
-                            if (newQty <= 0) {
-                              _cart.remove(itemId);
-                            } else {
-                              _cart[itemId] = newQty;
-                            }
-                          });
-                        },
+                        onTap: () => CustomerDishDetailSheet.show(
+                          context,
+                          item: item,
+                          initialQuantity: qty,
+                          onQuantityChanged: updateQty,
+                        ),
+                        onQuantityChanged: updateQty,
                       );
                     },
                   ),
@@ -411,15 +373,21 @@ class _TableOrderScreenState extends State<TableOrderScreen> {
         ],
       ),
       bottomSheet: _cartItemCount > 0
-          ? Container(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 10, offset: const Offset(0, -2)),
-                ],
-              ),
-              child: SafeArea(
+          ? SafeArea(
+              child: Container(
+                margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(colors: [Color(0xFF0F172A), Color(0xFF064E3B)]),
+                  borderRadius: BorderRadius.circular(18),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF0F172A).withValues(alpha: 0.25),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -427,8 +395,15 @@ class _TableOrderScreenState extends State<TableOrderScreen> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('$_cartItemCount ITEM${_cartItemCount > 1 ? "S" : ""}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF64748B))),
-                        Text('₹${_cartSubtotal.toStringAsFixed(0)}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF10B981))),
+                        Text(
+                          '$_cartItemCount ITEM${_cartItemCount > 1 ? "S" : ""} ADDED',
+                          style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: Color(0xFF34D399), letterSpacing: 0.5),
+                        ),
+                        const SizedBox(height: 1),
+                        Text(
+                          '₹${_cartSubtotal.toStringAsFixed(0)}',
+                          style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: Colors.white),
+                        ),
                       ],
                     ),
                     ElevatedButton.icon(
@@ -438,17 +413,19 @@ class _TableOrderScreenState extends State<TableOrderScreen> {
                           tableInfo: _tableInfo!,
                           cart: _cart,
                           menuItems: _menuItems,
+                          initialCustomerName: _savedCustomerName,
+                          initialCustomerPhone: _savedCustomerPhone,
                           onCartUpdated: (newCart) => setState(() => _cart..clear()..addAll(newCart)),
                           onPlaceOrder: _handlePlaceOrder,
                         );
                       },
-                      icon: const Icon(Icons.arrow_forward_rounded, size: 16),
+                      icon: const Icon(Icons.shopping_bag_rounded, size: 16),
                       label: const Text('View Cart & Order', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5)),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF10B981),
                         foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       ),
                     ),
                   ],

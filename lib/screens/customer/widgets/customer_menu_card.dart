@@ -5,12 +5,14 @@ class CustomerMenuCard extends StatelessWidget {
   final Map<String, dynamic> item;
   final int quantity;
   final ValueChanged<int> onQuantityChanged;
+  final VoidCallback? onTap;
 
   const CustomerMenuCard({
     super.key,
     required this.item,
     required this.quantity,
     required this.onQuantityChanged,
+    this.onTap,
   });
 
   @override
@@ -29,8 +31,10 @@ class CustomerMenuCard extends StatelessWidget {
         ? const Color(0xFF16A34A)
         : (isEgg ? const Color(0xFFD97706) : const Color(0xFFDC2626));
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -190,17 +194,17 @@ class CustomerMenuCard extends StatelessWidget {
                           ),
                         ],
                       ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(14),
-                        child: (imageUrl != null && imageUrl.isNotEmpty)
-                            ? buildDishNetworkImage(
-                                imageUrl: imageUrl,
-                                width: 96,
-                                height: 92,
-                                placeholderBuilder: () => _buildPlaceholder(name),
-                              )
-                            : _buildPlaceholder(name),
-                      ),
+                      child: (imageUrl != null && imageUrl.isNotEmpty)
+                          ? buildDishNetworkImage(
+                              imageUrl: imageUrl,
+                              width: 96,
+                              height: 92,
+                              placeholderBuilder: () => _buildPlaceholder(name),
+                            )
+                          : ClipRRect(
+                              borderRadius: BorderRadius.circular(14),
+                              child: _buildPlaceholder(name),
+                            ),
                     ),
                     Positioned(
                       bottom: -12,
@@ -282,6 +286,7 @@ class CustomerMenuCard extends StatelessWidget {
           ),
         ],
       ),
+    ),
     );
   }
 

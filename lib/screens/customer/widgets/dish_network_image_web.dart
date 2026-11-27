@@ -17,6 +17,8 @@ Widget buildDishNetworkImage({
     ui_web.platformViewRegistry.registerViewFactory(viewType, (int viewId) {
       final img = html.ImageElement()
         ..src = imageUrl
+        ..setAttribute('loading', 'lazy')
+        ..setAttribute('decoding', 'async')
         ..style.width = '100%'
         ..style.height = '100%'
         ..style.objectFit = 'cover'

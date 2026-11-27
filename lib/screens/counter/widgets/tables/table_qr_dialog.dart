@@ -39,7 +39,7 @@ class _TableQrDialogState extends State<TableQrDialog> {
         ? Uri.base.origin
         : 'https://menu.sirfbill.com';
     if (Uri.base.host == 'localhost' || Uri.base.host == '127.0.0.1') {
-      String lanIp = '192.168.0.185';
+      String lanIp = '192.168.0.159';
       try {
         final apiUri = Uri.parse(ApiConstants.baseUrl);
         if (apiUri.host.startsWith('192.168.') ||

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../models/hardware_product_model.dart';
+import 'hardware_detail_dialog.dart';
 
 /// Card widget presenting a single certified hardware product with pricing, specs & order action.
 class HardwareStoreProductCard extends StatelessWidget {
@@ -78,8 +79,17 @@ class HardwareStoreProductCard extends StatelessWidget {
             'Express Dispatch within 24 Hours',
           ];
 
-    return Container(
-      padding: const EdgeInsets.all(16),
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: () => HardwareDetailDialog.show(
+        context,
+        product: product,
+        accentColor: accentColor,
+        icon: icon,
+        onInquire: onInquire,
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: cardBg,
         borderRadius: BorderRadius.circular(14),
@@ -253,6 +263,7 @@ class HardwareStoreProductCard extends StatelessWidget {
           ),
         ],
       ),
+    ),
     );
   }
 }
