@@ -18,10 +18,9 @@ import 'widgets/admin_dashboard_tab.dart';
 import 'widgets/admin_outlets_tab.dart';
 import 'widgets/admin_users_tab.dart';
 import 'widgets/admin_subscription_tab.dart';
+import 'widgets/admin_growth_plans_tab.dart';
 import 'widgets/admin_dialogs.dart';
 import '../../widgets/exit_confirmation_dialog.dart';
-import '../home/widgets/hardware_store_dialog.dart';
-
 class RestaurantAdminPanelScreen extends ConsumerStatefulWidget {
   const RestaurantAdminPanelScreen({super.key});
 
@@ -67,7 +66,7 @@ class _RestaurantAdminPanelScreenState extends ConsumerState<RestaurantAdminPane
       if (event.logicalKey == LogicalKeyboardKey.f2) { setState(() => _selectedIndex = 1); return true; }
       if (event.logicalKey == LogicalKeyboardKey.f3) { setState(() => _selectedIndex = 2); return true; }
       if (event.logicalKey == LogicalKeyboardKey.f4) { setState(() => _selectedIndex = 3); return true; }
-      if (event.logicalKey == LogicalKeyboardKey.f5) { HardwareStoreDialog.show(context); return true; }
+      if (event.logicalKey == LogicalKeyboardKey.f5) { setState(() => _selectedIndex = 4); return true; }
       if (event.logicalKey == LogicalKeyboardKey.f6) { _handleLogout(); return true; }
     }
     return false;
@@ -314,9 +313,9 @@ class _RestaurantAdminPanelScreenState extends ConsumerState<RestaurantAdminPane
     Widget buildSidebar() => AdminSidebar(
           isDesktop: isDesktop,
           isExpanded: _isSidebarExpanded,
-          currentIndex: _selectedIndex.clamp(0, 3),
+          currentIndex: _selectedIndex.clamp(0, 4),
           onSelectIndex: (idx) {
-            setState(() => _selectedIndex = idx.clamp(0, 3));
+            setState(() => _selectedIndex = idx.clamp(0, 4));
             if (!isDesktop) Navigator.pop(context);
           },
           onToggleTheme: () => ref.read(themeProvider.notifier).toggleTheme(),
@@ -352,32 +351,23 @@ class _RestaurantAdminPanelScreenState extends ConsumerState<RestaurantAdminPane
         drawer: isDesktop ? null : Drawer(child: buildSidebar()),
         bottomNavigationBar: !isDesktop
             ? NavigationBar(
-                selectedIndex: _selectedIndex.clamp(0, 3),
-                onDestinationSelected: (idx) => setState(() => _selectedIndex = idx.clamp(0, 3)),
+                selectedIndex: _selectedIndex.clamp(0, 4),
+                onDestinationSelected: (idx) => setState(() => _selectedIndex = idx.clamp(0, 4)),
                 backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
                 indicatorColor: const Color(0xFF6366F1).withValues(alpha: 0.15),
                 destinations: const [
-                  NavigationDestination(
-                    icon: Icon(Icons.dashboard_outlined),
-                    selectedIcon: Icon(Icons.dashboard_rounded, color: Color(0xFF6366F1)),
-                    label: 'Dashboard',
-                  ),
-                  NavigationDestination(
-                    icon: Icon(Icons.storefront_outlined),
-                    selectedIcon: Icon(Icons.storefront_rounded, color: Color(0xFF6366F1)),
-                    label: 'Outlets',
-                  ),
-                  NavigationDestination(
-                    icon: Icon(Icons.people_outline_rounded),
-                    selectedIcon: Icon(Icons.people_rounded, color: Color(0xFF6366F1)),
-                    label: 'Users',
-                  ),
-                  NavigationDestination(
-                    icon: Icon(Icons.workspace_premium_outlined),
-                    selectedIcon: Icon(Icons.workspace_premium_rounded, color: Color(0xFF6366F1)),
-                    label: 'Plans',
-                  ),
-                ],
+                  (Icons.dashboard_outlined, Icons.dashboard_rounded, 'Dashboard'),
+                  (Icons.storefront_outlined, Icons.storefront_rounded, 'Outlets'),
+                  (Icons.people_outline_rounded, Icons.people_rounded, 'Users'),
+                  (Icons.workspace_premium_outlined, Icons.workspace_premium_rounded, 'Plans'),
+                  (Icons.campaign_outlined, Icons.campaign_rounded, 'Growth'),
+                ]
+                    .map((d) => NavigationDestination(
+                          icon: Icon(d.$1),
+                          selectedIcon: Icon(d.$2, color: const Color(0xFF6366F1)),
+                          label: d.$3,
+                        ))
+                    .toList(),
               )
             : null,
         body: SafeArea(
@@ -398,7 +388,7 @@ class _RestaurantAdminPanelScreenState extends ConsumerState<RestaurantAdminPane
                   }
                 },
                 onLogout: _handleLogout,
-                onSelectTab: (idx) => setState(() => _selectedIndex = idx.clamp(0, 3)),
+                onSelectTab: (idx) => setState(() => _selectedIndex = idx.clamp(0, 4)),
               ),
 
               // 2. MAIN BODY (Sidebar underneath on left, Content on right)
@@ -414,7 +404,7 @@ class _RestaurantAdminPanelScreenState extends ConsumerState<RestaurantAdminPane
                                 child: CircularProgressIndicator(color: Color(0xFF6366F1)),
                               )
                             : IndexedStack(
-                                index: _selectedIndex.clamp(0, 3),
+                                index: _selectedIndex.clamp(0, 4),
                                 children: [
                                   // TAB 0: DASHBOARD
                                   AdminDashboardTab(
@@ -473,6 +463,15 @@ class _RestaurantAdminPanelScreenState extends ConsumerState<RestaurantAdminPane
                                     initialOutletId: _activeShopId,
                                     initialBranches: _branches,
                                     onStatusChanged: (st) => setState(() => _subscriptionStatus = st),
+                                  ),
+
+                                  // TAB 4: INFLUENCER, WEBSITE & HARDWARE PLANS
+                                  AdminGrowthPlansTab(
+                                    cardBg: cardBg,
+                                    borderColor: borderColor,
+                                    textColor: textColor,
+                                    subtitleColor: subtitleColor,
+                                    isDark: isDark,
                                   ),
                                 ],
                               ),
