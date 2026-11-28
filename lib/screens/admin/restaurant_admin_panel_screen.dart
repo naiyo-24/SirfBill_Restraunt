@@ -19,6 +19,7 @@ import 'widgets/admin_outlets_tab.dart';
 import 'widgets/admin_users_tab.dart';
 import 'widgets/admin_subscription_tab.dart';
 import 'widgets/admin_growth_plans_tab.dart';
+import 'widgets/admin_hardware_store_tab.dart';
 import 'widgets/admin_dialogs.dart';
 import '../../widgets/exit_confirmation_dialog.dart';
 class RestaurantAdminPanelScreen extends ConsumerStatefulWidget {
@@ -67,6 +68,7 @@ class _RestaurantAdminPanelScreenState extends ConsumerState<RestaurantAdminPane
       if (event.logicalKey == LogicalKeyboardKey.f3) { setState(() => _selectedIndex = 2); return true; }
       if (event.logicalKey == LogicalKeyboardKey.f4) { setState(() => _selectedIndex = 3); return true; }
       if (event.logicalKey == LogicalKeyboardKey.f5) { setState(() => _selectedIndex = 4); return true; }
+      if (event.logicalKey == LogicalKeyboardKey.f6) { setState(() => _selectedIndex = 5); return true; }
       if (event.logicalKey == LogicalKeyboardKey.f6) { _handleLogout(); return true; }
     }
     return false;
@@ -313,9 +315,9 @@ class _RestaurantAdminPanelScreenState extends ConsumerState<RestaurantAdminPane
     Widget buildSidebar() => AdminSidebar(
           isDesktop: isDesktop,
           isExpanded: _isSidebarExpanded,
-          currentIndex: _selectedIndex.clamp(0, 4),
+          currentIndex: _selectedIndex.clamp(0, 5),
           onSelectIndex: (idx) {
-            setState(() => _selectedIndex = idx.clamp(0, 4));
+            setState(() => _selectedIndex = idx.clamp(0, 5));
             if (!isDesktop) Navigator.pop(context);
           },
           onToggleTheme: () => ref.read(themeProvider.notifier).toggleTheme(),
@@ -351,8 +353,8 @@ class _RestaurantAdminPanelScreenState extends ConsumerState<RestaurantAdminPane
         drawer: isDesktop ? null : Drawer(child: buildSidebar()),
         bottomNavigationBar: !isDesktop
             ? NavigationBar(
-                selectedIndex: _selectedIndex.clamp(0, 4),
-                onDestinationSelected: (idx) => setState(() => _selectedIndex = idx.clamp(0, 4)),
+                selectedIndex: _selectedIndex.clamp(0, 5),
+                onDestinationSelected: (idx) => setState(() => _selectedIndex = idx.clamp(0, 5)),
                 backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
                 indicatorColor: const Color(0xFF6366F1).withValues(alpha: 0.15),
                 destinations: const [
@@ -388,7 +390,7 @@ class _RestaurantAdminPanelScreenState extends ConsumerState<RestaurantAdminPane
                   }
                 },
                 onLogout: _handleLogout,
-                onSelectTab: (idx) => setState(() => _selectedIndex = idx.clamp(0, 4)),
+                onSelectTab: (idx) => setState(() => _selectedIndex = idx.clamp(0, 5)),
               ),
 
               // 2. MAIN BODY (Sidebar underneath on left, Content on right)
@@ -404,7 +406,7 @@ class _RestaurantAdminPanelScreenState extends ConsumerState<RestaurantAdminPane
                                 child: CircularProgressIndicator(color: Color(0xFF6366F1)),
                               )
                             : IndexedStack(
-                                index: _selectedIndex.clamp(0, 4),
+                                index: _selectedIndex.clamp(0, 5),
                                 children: [
                                   // TAB 0: DASHBOARD
                                   AdminDashboardTab(
@@ -465,8 +467,17 @@ class _RestaurantAdminPanelScreenState extends ConsumerState<RestaurantAdminPane
                                     onStatusChanged: (st) => setState(() => _subscriptionStatus = st),
                                   ),
 
-                                  // TAB 4: INFLUENCER, WEBSITE & HARDWARE PLANS
+                                  // TAB 4: INFLUENCER & WEBSITE PLANS
                                   AdminGrowthPlansTab(
+                                    cardBg: cardBg,
+                                    borderColor: borderColor,
+                                    textColor: textColor,
+                                    subtitleColor: subtitleColor,
+                                    isDark: isDark,
+                                  ),
+
+                                  // TAB 5: CERTIFIED POS HARDWARE STORE
+                                  AdminHardwareStoreTab(
                                     cardBg: cardBg,
                                     borderColor: borderColor,
                                     textColor: textColor,

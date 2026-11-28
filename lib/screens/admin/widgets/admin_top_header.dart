@@ -199,6 +199,12 @@ class AdminTopHeader extends StatelessWidget {
                             'Growth',
                             onTap: () => onSelectTab(4),
                           ),
+                          _buildShortcutChip(
+                            context,
+                            'F6',
+                            'Hardware',
+                            onTap: () => onSelectTab(5),
+                          ),
                         ],
                       ),
                     ),

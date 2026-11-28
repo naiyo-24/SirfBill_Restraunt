@@ -167,7 +167,7 @@ class _HardwareOrderInquiryDialogState extends State<HardwareOrderInquiryDialog>
                   Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                   const SizedBox(height: 2),
                   Text(
-                    'SKU: ${item.sku} • Price: ${_inFormat.format(unitPrice)} each',
+                    'SKU: ${item.sku} • Price: ${unitPrice == 0 ? 'FREE' : _inFormat.format(unitPrice)} each',
                     style: const TextStyle(fontSize: 11, color: Colors.grey),
                   ),
                   const SizedBox(height: 12),
@@ -189,7 +189,7 @@ class _HardwareOrderInquiryDialogState extends State<HardwareOrderInquiryDialog>
                         ],
                       ),
                       Text(
-                        'Total: ${_inFormat.format(totalPrice)}',
+                        'Total: ${totalPrice == 0 ? 'FREE' : _inFormat.format(totalPrice)}',
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w900,

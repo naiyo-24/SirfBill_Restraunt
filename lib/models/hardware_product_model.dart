@@ -52,10 +52,10 @@ class HardwareProduct {
   });
 
   double get effectivePrice =>
-      (offerPrice != null && offerPrice! > 0) ? offerPrice! : price;
+      (offerPrice != null && offerPrice! >= 0) ? offerPrice! : price;
 
   double get strikePrice {
-    if (offerPrice != null && offerPrice! > 0) {
+    if (offerPrice != null && offerPrice! >= 0) {
       if (mrp > offerPrice!) return mrp;
       if (price > offerPrice!) return price;
     }

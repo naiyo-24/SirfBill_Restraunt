@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
-import '../../../models/hardware_product_model.dart';
 import '../../../services/hardware/hardware_service.dart';
-import '../../home/widgets/hardware_order_inquiry_dialog.dart';
-import '../../home/widgets/hardware_store_product_card.dart';
+import 'growth_plan_card.dart';
 import 'growth_plan_detail_dialog.dart';
 
 class AdminGrowthPlansTab extends StatefulWidget {
@@ -28,10 +25,8 @@ class AdminGrowthPlansTab extends StatefulWidget {
 }
 
 class _AdminGrowthPlansTabState extends State<AdminGrowthPlansTab> {
-  List<HardwareProduct> _hardwareProducts = [];
   List<Map<String, dynamic>> _liveInfluencerPlans = [];
   List<Map<String, dynamic>> _liveWebsitePlans = [];
-  bool _loadingHardware = true;
   bool _loadingPlans = true;
 
   static const List<int> _palette = [
@@ -45,25 +40,7 @@ class _AdminGrowthPlansTabState extends State<AdminGrowthPlansTab> {
   @override
   void initState() {
     super.initState();
-    _loadData();
-  }
-
-  Future<void> _loadData() async {
-    await Future.wait([_loadHardware(), _loadServicePlans()]);
-  }
-
-  Future<void> _loadHardware() async {
-    try {
-      final items = await HardwareService.fetchProducts();
-      if (mounted) {
-        setState(() {
-          _hardwareProducts = items;
-          _loadingHardware = false;
-        });
-      }
-    } catch (_) {
-      if (mounted) setState(() => _loadingHardware = false);
-    }
+    _loadServicePlans();
   }
 
   Future<void> _loadServicePlans() async {
@@ -91,15 +68,15 @@ class _AdminGrowthPlansTabState extends State<AdminGrowthPlansTab> {
                 ? (item['offer_price'] as num).toDouble()
                 : double.tryParse(item['offer_price'].toString()))
             : null;
-        final hasOffer = numOffer != null && numOffer > 0 && numOffer < numPrice;
+        final hasOffer = numOffer != null && numOffer >= 0 && numOffer < numPrice;
         final activePrice = hasOffer ? numOffer : numPrice;
-        final gstApplicable = item['gst_applicable'] == true;
+        final gstApplicable = item['gst_applicable'] == true && activePrice > 0;
 
         target.add({
           'id': (item['id'] ?? '').toString(),
           'plan_code': (item['plan_code'] ?? '').toString(),
           'title': (item['name'] ?? '').toString(),
-          'price': _inrFormat.format(activePrice),
+          'price': activePrice == 0 ? 'FREE' : _inrFormat.format(activePrice),
           if (hasOffer) 'original_price': _inrFormat.format(numPrice),
           if (hasOffer && numPrice > 0)
             'discount_pct': (((numPrice - numOffer) / numPrice) * 100).round(),
@@ -209,46 +186,125 @@ class _AdminGrowthPlansTabState extends State<AdminGrowthPlansTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Hero Banner
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF0F172A), Color(0xFF1E1B4B)],
+          // Executive Hero Banner with Right-Side Glass Stats
+          ClipRRect(
+            borderRadius: BorderRadius.circular(22),
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF0B1120), Color(0xFF1E1B4B), Color(0xFF064E3B)],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF0F172A).withValues(alpha: 0.24),
+                    blurRadius: 24,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
               ),
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: const Icon(Icons.auto_awesome_rounded, color: Color(0xFF34D399), size: 28),
-                ),
-                const SizedBox(width: 16),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Growth, Website & Hardware Plans',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white),
+              child: Stack(
+                children: [
+                  Positioned(
+                    right: -40,
+                    top: -40,
+                    child: Container(
+                      width: 190,
+                      height: 190,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: RadialGradient(
+                          colors: [
+                            const Color(0xFF34D399).withValues(alpha: 0.22),
+                            Colors.transparent,
+                          ],
+                        ),
                       ),
-                      SizedBox(height: 4),
-                      Text(
-                        'Boost your restaurant footfall with Influencer Marketing, Official Websites, and Certified POS Hardware.',
-                        style: TextStyle(fontSize: 12.5, color: Color(0xFFCBD5E1)),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
-              ],
+                  Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final wide = constraints.maxWidth > 760;
+                        return Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    const Color(0xFF10B981).withValues(alpha: 0.28),
+                                    const Color(0xFF6366F1).withValues(alpha: 0.25),
+                                  ],
+                                ),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+                              ),
+                              child: const Icon(Icons.auto_awesome_rounded, color: Color(0xFF34D399), size: 30),
+                            ),
+                            const SizedBox(width: 18),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3.5),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF10B981).withValues(alpha: 0.2),
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(color: const Color(0xFF34D399).withValues(alpha: 0.45)),
+                                    ),
+                                    child: const Text(
+                                      'SIRFBILL GROWTH SUITE',
+                                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 0.8, color: Color(0xFF6EE7B7)),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  const Text(
+                                    'Growth & Website Plans',
+                                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: -0.4),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  const Text(
+                                    'Scale your restaurant footfall with verified Influencer Reels & high-converting Official Websites.',
+                                    style: TextStyle(fontSize: 12.5, color: Color(0xFFCBD5E1)),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (wide) ...[
+                              const SizedBox(width: 20),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.08),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    _heroStat('500+', 'Outlets Scaled'),
+                                    _heroDivider(),
+                                    _heroStat('24h', 'Fast Launch'),
+                                    _heroDivider(),
+                                    _heroStat('100%', 'Verified ROI'),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 28),
 
           // Section 1: Influencer Plans
           _sectionHeader(
@@ -294,92 +350,53 @@ class _AdminGrowthPlansTabState extends State<AdminGrowthPlansTab> {
               return _buildPlanGrid(context, plans, 'Website Plan', cols);
             },
           ),
-          const SizedBox(height: 28),
-
-          // Section 3: Certified POS Hardware Store (All Products Grid)
-          _sectionHeader(
-            Icons.storefront_rounded,
-            '3. Certified POS Hardware Store',
-            'Thermal printers, cash drawers, KDS displays & barcode scanners',
-            const Color(0xFF10B981),
-          ),
-          const SizedBox(height: 14),
-          if (_loadingHardware)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 32),
-              child: Center(child: CircularProgressIndicator(color: Color(0xFF10B981))),
-            )
-          else if (_hardwareProducts.isEmpty)
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: widget.cardBg,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: widget.borderColor),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.inventory_2_outlined, color: widget.subtitleColor),
-                  const SizedBox(width: 10),
-                  Text('No hardware products available right now.', style: TextStyle(color: widget.subtitleColor)),
-                ],
-              ),
-            )
-          else
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final cols = constraints.maxWidth > 1050 ? 3 : (constraints.maxWidth > 650 ? 2 : 1);
-                return GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: cols,
-                    crossAxisSpacing: 14,
-                    mainAxisSpacing: 14,
-                    mainAxisExtent: 275,
-                  ),
-                  itemCount: _hardwareProducts.length,
-                  itemBuilder: (context, idx) => HardwareStoreProductCard(
-                    product: _hardwareProducts[idx],
-                    isDark: widget.isDark,
-                    cardBg: widget.cardBg,
-                    textColor: widget.textColor,
-                    subtitleColor: widget.subtitleColor,
-                    borderColor: widget.borderColor,
-                    onInquire: (item) => HardwareOrderInquiryDialog.show(
-                      context,
-                      item: item,
-                      onOpenWhatsApp: (msg) async {
-                        await launchUrl(
-                          Uri.parse('https://wa.me/918100463128?text=${Uri.encodeComponent(msg)}'),
-                          mode: LaunchMode.externalApplication,
-                        );
-                      },
-                    ),
-                  ),
-                );
-              },
-            ),
         ],
       ),
     );
+  }
+
+  Widget _heroStat(String value, String label) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF34D399))),
+          const SizedBox(height: 2),
+          Text(label, style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: Color(0xFFCBD5E1))),
+        ],
+      ),
+    );
+  }
+
+  Widget _heroDivider() {
+    return Container(height: 28, width: 1, color: Colors.white.withValues(alpha: 0.16));
   }
 
   Widget _sectionHeader(IconData icon, String title, String subtitle, Color accent) {
     return Row(
       children: [
         Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(color: accent.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
-          child: Icon(icon, color: accent, size: 20),
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [accent.withValues(alpha: 0.18), accent.withValues(alpha: 0.06)],
+            ),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: accent.withValues(alpha: 0.25)),
+          ),
+          child: Icon(icon, color: accent, size: 22),
         ),
-        const SizedBox(width: 10),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: widget.textColor)),
-            Text(subtitle, style: TextStyle(fontSize: 12, color: widget.subtitleColor)),
-          ],
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: TextStyle(fontSize: 16.5, fontWeight: FontWeight.w900, color: widget.textColor, letterSpacing: -0.2)),
+              const SizedBox(height: 2),
+              Text(subtitle, style: TextStyle(fontSize: 12, color: widget.subtitleColor)),
+            ],
+          ),
         ),
       ],
     );
@@ -391,95 +408,22 @@ class _AdminGrowthPlansTabState extends State<AdminGrowthPlansTab> {
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: cols,
-        crossAxisSpacing: 14,
-        mainAxisSpacing: 14,
-        mainAxisExtent: 258,
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
+        mainAxisExtent: 310,
       ),
       itemCount: plans.length,
-      itemBuilder: (context, idx) {
-        final p = plans[idx];
-        final accent = Color(p['color'] as int);
-        final gst = (p['gst'] ?? '').toString();
-        final features = (p['features'] as List).cast<String>();
-
-        return InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: () => _openPlanDetails(context, category, p),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: widget.cardBg,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: widget.borderColor),
-            boxShadow: [
-              BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 3)),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(color: accent.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(6)),
-                child: Text(p['tag'].toString(), style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: accent)),
-              ),
-              const SizedBox(height: 10),
-              Text(p['title'].toString(), style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: widget.textColor)),
-              const SizedBox(height: 4),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
-                children: [
-                  Text(p['price'].toString(), style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: accent)),
-                  if ((p['original_price'] ?? '').toString().isNotEmpty) ...[
-                    const SizedBox(width: 6),
-                    Text(
-                      p['original_price'].toString(),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: widget.subtitleColor,
-                        decoration: TextDecoration.lineThrough,
-                      ),
-                    ),
-                  ],
-                  if (gst.isNotEmpty) ...[
-                    const SizedBox(width: 5),
-                    Text(gst, style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: widget.subtitleColor)),
-                  ],
-                ],
-              ),
-              const SizedBox(height: 10),
-              ...features.map((f) => Padding(
-                    padding: const EdgeInsets.only(bottom: 5),
-                    child: Row(
-                      children: [
-                        Icon(Icons.check_circle_rounded, size: 14, color: accent),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(f, style: TextStyle(fontSize: 11.5, color: widget.subtitleColor), maxLines: 1, overflow: TextOverflow.ellipsis),
-                        ),
-                      ],
-                    ),
-                  )),
-              const Spacer(),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => _openPlanDetails(context, category, p),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0F172A),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  child: const Text('View Details', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800)),
-                ),
-              ),
-            ],
-          ),
-        ),
-        );
-      },
+      itemBuilder: (context, idx) => GrowthPlanCard(
+        plan: plans[idx],
+        category: category,
+        index: idx,
+        cardBg: widget.cardBg,
+        borderColor: widget.borderColor,
+        textColor: widget.textColor,
+        subtitleColor: widget.subtitleColor,
+        isDark: widget.isDark,
+        onTap: () => _openPlanDetails(context, category, plans[idx]),
+      ),
     );
   }
 }

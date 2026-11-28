@@ -127,7 +127,7 @@ class HardwareDetailDialog extends StatelessWidget {
                       textBaseline: TextBaseline.alphabetic,
                       children: [
                         Text(
-                          '₹${currency.format(product.effectivePrice)}',
+                          product.effectivePrice == 0 ? 'FREE' : '₹${currency.format(product.effectivePrice)}',
                           style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: textColor),
                         ),
                         if (product.strikePrice > product.effectivePrice) ...[
