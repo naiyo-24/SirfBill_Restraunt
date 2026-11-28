@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../models/hardware_product_model.dart';
+import '../../home/widgets/hardware_order_inquiry_dialog.dart';
 
 class GrowthPlanDetailDialog extends StatelessWidget {
   final String category;
@@ -47,7 +49,6 @@ class GrowthPlanDetailDialog extends StatelessWidget {
     final title = plan['title'].toString();
     final price = plan['price'].toString();
     final gst = (plan['gst'] ?? '').toString();
-    final priceLabel = gst.isNotEmpty ? '$price $gst' : price;
     final tag = plan['tag'].toString();
     final features = (plan['features'] as List).cast<String>();
     final details = (plan['details'] ?? '').toString();
@@ -135,14 +136,27 @@ class GrowthPlanDetailDialog extends StatelessWidget {
                 Expanded(
                   flex: 2,
                   child: ElevatedButton.icon(
-                    onPressed: () async {
+                    onPressed: () {
+                      final rootContext = Navigator.of(context, rootNavigator: false).context;
                       Navigator.pop(context);
-                      final msg = Uri.encodeComponent(
-                        'Hello SirfBill Team, I want to book $category - $title ($priceLabel) for my restaurant.',
+                      final numericPrice = double.tryParse(price.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0;
+                      final planItem = HardwareProduct(
+                        id: 'PLAN-${title.toUpperCase().replaceAll(RegExp(r'\s+'), '-')}',
+                        sku: tag,
+                        name: '$category - $title${gst.isNotEmpty ? ' ($gst)' : ''}',
+                        category: category,
+                        price: numericPrice,
+                        mrp: numericPrice,
                       );
-                      await launchUrl(
-                        Uri.parse('https://wa.me/918100463128?text=$msg'),
-                        mode: LaunchMode.externalApplication,
+                      HardwareOrderInquiryDialog.show(
+                        rootContext,
+                        item: planItem,
+                        onOpenWhatsApp: (msg) async {
+                          await launchUrl(
+                            Uri.parse('https://wa.me/918100463128?text=${Uri.encodeComponent(msg)}'),
+                            mode: LaunchMode.externalApplication,
+                          );
+                        },
                       );
                     },
                     icon: const Icon(Icons.chat_rounded, size: 17),

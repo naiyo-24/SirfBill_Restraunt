@@ -59,6 +59,7 @@ class _HardwareOrderInquiryDialogState extends State<HardwareOrderInquiryDialog>
     setState(() => _isSubmitting = true);
 
     final item = widget.item;
+    final isServicePlan = item.id.startsWith('PLAN-');
     final totalPrice = item.price * _qty;
 
     final rawPhone = _phoneCtrl.text.trim();
@@ -100,14 +101,15 @@ class _HardwareOrderInquiryDialogState extends State<HardwareOrderInquiryDialog>
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Order #$orderNo successfully recorded in Hardware Orders!'),
+          content: Text('Order #$orderNo successfully recorded!'),
           backgroundColor: const Color(0xFF10B981),
           duration: const Duration(seconds: 4),
         ),
       );
 
+      final teamLabel = isServicePlan ? 'SirfBill Team' : 'SirfBill Hardware Team';
       final msg =
-          'Hello SirfBill Hardware Team! I have placed Order #$orderNo for:\n• ${item.name} (${item.sku})\n• Quantity: $_qty\n• Total: ${_inFormat.format(totalPrice)}\n• Delivery to: ${_nameCtrl.text}, ${_addressCtrl.text}, ${_cityCtrl.text} - ${_pincodeCtrl.text}\n• Phone: $cleanPhone';
+          'Hello $teamLabel! I have placed Order #$orderNo for:\n• ${item.name} (${item.sku})\n• Quantity: $_qty\n• Total: ${_inFormat.format(totalPrice)}\n• Contact: ${_nameCtrl.text}, ${_addressCtrl.text}, ${_cityCtrl.text} - ${_pincodeCtrl.text}\n• Phone: $cleanPhone';
       await widget.onOpenWhatsApp(msg);
     } else {
       Navigator.pop(context);
@@ -120,8 +122,9 @@ class _HardwareOrderInquiryDialogState extends State<HardwareOrderInquiryDialog>
         ),
       );
 
+      final teamLabel = isServicePlan ? 'SirfBill Team' : 'SirfBill Hardware Team';
       final msg =
-          'Hello SirfBill Hardware Team! I want to purchase:\n• ${item.name} (${item.sku})\n• Quantity: $_qty\n• Total: ${_inFormat.format(totalPrice)}\n• Name: ${_nameCtrl.text}\n• Phone: $cleanPhone\n• Address: ${_addressCtrl.text}, ${_cityCtrl.text} - ${_pincodeCtrl.text}';
+          'Hello $teamLabel! I want to order:\n• ${item.name} (${item.sku})\n• Quantity: $_qty\n• Total: ${_inFormat.format(totalPrice)}\n• Name: ${_nameCtrl.text}\n• Phone: $cleanPhone\n• Address: ${_addressCtrl.text}, ${_cityCtrl.text} - ${_pincodeCtrl.text}';
       await widget.onOpenWhatsApp(msg);
     }
   }
@@ -129,6 +132,7 @@ class _HardwareOrderInquiryDialogState extends State<HardwareOrderInquiryDialog>
   @override
   Widget build(BuildContext context) {
     final item = widget.item;
+    final isServicePlan = item.id.startsWith('PLAN-');
     final totalPrice = item.price * _qty;
 
     return Dialog(
@@ -147,9 +151,9 @@ class _HardwareOrderInquiryDialogState extends State<HardwareOrderInquiryDialog>
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Hardware Order / Inquiry',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      Text(
+                        isServicePlan ? 'Service Plan Order / Inquiry' : 'Hardware Order / Inquiry',
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                       IconButton(
                         icon: const Icon(Icons.close),
@@ -240,9 +244,9 @@ class _HardwareOrderInquiryDialogState extends State<HardwareOrderInquiryDialog>
                   const SizedBox(height: 8),
                   TextFormField(
                     controller: _addressCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Delivery Address *',
-                      contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: InputDecoration(
+                      labelText: isServicePlan ? 'Restaurant / Billing Address *' : 'Delivery Address *',
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                     ),
                     validator: (v) => v == null || v.isEmpty ? 'Required' : null,
                   ),
