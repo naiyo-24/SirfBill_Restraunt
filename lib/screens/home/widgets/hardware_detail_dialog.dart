@@ -127,13 +127,13 @@ class HardwareDetailDialog extends StatelessWidget {
                       textBaseline: TextBaseline.alphabetic,
                       children: [
                         Text(
-                          '₹${currency.format(product.price)}',
+                          '₹${currency.format(product.effectivePrice)}',
                           style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: textColor),
                         ),
-                        if (product.mrp > product.price) ...[
+                        if (product.strikePrice > product.effectivePrice) ...[
                           const SizedBox(width: 8),
                           Text(
-                            '₹${currency.format(product.mrp)}',
+                            '₹${currency.format(product.strikePrice)}',
                             style: TextStyle(fontSize: 14, color: subColor, decoration: TextDecoration.lineThrough),
                           ),
                         ],

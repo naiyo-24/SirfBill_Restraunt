@@ -94,6 +94,17 @@ class GrowthPlanDetailDialog extends StatelessWidget {
               textBaseline: TextBaseline.alphabetic,
               children: [
                 Text(price, style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: accent)),
+                if ((plan['original_price'] ?? '').toString().isNotEmpty) ...[
+                  const SizedBox(width: 8),
+                  Text(
+                    plan['original_price'].toString(),
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: subtitleColor,
+                      decoration: TextDecoration.lineThrough,
+                    ),
+                  ),
+                ],
                 if (gst.isNotEmpty) ...[
                   const SizedBox(width: 6),
                   Text(gst, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: subtitleColor)),

@@ -60,7 +60,8 @@ class _HardwareOrderInquiryDialogState extends State<HardwareOrderInquiryDialog>
 
     final item = widget.item;
     final isServicePlan = item.id.startsWith('PLAN-');
-    final totalPrice = item.price * _qty;
+    final unitPrice = item.effectivePrice;
+    final totalPrice = unitPrice * _qty;
 
     final rawPhone = _phoneCtrl.text.trim();
     final digits = rawPhone.replaceAll(RegExp(r'\D'), '');
@@ -75,7 +76,7 @@ class _HardwareOrderInquiryDialogState extends State<HardwareOrderInquiryDialog>
       order = await HardwareService.createOrder(
         productId: item.id,
         productName: item.name,
-        price: item.price,
+        price: unitPrice,
         totalPrice: totalPrice,
         quantity: _qty,
         contactName: _nameCtrl.text.trim(),
@@ -133,7 +134,8 @@ class _HardwareOrderInquiryDialogState extends State<HardwareOrderInquiryDialog>
   Widget build(BuildContext context) {
     final item = widget.item;
     final isServicePlan = item.id.startsWith('PLAN-');
-    final totalPrice = item.price * _qty;
+    final unitPrice = item.effectivePrice;
+    final totalPrice = unitPrice * _qty;
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -165,7 +167,7 @@ class _HardwareOrderInquiryDialogState extends State<HardwareOrderInquiryDialog>
                   Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                   const SizedBox(height: 2),
                   Text(
-                    'SKU: ${item.sku} • Price: ${_inFormat.format(item.price)} each',
+                    'SKU: ${item.sku} • Price: ${_inFormat.format(unitPrice)} each',
                     style: const TextStyle(fontSize: 11, color: Colors.grey),
                   ),
                   const SizedBox(height: 12),

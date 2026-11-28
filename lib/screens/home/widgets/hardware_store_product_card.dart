@@ -173,13 +173,13 @@ class HardwareStoreProductCard extends StatelessWidget {
           Row(
             children: [
               Text(
-                inFormat.format(product.price),
+                inFormat.format(product.effectivePrice),
                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF10B981)),
               ),
               const SizedBox(width: 6),
-              if (product.mrp > product.price) ...[
+              if (product.strikePrice > product.effectivePrice) ...[
                 Text(
-                  inFormat.format(product.mrp),
+                  inFormat.format(product.strikePrice),
                   style: TextStyle(
                     fontSize: 11,
                     color: subtitleColor,

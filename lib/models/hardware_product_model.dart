@@ -10,6 +10,7 @@ class HardwareProduct {
   final Map<String, dynamic> specifications;
   final List<String> features;
   final double price;
+  final double? offerPrice;
   final double mrp;
   final double taxRate;
   final String primaryImageUrl;
@@ -35,6 +36,7 @@ class HardwareProduct {
     this.specifications = const {},
     this.features = const [],
     required this.price,
+    this.offerPrice,
     required this.mrp,
     this.taxRate = 18.0,
     this.primaryImageUrl = '',
@@ -49,9 +51,22 @@ class HardwareProduct {
     this.createdAt,
   });
 
+  double get effectivePrice =>
+      (offerPrice != null && offerPrice! > 0) ? offerPrice! : price;
+
+  double get strikePrice {
+    if (offerPrice != null && offerPrice! > 0) {
+      if (mrp > offerPrice!) return mrp;
+      if (price > offerPrice!) return price;
+    }
+    return mrp;
+  }
+
   int get discountPercentage {
-    if (mrp > price && mrp > 0) {
-      return (((mrp - price) / mrp) * 100).round();
+    final base = strikePrice;
+    final current = effectivePrice;
+    if (base > current && base > 0) {
+      return (((base - current) / base) * 100).round();
     }
     return 0;
   }
@@ -102,6 +117,7 @@ class HardwareProduct {
       specifications: parseMap(json['specifications']),
       features: parseList(json['features']),
       price: double.tryParse((json['price'] ?? 0).toString()) ?? 0.0,
+      offerPrice: json['offer_price'] != null ? double.tryParse(json['offer_price'].toString()) : null,
       mrp: double.tryParse((json['mrp'] ?? json['price'] ?? 0).toString()) ?? 0.0,
       taxRate: double.tryParse((json['tax_rate'] ?? 18).toString()) ?? 18.0,
       primaryImageUrl: (json['primary_image_url'] ?? '').toString(),

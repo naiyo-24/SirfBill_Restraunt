@@ -86,14 +86,24 @@ class _AdminGrowthPlansTabState extends State<AdminGrowthPlansTab> {
         final numPrice = (item['price'] is num)
             ? (item['price'] as num).toDouble()
             : (double.tryParse(item['price']?.toString() ?? '0') ?? 0.0);
+        final numOffer = item['offer_price'] != null
+            ? ((item['offer_price'] is num)
+                ? (item['offer_price'] as num).toDouble()
+                : double.tryParse(item['offer_price'].toString()))
+            : null;
+        final hasOffer = numOffer != null && numOffer > 0 && numOffer < numPrice;
+        final activePrice = hasOffer ? numOffer : numPrice;
         final gstApplicable = item['gst_applicable'] == true;
 
         target.add({
           'id': (item['id'] ?? '').toString(),
           'plan_code': (item['plan_code'] ?? '').toString(),
           'title': (item['name'] ?? '').toString(),
-          'price': _inrFormat.format(numPrice),
-          'numeric_price': numPrice,
+          'price': _inrFormat.format(activePrice),
+          if (hasOffer) 'original_price': _inrFormat.format(numPrice),
+          if (hasOffer && numPrice > 0)
+            'discount_pct': (((numPrice - numOffer) / numPrice) * 100).round(),
+          'numeric_price': activePrice,
           if (gstApplicable) 'gst': '+ GST',
           'tag': (item['badge'] ?? 'PLAN').toString(),
           'color': color,
@@ -120,44 +130,28 @@ class _AdminGrowthPlansTabState extends State<AdminGrowthPlansTab> {
       'price': '₹5,000',
       'tag': 'STARTER',
       'color': 0xFF10B981,
-      'features': [
-        '1 Verified Food Creator Visit',
-        '1 Instagram Reel + 2 Stories',
-        'Table QR & Location Tagging',
-      ],
+      'features': ['1 Verified Food Creator Visit', '1 Instagram Reel + 2 Stories', 'Table QR & Location Tagging'],
     },
     {
       'title': '2 Influencers',
       'price': '₹8,000',
       'tag': 'POPULAR',
       'color': 0xFF3B82F6,
-      'features': [
-        '2 Verified Food Creators',
-        '2 Reels + 4 Stories Coverage',
-        'Save ₹2,000 on Bundle',
-      ],
+      'features': ['2 Verified Food Creators', '2 Reels + 4 Stories Coverage', 'Save ₹2,000 on Bundle'],
     },
     {
       'title': '5 Influencers',
       'price': '₹22,000',
       'tag': 'CITY REACH',
       'color': 0xFF8B5CF6,
-      'features': [
-        '5 Local & Micro-Influencers',
-        '5 Reels + Multi-Day Buzz',
-        'Dedicated Campaign Manager',
-      ],
+      'features': ['5 Local & Micro-Influencers', '5 Reels + Multi-Day Buzz', 'Dedicated Campaign Manager'],
     },
     {
       'title': '11 Influencers',
       'price': '₹50,000',
       'tag': 'MEGA VIRAL',
       'color': 0xFFF59E0B,
-      'features': [
-        '11 Top City Food Creators',
-        '11 Reels + Viral Weekend Push',
-        'Full Analytics & Footfall Boost',
-      ],
+      'features': ['11 Top City Food Creators', '11 Reels + Viral Weekend Push', 'Full Analytics & Footfall Boost'],
     },
   ];
 
@@ -168,11 +162,7 @@ class _AdminGrowthPlansTabState extends State<AdminGrowthPlansTab> {
       'gst': '+ GST',
       'tag': 'ESSENTIAL',
       'color': 0xFF10B981,
-      'features': [
-        'Restaurant Profile Page',
-        'Digital Menu & Table QR Link',
-        'Mobile-Friendly Responsive UI',
-      ],
+      'features': ['Restaurant Profile Page', 'Digital Menu & Table QR Link', 'Mobile-Friendly Responsive UI'],
     },
     {
       'title': 'Standard',
@@ -180,11 +170,7 @@ class _AdminGrowthPlansTabState extends State<AdminGrowthPlansTab> {
       'gst': '+ GST',
       'tag': 'BEST VALUE',
       'color': 0xFF3B82F6,
-      'features': [
-        'Custom Domain Connection',
-        'Online Menu + Direct Ordering',
-        'Google Maps & Contact Integration',
-      ],
+      'features': ['Custom Domain Connection', 'Online Menu + Direct Ordering', 'Google Maps & Contact Integration'],
     },
     {
       'title': 'Customized',
@@ -192,11 +178,7 @@ class _AdminGrowthPlansTabState extends State<AdminGrowthPlansTab> {
       'gst': '(GST)',
       'tag': 'CUSTOM DESIGN',
       'color': 0xFF8B5CF6,
-      'features': [
-        'Bespoke Restaurant Branding UI',
-        'Photo Gallery & Table Booking',
-        'WhatsApp & Social Integrations',
-      ],
+      'features': ['Bespoke Restaurant Branding UI', 'Photo Gallery & Table Booking', 'WhatsApp & Social Integrations'],
     },
     {
       'title': 'Business Plan',
@@ -204,11 +186,7 @@ class _AdminGrowthPlansTabState extends State<AdminGrowthPlansTab> {
       'gst': '+ GST',
       'tag': 'ENTERPRISE',
       'color': 0xFF6366F1,
-      'features': [
-        'Multi-Branch Website Portal',
-        'SEO Optimization + Speed CDN',
-        'Priority Support & Updates',
-      ],
+      'features': ['Multi-Branch Website Portal', 'SEO Optimization + Speed CDN', 'Priority Support & Updates'],
     },
   ];
 
@@ -453,6 +431,17 @@ class _AdminGrowthPlansTabState extends State<AdminGrowthPlansTab> {
                 textBaseline: TextBaseline.alphabetic,
                 children: [
                   Text(p['price'].toString(), style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: accent)),
+                  if ((p['original_price'] ?? '').toString().isNotEmpty) ...[
+                    const SizedBox(width: 6),
+                    Text(
+                      p['original_price'].toString(),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: widget.subtitleColor,
+                        decoration: TextDecoration.lineThrough,
+                      ),
+                    ),
+                  ],
                   if (gst.isNotEmpty) ...[
                     const SizedBox(width: 5),
                     Text(gst, style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: widget.subtitleColor)),
