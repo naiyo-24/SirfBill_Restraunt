@@ -139,10 +139,13 @@ class GrowthPlanDetailDialog extends StatelessWidget {
                     onPressed: () {
                       final rootContext = Navigator.of(context, rootNavigator: false).context;
                       Navigator.pop(context);
-                      final numericPrice = double.tryParse(price.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0;
+                      final numericPrice = (plan['numeric_price'] is num)
+                          ? (plan['numeric_price'] as num).toDouble()
+                          : (double.tryParse(price.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0);
+                      final planCode = (plan['plan_code'] ?? '').toString();
                       final planItem = HardwareProduct(
                         id: 'PLAN-${title.toUpperCase().replaceAll(RegExp(r'\s+'), '-')}',
-                        sku: tag,
+                        sku: planCode.isNotEmpty ? planCode : tag,
                         name: '$category - $title${gst.isNotEmpty ? ' ($gst)' : ''}',
                         category: category,
                         price: numericPrice,

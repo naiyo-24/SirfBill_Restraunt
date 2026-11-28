@@ -50,6 +50,22 @@ class HardwareService {
     return [];
   }
 
+  /// 2b. Fetch Influencer Marketing & Website Service Plans from backend
+  static Future<List<Map<String, dynamic>>> fetchServicePlans() async {
+    try {
+      final res = await _dio.get('/api/service-plans');
+      if (res.statusCode == 200 && res.data != null) {
+        final List list = res.data is List
+            ? res.data
+            : (res.data['plans'] ?? res.data['items'] ?? res.data['data'] ?? []);
+        return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      }
+    } catch (e) {
+      debugPrint('Error fetching service plans: $e');
+    }
+    return [];
+  }
+
   /// 3. Fetch single hardware product details
   static Future<HardwareProduct?> fetchProductDetails(String productId) async {
     try {

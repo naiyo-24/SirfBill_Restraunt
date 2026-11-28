@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../models/hardware_product_model.dart';
 import '../../../services/hardware/hardware_service.dart';
@@ -28,12 +29,27 @@ class AdminGrowthPlansTab extends StatefulWidget {
 
 class _AdminGrowthPlansTabState extends State<AdminGrowthPlansTab> {
   List<HardwareProduct> _hardwareProducts = [];
+  List<Map<String, dynamic>> _liveInfluencerPlans = [];
+  List<Map<String, dynamic>> _liveWebsitePlans = [];
   bool _loadingHardware = true;
+  bool _loadingPlans = true;
+
+  static const List<int> _palette = [
+    0xFF10B981,
+    0xFF3B82F6,
+    0xFF8B5CF6,
+    0xFFF59E0B,
+  ];
+  final _inrFormat = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
 
   @override
   void initState() {
     super.initState();
-    _loadHardware();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    await Future.wait([_loadHardware(), _loadServicePlans()]);
   }
 
   Future<void> _loadHardware() async {
@@ -47,6 +63,54 @@ class _AdminGrowthPlansTabState extends State<AdminGrowthPlansTab> {
       }
     } catch (_) {
       if (mounted) setState(() => _loadingHardware = false);
+    }
+  }
+
+  Future<void> _loadServicePlans() async {
+    try {
+      final raw = await HardwareService.fetchServicePlans();
+      final active = raw.where((p) => p['is_active'] != false).toList()
+        ..sort((a, b) => ((a['sort_order'] ?? 0) as num).compareTo((b['sort_order'] ?? 0) as num));
+
+      final influencer = <Map<String, dynamic>>[];
+      final website = <Map<String, dynamic>>[];
+
+      for (final item in active) {
+        final cat = (item['category'] ?? '').toString().toUpperCase();
+        final isInfluencer = cat.contains('INFLUENCER');
+        final isWebsite = cat.contains('WEBSITE');
+        if (!isInfluencer && !isWebsite) continue;
+
+        final target = isInfluencer ? influencer : website;
+        final color = _palette[target.length % _palette.length];
+        final numPrice = (item['price'] is num)
+            ? (item['price'] as num).toDouble()
+            : (double.tryParse(item['price']?.toString() ?? '0') ?? 0.0);
+        final gstApplicable = item['gst_applicable'] == true;
+
+        target.add({
+          'id': (item['id'] ?? '').toString(),
+          'plan_code': (item['plan_code'] ?? '').toString(),
+          'title': (item['name'] ?? '').toString(),
+          'price': _inrFormat.format(numPrice),
+          'numeric_price': numPrice,
+          if (gstApplicable) 'gst': '+ GST',
+          'tag': (item['badge'] ?? 'PLAN').toString(),
+          'color': color,
+          'features': (item['features'] as List?)?.map((e) => e.toString()).toList() ?? <String>[],
+          'details': (item['description'] ?? '').toString(),
+        });
+      }
+
+      if (mounted) {
+        setState(() {
+          _liveInfluencerPlans = influencer;
+          _liveWebsitePlans = website;
+          _loadingPlans = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loadingPlans = false);
     }
   }
 
@@ -218,8 +282,15 @@ class _AdminGrowthPlansTabState extends State<AdminGrowthPlansTab> {
           const SizedBox(height: 14),
           LayoutBuilder(
             builder: (context, constraints) {
+              if (_loadingPlans) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 32),
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              }
+              final plans = _liveInfluencerPlans.isNotEmpty ? _liveInfluencerPlans : _influencerPlans;
               final cols = constraints.maxWidth > 1050 ? 4 : (constraints.maxWidth > 600 ? 2 : 1);
-              return _buildPlanGrid(context, _influencerPlans, 'Influencer Plan', cols);
+              return _buildPlanGrid(context, plans, 'Influencer Plan', cols);
             },
           ),
           const SizedBox(height: 28),
@@ -234,8 +305,15 @@ class _AdminGrowthPlansTabState extends State<AdminGrowthPlansTab> {
           const SizedBox(height: 14),
           LayoutBuilder(
             builder: (context, constraints) {
+              if (_loadingPlans) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 32),
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              }
+              final plans = _liveWebsitePlans.isNotEmpty ? _liveWebsitePlans : _websitePlans;
               final cols = constraints.maxWidth > 1050 ? 4 : (constraints.maxWidth > 600 ? 2 : 1);
-              return _buildPlanGrid(context, _websitePlans, 'Website Plan', cols);
+              return _buildPlanGrid(context, plans, 'Website Plan', cols);
             },
           ),
           const SizedBox(height: 28),
