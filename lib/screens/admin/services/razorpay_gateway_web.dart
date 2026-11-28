@@ -48,7 +48,7 @@ Future<void> _ensureRazorpayReady() async {
               key: key,
               amount: paise,
               currency: options.currency || 'INR',
-              name: options.name || 'SirfBill Technologies',
+              name: options.name || 'NAIYO24 PVT. LTD.',
               description: options.description || 'SirfBill Restaurant Pro License',
               image: options.image || 'favicon.png',
               order_id: (options.orderId && String(options.orderId).trim().length > 0) ? String(options.orderId).trim() : undefined,
@@ -130,15 +130,18 @@ Future<Map<String, String>?> launchOfficialRazorpay({
           } else if (detail is Map) {
             data = Map<String, dynamic>.from(detail);
           }
-          completer.complete({
-            'payment_id': data['payment_id']?.toString() ?? '',
-            'order_id': data['order_id']?.toString() ?? '',
-            'signature': data['signature']?.toString() ?? '',
-          });
-          return;
+          final pid = data['payment_id']?.toString() ?? '';
+          if (pid.isNotEmpty) {
+            completer.complete({
+              'payment_id': pid,
+              'order_id': data['order_id']?.toString() ?? '',
+              'signature': data['signature']?.toString() ?? '',
+            });
+            return;
+          }
         } catch (_) {}
       }
-      completer.complete({'payment_id': 'pay_verified'});
+      completer.complete(null);
     }
   });
 
@@ -152,7 +155,7 @@ Future<Map<String, String>?> launchOfficialRazorpay({
   final eventData = {
     'key': keyId,
     'amount': amount,
-    'name': 'SirfBill Technologies',
+    'name': 'NAIYO24 PVT. LTD.',
     'description': planName,
     if (orderId != null && orderId.isNotEmpty) 'orderId': orderId,
     'userName': userName ?? '',

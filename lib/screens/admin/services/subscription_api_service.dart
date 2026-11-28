@@ -190,21 +190,13 @@ class SubscriptionApiService {
             : <String, dynamic>{};
         return SubscriptionStatusModel.fromJson(data);
       }
-    } catch (e) {
-      debugPrint('[SubscriptionApiService] verify-payment fallback to subscribe: $e');
+    } on DioException catch (dioErr) {
+      final errDetail = dioErr.response?.data?['detail'] ?? dioErr.message;
+      debugPrint('[SubscriptionApiService] verify-payment failed: $errDetail');
+      throw Exception(errDetail ?? 'Payment verification failed');
     }
 
-    // 2. Fallback to POST /api/subscriptions/subscribe
-    return subscribe(
-      planId: planId,
-      planCode: planCode,
-      durationMonths: durationMonths,
-      paymentMethod: 'RAZORPAY',
-      paymentReference: paymentReference,
-      gatewayOrderId: orderId,
-      gatewaySignature: signature,
-      outletId: resolvedId,
-    );
+    throw Exception('Payment verification failed. Please contact support.');
   }
 
   /// POST /api/subscriptions/subscribe

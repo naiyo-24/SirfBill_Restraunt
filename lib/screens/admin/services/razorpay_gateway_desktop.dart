@@ -71,11 +71,15 @@ Future<Map<String, String>?> launchOfficialRazorpay({
 ''');
         await request.response.close();
         if (!completer.isCompleted) {
-          completer.complete({
-            'payment_id': paymentId.isNotEmpty ? paymentId : 'pay_verified',
-            'order_id': rzpOrderId,
-            'signature': signature,
-          });
+          if (paymentId.isNotEmpty) {
+            completer.complete({
+              'payment_id': paymentId,
+              'order_id': rzpOrderId,
+              'signature': signature,
+            });
+          } else {
+            completer.complete(null);
+          }
         }
         await server?.close();
       } else if (uri.path == '/dismiss') {
@@ -190,7 +194,7 @@ String _generateRazorpayHtml({
       key: "$keyId",
       amount: $paise,
       currency: "INR",
-      name: "SirfBill Technologies",
+      name: "NAIYO24 PVT. LTD.",
       description: "$planName",
       $orderField
       prefill: {

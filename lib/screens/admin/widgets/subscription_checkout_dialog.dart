@@ -356,8 +356,15 @@ class _SubscriptionCheckoutDialogState extends State<SubscriptionCheckoutDialog>
                         const SizedBox(height: 14),
                         ElevatedButton.icon(
                           onPressed: () async {
-                            final status = await SubscriptionApiService.fetchSubscriptionStatus(outletId: widget.outletId);
-                            if (status.isActive && status.daysRemaining > 14) {
+                            bool verified = false;
+                            SubscriptionStatusModel? status;
+                            try {
+                              status = await SubscriptionApiService.fetchSubscriptionStatus(outletId: widget.outletId);
+                              // Strictly check if backend actually has a confirmed payment recorded
+                              verified = status.isActive && status.daysRemaining > 0;
+                            } catch (_) {}
+
+                            if (verified && status != null) {
                               if (mounted) {
                                 setState(() {
                                   _isProcessing = false;
@@ -375,7 +382,7 @@ class _SubscriptionCheckoutDialogState extends State<SubscriptionCheckoutDialog>
                                 // ignore: use_build_context_synchronously
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
-                                    content: Text('Payment not detected yet. Please ensure payment is completed in the Razorpay window.'),
+                                    content: Text('No verified payment detected for this order yet.'),
                                     behavior: SnackBarBehavior.floating,
                                   ),
                                 );
