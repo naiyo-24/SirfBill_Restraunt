@@ -120,9 +120,14 @@ class _TableOrderScreenState extends State<TableOrderScreen> {
         _menuItems = allItems;
         _categories = catSet.toList();
         if (existingOrder != null) {
-          _lastOrder = existingOrder;
-          _savedCustomerName = existingOrder['customer_name']?.toString();
-          _savedCustomerPhone = existingOrder['customer_phone']?.toString();
+          final ordSt = (existingOrder['status'] ?? '').toString().toUpperCase();
+          final paySt = (existingOrder['payment_status'] ?? '').toString().toUpperCase();
+          final isClosed = ordSt == 'COMPLETED' || ordSt == 'PAID' || ordSt.contains('CANCEL') || ordSt.contains('REJECT') || paySt == 'PAID';
+          if (!isClosed) {
+            _lastOrder = existingOrder;
+            _savedCustomerName = existingOrder['customer_name']?.toString();
+            _savedCustomerPhone = existingOrder['customer_phone']?.toString();
+          }
         }
         _isLoading = false;
       });
