@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../../../widgets/call_us_navbar_pill.dart';
 import '../../counter/widgets/about/about_us_dialog.dart';
 import '../../home/widgets/hardware_store_dialog.dart';
 
@@ -206,10 +207,12 @@ class AdminTopHeader extends StatelessWidget {
               else
                 const Spacer(),
 
-              // Right side Date Pill, Buy Hardware, and Profile Pill (Crisp 100% scale)
+              // Right side Call Us, Date Pill, Buy Hardware, and Profile Pill (Crisp 100% scale)
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  CallUsNavbarPill(compact: !isDesktop),
+                  SizedBox(width: isNarrow ? 4 : 8),
                   // Date & Time Green Pill
                   InkWell(
                     onTap: () async {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../services/auth_service.dart';
+import '../../../widgets/call_us_navbar_pill.dart';
 
 class WaiterAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String waiterName;
@@ -155,6 +156,13 @@ class WaiterAppBar extends StatelessWidget implements PreferredSizeWidget {
         ],
       ),
       actions: [
+        Center(
+          child: CallUsNavbarPill(
+            compact: screenWidth < 720,
+            height: 34,
+          ),
+        ),
+        const SizedBox(width: 8),
         // Ready Orders Notification Button (when food is cooked and ready to serve)
         if (readyOrdersCount > 0) ...[
           Tooltip(

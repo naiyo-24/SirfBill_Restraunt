@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../services/shop_service.dart';
+import '../../../../widgets/call_us_navbar_pill.dart';
 import '../../../home/widgets/hardware_store_dialog.dart';
 import '../models/inventory_models.dart';
 import 'inventory_notification_bell.dart';
@@ -213,8 +214,6 @@ class InventoryTopBar extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.keyboard, size: 15, color: Color(0xFF10B981)),
-                      const SizedBox(width: 6),
                       _buildShortcutChip(
                         context: context,
                         keyLabel: 'F1',
@@ -281,10 +280,12 @@ class InventoryTopBar extends StatelessWidget {
           ] else
             const Spacer(),
 
-          // Right side Bell + Calendar + Profile Pills
+          // Right side Call Us + Bell + Calendar + Profile Pills
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
+              CallUsNavbarPill(compact: !isDesktop),
+              const SizedBox(width: 8),
               if (onOpenNotifications != null) ...[
                 InventoryNotificationBell(
                   count: lowStockCount,

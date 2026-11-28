@@ -240,9 +240,9 @@ class AboutUsDialog extends StatelessWidget {
                           AboutContactRow(
                             icon: Icons.headset_mic_rounded,
                             label: 'Customer Support',
-                            value: '+91 8100463128',
+                            value: '+91 6289171798',
                             isLink: true,
-                            onTap: () => _launchUrl(context, 'tel:+918100463128'),
+                            onTap: () => _launchUrl(context, 'tel:+916289171798'),
                             textColor: textColor,
                             subtitleColor: subtitleColor,
                           ),

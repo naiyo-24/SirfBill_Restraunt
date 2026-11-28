@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import '../../../../widgets/call_us_navbar_pill.dart';
 import '../about/about_us_dialog.dart';
 import '../../../../screens/home/widgets/hardware_store_dialog.dart';
 
@@ -198,6 +199,8 @@ class CounterDashboardHeader extends StatelessWidget {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  CallUsNavbarPill(compact: !isDesktop),
+                  SizedBox(width: isNarrow ? 4 : 8),
                   // Date & Time Pill
                   InkWell(
                     onTap: () async {

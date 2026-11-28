@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../../../widgets/call_us_navbar_pill.dart';
 
 /// Reusable square icon action button with tooltip and tap feedback
 class KdsIconButton extends StatelessWidget {
@@ -222,6 +223,8 @@ class KdsHeaderActions extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
+        CallUsNavbarPill(compact: isCompact, height: size),
+        SizedBox(width: gap),
         if (onToggleSound != null) ...[
           KdsIconButton(
             tooltip: isSoundEnabled ? 'Sound Alerts: ON' : 'Sound Alerts: OFF',

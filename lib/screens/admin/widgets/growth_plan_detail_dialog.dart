@@ -141,7 +141,7 @@ class GrowthPlanDetailDialog extends StatelessWidget {
                         'Hello SirfBill Team, I want to book $category - $title ($priceLabel) for my restaurant.',
                       );
                       await launchUrl(
-                        Uri.parse('https://wa.me/916289171798?text=$msg'),
+                        Uri.parse('https://wa.me/918100463128?text=$msg'),
                         mode: LaunchMode.externalApplication,
                       );
                     },

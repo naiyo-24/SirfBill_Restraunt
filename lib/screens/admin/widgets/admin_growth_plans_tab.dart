@@ -3,7 +3,6 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../models/hardware_product_model.dart';
 import '../../../services/hardware/hardware_service.dart';
 import '../../home/widgets/hardware_order_inquiry_dialog.dart';
-import '../../home/widgets/hardware_store_dialog.dart';
 import '../../home/widgets/hardware_store_product_card.dart';
 import 'growth_plan_detail_dialog.dart';
 
@@ -242,26 +241,11 @@ class _AdminGrowthPlansTabState extends State<AdminGrowthPlansTab> {
           const SizedBox(height: 28),
 
           // Section 3: Certified POS Hardware Store (All Products Grid)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _sectionHeader(
-                Icons.storefront_rounded,
-                '3. Certified POS Hardware Store',
-                'Thermal printers, cash drawers, KDS displays & barcode scanners',
-                const Color(0xFF10B981),
-              ),
-              OutlinedButton.icon(
-                onPressed: () => HardwareStoreDialog.show(context),
-                icon: const Icon(Icons.open_in_new_rounded, size: 15),
-                label: const Text('Filter & Search', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFF10B981),
-                  side: const BorderSide(color: Color(0xFF10B981)),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-              ),
-            ],
+          _sectionHeader(
+            Icons.storefront_rounded,
+            '3. Certified POS Hardware Store',
+            'Thermal printers, cash drawers, KDS displays & barcode scanners',
+            const Color(0xFF10B981),
           ),
           const SizedBox(height: 14),
           if (_loadingHardware)
@@ -311,7 +295,7 @@ class _AdminGrowthPlansTabState extends State<AdminGrowthPlansTab> {
                       item: item,
                       onOpenWhatsApp: (msg) async {
                         await launchUrl(
-                          Uri.parse('https://wa.me/916289171798?text=${Uri.encodeComponent(msg)}'),
+                          Uri.parse('https://wa.me/918100463128?text=${Uri.encodeComponent(msg)}'),
                           mode: LaunchMode.externalApplication,
                         );
                       },
